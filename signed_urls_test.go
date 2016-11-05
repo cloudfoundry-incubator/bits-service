@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -47,6 +48,14 @@ var _ = Describe("Signing URLs", func() {
 		Expect(request.URL.Path).To(Equal("/my/path"))
 		Expect(request.URL.Host).To(Equal("secondhost"))
 		Expect(rw).To(Equal(responseWriter))
+	})
+
+	FIt("bla", func() {
+		signer := NewSignedS3UrlHandler()
+		responseWriter := NewMockResponseWriter()
+		signer.Sign(responseWriter, &http.Request{URL: mustParse("/sign/my/path")})
+		s := responseWriter.VerifyWasCalledOnce().Write(AnyUint8Slice()).GetCapturedArguments()
+		fmt.Println(string(s))
 	})
 })
 

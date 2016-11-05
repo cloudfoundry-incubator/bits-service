@@ -4,7 +4,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"path/filepath"
@@ -46,10 +45,10 @@ func main() {
 }
 
 type BlobStore interface {
-	Exists(path string) bool
-	Get(path string) (io.Reader, error)
-	Put(path string, src io.Reader) error
-	Delete(path string) error
+	// Exists(path string) bool
+	Get(path string, responseWriter http.ResponseWriter)
+	Put(path string, src io.Reader, responseWriter http.ResponseWriter)
+	// Delete(path string) error
 }
 
 type PackageHandler struct {
@@ -64,25 +63,15 @@ func (handler *PackageHandler) Put(responseWriter http.ResponseWriter, request *
 		return
 	}
 	defer file.Close()
-
-	e = handler.blobStore.Put("/packages/"+partitionedKey(mux.Vars(request)["guid"]), file)
-	if e != nil {
-		log.Println(e)
-		responseWriter.WriteHeader(500)
-	}
+	handler.blobStore.Put("/packages/"+partitionedKey(mux.Vars(request)["guid"]), file, responseWriter)
 }
 
 func (handler *PackageHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
-	blob, e := handler.blobStore.Get("/packages/" + partitionedKey(mux.Vars(request)["guid"]))
-	if os.IsNotExist(e) {
-		responseWriter.WriteHeader(404)
-		return
-	}
-	io.Copy(responseWriter, blob)
+	handler.blobStore.Get("/packages/"+partitionedKey(mux.Vars(request)["guid"]), responseWriter)
 }
 
 func (handler *PackageHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
-	handler.blobStore.Delete("/packages/" + partitionedKey(mux.Vars(request)["guid"]))
+	// handler.blobStore.Delete("/packages/" + partitionedKey(mux.Vars(request)["guid"]))
 }
 
 func partitionedKey(guid string) string {
