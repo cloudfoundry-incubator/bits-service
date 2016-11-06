@@ -53,8 +53,3 @@ func (blobstore *LocalBlobStore) Put(path string, src io.Reader, responseWriter 
 	}
 	responseWriter.WriteHeader(201)
 }
-
-func (blobstore *LocalBlobStore) Delete(path string) error {
-	// TODO
-	return nil
-}

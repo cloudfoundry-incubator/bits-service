@@ -46,10 +46,8 @@ func main() {
 }
 
 type BlobStore interface {
-	// Exists(path string) bool
 	Get(path string, responseWriter http.ResponseWriter)
 	Put(path string, src io.Reader, responseWriter http.ResponseWriter)
-	// Delete(path string) error
 }
 
 type PackageHandler struct {

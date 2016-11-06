@@ -17,6 +17,7 @@ import (
 var _ = Describe("Signing URLs", func() {
 
 	var session *gexec.Session
+	var httpClient = new(http.Client)
 
 	BeforeSuite(func() {
 		pathToWebserver, err := gexec.Build("github.com/petergtz/bitsgo")
@@ -25,7 +26,6 @@ var _ = Describe("Signing URLs", func() {
 		session, err = gexec.Start(exec.Command(pathToWebserver), GinkgoWriter, GinkgoWriter)
 		Ω(err).ShouldNot(HaveOccurred())
 		time.Sleep(200 * time.Millisecond)
-
 	})
 
 	AfterSuite(func() {
@@ -36,14 +36,11 @@ var _ = Describe("Signing URLs", func() {
 	})
 
 	It("return 404 for a package that does not exist", func() {
-
-		response, err := http.Get("http://internal.127.0.0.1.xip.io:8000/packages/notexistent")
-		Ω(err).ShouldNot(HaveOccurred())
-		Expect(response.StatusCode).To(Equal(404))
-
+		Expect(http.Get("http://internal.127.0.0.1.xip.io:8000/packages/notexistent")).
+			To(WithTransform(GetStatusCode, Equal(404)))
 	})
 
-	FIt("return 200 for a package that does exist", func() {
+	It("return 200 for a package that does exist", func() {
 		bodyBuf := &bytes.Buffer{}
 		multipartWriter := multipart.NewWriter(bodyBuf)
 		formFileWriter, e := multipartWriter.CreateFormFile("package", "somefilename")
@@ -55,13 +52,12 @@ var _ = Describe("Signing URLs", func() {
 		Ω(e).ShouldNot(HaveOccurred())
 		request.Header.Add("Content-Type", multipartWriter.FormDataContentType())
 
-		response, e := new(http.Client).Do(request)
-		Ω(e).ShouldNot(HaveOccurred())
-		Expect(response.StatusCode).To(Equal(201))
+		Expect(httpClient.Do(request)).To(WithTransform(GetStatusCode, Equal(201)))
 
-		response, e = http.Get("http://internal.127.0.0.1.xip.io:8000/packages/myguid")
-		Ω(e).ShouldNot(HaveOccurred())
-		Expect(response.StatusCode).To(Equal(200))
+		Expect(http.Get("http://internal.127.0.0.1.xip.io:8000/packages/myguid")).
+			To(WithTransform(GetStatusCode, Equal(200)))
 	})
 
 })
+
+func GetStatusCode(response *http.Response) int { return response.StatusCode }

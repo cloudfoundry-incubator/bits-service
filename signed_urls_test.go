@@ -1,11 +1,12 @@
 package main_test
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
+
+	"net/http/httptest"
 
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
@@ -29,7 +30,7 @@ var _ = Describe("Signing URLs", func() {
 		handler := &SignedUrlHandler{
 			Secret:           "geheim",
 			Delegate:         delegateHandler,
-			DelegateEndpoint: "secondhost",
+			DelegateEndpoint: "http://secondhost",
 		}
 
 		// signing
@@ -50,12 +51,20 @@ var _ = Describe("Signing URLs", func() {
 		Expect(rw).To(Equal(responseWriter))
 	})
 
-	FIt("bla", func() {
+	It("Can create pre-signed URLs for S3", func() {
 		signer := NewSignedS3UrlHandler()
-		responseWriter := NewMockResponseWriter()
+		responseWriter := httptest.NewRecorder()
+
 		signer.Sign(responseWriter, &http.Request{URL: mustParse("/sign/my/path")})
-		s := responseWriter.VerifyWasCalledOnce().Write(AnyUint8Slice()).GetCapturedArguments()
-		fmt.Println(string(s))
+
+		Expect(responseWriter.Body.String()).To(SatisfyAll(
+			ContainSubstring("https://mybucket.s3.amazonaws.com/my/path"),
+			ContainSubstring("X-Amz-Algorithm="),
+			ContainSubstring("X-Amz-Credential=MY-Key_ID"),
+			ContainSubstring("X-Amz-Date="),
+			ContainSubstring("X-Amz-Expires="),
+			ContainSubstring("X-Amz-Signature="),
+		))
 	})
 })
 
