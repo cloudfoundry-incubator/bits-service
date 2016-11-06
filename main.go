@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"time"
 
 	"path/filepath"
@@ -56,10 +57,13 @@ type PackageHandler struct {
 }
 
 func (handler *PackageHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
+	dump, _ := httputil.DumpRequest(request, true)
+	log.Printf("%s", dump)
 	file, _, e := request.FormFile("package")
 	if e != nil {
 		log.Println(e)
 		responseWriter.WriteHeader(400)
+		responseWriter.Write([]byte("Could not retrieve 'package' form parameter"))
 		return
 	}
 	defer file.Close()
