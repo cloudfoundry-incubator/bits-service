@@ -31,7 +31,7 @@ func (blobstore *LocalBlobStore) Get(path string, responseWriter http.ResponseWr
 	io.Copy(responseWriter, file)
 }
 
-func (blobstore *LocalBlobStore) Put(path string, src io.Reader, responseWriter http.ResponseWriter) {
+func (blobstore *LocalBlobStore) Put(path string, src io.ReadSeeker, responseWriter http.ResponseWriter) {
 	e := os.MkdirAll(filepath.Dir(filepath.Join(blobstore.pathPrefix, path)), os.ModeDir|0755)
 	if e != nil {
 		log.Printf("Error while creating directories for %v. Caused by: %v", path, e)

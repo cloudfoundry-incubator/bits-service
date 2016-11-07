@@ -17,7 +17,6 @@ import (
 var _ = Describe("Signing URLs", func() {
 
 	var session *gexec.Session
-	var httpClient = new(http.Client)
 
 	BeforeSuite(func() {
 		pathToWebserver, err := gexec.Build("github.com/petergtz/bitsgo")
@@ -52,7 +51,7 @@ var _ = Describe("Signing URLs", func() {
 		Ω(e).ShouldNot(HaveOccurred())
 		request.Header.Add("Content-Type", multipartWriter.FormDataContentType())
 
-		Expect(httpClient.Do(request)).To(WithTransform(GetStatusCode, Equal(201)))
+		Expect(http.DefaultClient.Do(request)).To(WithTransform(GetStatusCode, Equal(201)))
 
 		Expect(http.Get("http://internal.127.0.0.1.xip.io:8000/packages/myguid")).
 			To(WithTransform(GetStatusCode, Equal(200)))

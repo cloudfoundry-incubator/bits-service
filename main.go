@@ -4,7 +4,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/http/httputil"
 	"time"
 
 	"path/filepath"
@@ -47,7 +46,7 @@ func main() {
 
 type BlobStore interface {
 	Get(path string, responseWriter http.ResponseWriter)
-	Put(path string, src io.Reader, responseWriter http.ResponseWriter)
+	Put(path string, src io.ReadSeeker, responseWriter http.ResponseWriter)
 }
 
 type PackageHandler struct {
@@ -55,8 +54,6 @@ type PackageHandler struct {
 }
 
 func (handler *PackageHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
-	dump, _ := httputil.DumpRequest(request, true)
-	log.Printf("%s", dump)
 	file, _, e := request.FormFile("package")
 	if e != nil {
 		log.Println(e)
@@ -73,7 +70,7 @@ func (handler *PackageHandler) Get(responseWriter http.ResponseWriter, request *
 }
 
 func (handler *PackageHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
-	// handler.blobStore.Delete("/packages/" + partitionedKey(mux.Vars(request)["guid"]))
+	// TODO
 }
 
 func partitionedKey(guid string) string {
