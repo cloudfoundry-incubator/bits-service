@@ -1,7 +1,6 @@
 package main_test
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -26,12 +25,21 @@ func TestSuite(t *testing.T) {
 	ginkgo.RunSpecs(t, "SignedUrls")
 }
 
-var _ = Describe("Signing URLs", func() {
-	FIt("signs and verifies URLs", func() {
-		delegateHandler := NewMockHandler()
+var _ = Describe("PathSigner", func() {
+	It("Can sign a path and validate its signature", func() {
+		signer := &PathSigner{"thesecret"}
 
+		signedPath := signer.Sign("/some/path")
+
+		Expect(signer.SignatureValid(mustParse(signedPath))).To(BeTrue())
+	})
+})
+
+var _ = Describe("Signing URLs", func() {
+	It("signs and verifies URLs", func() {
+		signer := &PathSigner{"geheim"}
 		handler := &SignedLocalUrlHandler{
-			Secret:           "geheim",
+			Signer:           signer,
 			DelegateEndpoint: "http://example.com",
 		}
 
@@ -44,20 +52,17 @@ var _ = Describe("Signing URLs", func() {
 		Expect(responseBody).To(ContainSubstring("http://example.com/my/path?md5="))
 
 		// verifying
-		responseWriter2 := httptest.NewRecorder()
+		responseWriter = httptest.NewRecorder()
+		delegateHandler := NewMockHandler()
 
-		mux.NewRouter().Path("/my/path").Methods("GET").Handler(negroni.New(
-			&SignatureVerifier{Secret: "geheim"},
+		r := mux.NewRouter()
+		r.Path("/my/path").Methods("GET").Handler(negroni.New(
+			&SignatureVerificationMiddleware{signer},
 			negroni.Wrap(delegateHandler),
-		)).Subrouter().ServeHTTP(responseWriter2, httptest.NewRequest("GET", responseBody, nil))
+		))
+		r.ServeHTTP(responseWriter, httptest.NewRequest("GET", responseBody, nil))
 
-		fmt.Println(responseWriter2.Body.String())
-		// responseWriter.VerifyWasCalled(Never()).WriteHeader(AnyInt())
-
-		// rw, request := delegateHandler.VerifyWasCalledOnce().ServeHTTP(AnyResponseWriter(), AnyRequestPtr()).GetCapturedArguments()
-		// Expect(request.URL.Path).To(Equal("/my/path"))
-		// Expect(request.URL.Host).To(Equal("secondhost"))
-		// Expect(rw).To(Equal(responseWriter))
+		Expect(responseWriter.Code).To(Equal(200))
 	})
 
 	It("Can create pre-signed URLs for S3", func() {

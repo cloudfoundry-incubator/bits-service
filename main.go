@@ -25,21 +25,19 @@ func main() {
 	publicRouter := mux.NewRouter()
 	router.Host(internalHostName).Handler(internalRouter)
 	router.Host(publicHostName).Handler(negroni.New(
-		&SignatureVerifier{Secret: secret},
+		&SignatureVerificationMiddleware{&PathSigner{secret}},
 		negroni.Wrap(publicRouter),
 	))
 
 	blobstore, signedURLHandler := createBlobstoreAndSignedURLHandler()
 
 	setUpSignRoute(internalRouter, signedURLHandler)
-	setUpPackageRoutes(internalRouter, blobstore)
-	setUpPackageRoutes(publicRouter, blobstore)
-	setUpBuildpackRoutes(internalRouter, blobstore)
-	setUpBuildpackRoutes(publicRouter, blobstore)
-	setUpDropletRoutes(internalRouter, blobstore)
-	setUpDropletRoutes(publicRouter, blobstore)
-	setUpBuildpackCacheRoutes(internalRouter, blobstore)
-	setUpBuildpackCacheRoutes(publicRouter, blobstore)
+	for _, router := range []*mux.Router{internalRouter, publicRouter} {
+		setUpPackageRoutes(router, blobstore)
+		setUpBuildpackRoutes(router, blobstore)
+		setUpDropletRoutes(router, blobstore)
+		setUpBuildpackCacheRoutes(router, blobstore)
+	}
 
 	srv := &http.Server{
 		Handler: negroni.New(
@@ -58,7 +56,7 @@ func createBlobstoreAndSignedURLHandler() (BlobStore, SignedUrlHandler) {
 	return &LocalBlobStore{pathPrefix: "/tmp"},
 		&SignedLocalUrlHandler{
 			DelegateEndpoint: "http://" + publicHostName + ":" + port,
-			Secret:           secret,
+			Signer:           &PathSigner{secret},
 		}
 }
 
@@ -76,8 +74,16 @@ func setUpPackageRoutes(router *mux.Router, blobStore BlobStore) {
 func setUpBuildpackRoutes(router *mux.Router, blobStore BlobStore) {
 	handler := &ResourceHandler{blobStore: blobStore, resourceType: "buildpack"}
 	router.Path("/buildpacks/{guid}").Methods("PUT").HandlerFunc(handler.Put)
+	// TODO change Put/Get/etc. signature to allow this:
+	// router.Path("/buildpacks/{guid}").Methods("PUT").HandlerFunc(delegateTo(handler.Put))
 	router.Path("/buildpacks/{guid}").Methods("GET").HandlerFunc(handler.Get)
 	router.Path("/buildpacks/{guid}").Methods("DELETE").HandlerFunc(handler.Delete)
+}
+
+func delegateTo(delegate func(http.ResponseWriter, *http.Request, map[string]string)) func(http.ResponseWriter, *http.Request) {
+	return func(responseWriter http.ResponseWriter, request *http.Request) {
+		delegate(responseWriter, request, mux.Vars(request))
+	}
 }
 
 func setUpDropletRoutes(router *mux.Router, blobStore BlobStore) {

@@ -1,24 +1,19 @@
 package main
 
-import (
-	"crypto/md5"
-	"fmt"
-	"net/http"
-)
+import "net/http"
 
-type SignatureVerifier struct {
-	Secret string
+type SignatureVerificationMiddleware struct {
+	Signer *PathSigner
 }
 
-func (l *SignatureVerifier) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	if r.URL.Query().Get("md5") == "" {
-		rw.WriteHeader(403)
+func (middleware *SignatureVerificationMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
+	if request.URL.Query().Get("md5") == "" {
+		responseWriter.WriteHeader(403)
 		return
 	}
-	if r.URL.Query().Get("md5") != fmt.Sprintf("%x", md5.Sum([]byte(r.URL.Path+l.Secret))) {
-		rw.WriteHeader(403)
+	if !middleware.Signer.SignatureValid(request.URL) {
+		responseWriter.WriteHeader(403)
 		return
 	}
-
-	next(rw, r)
+	next(responseWriter, request)
 }

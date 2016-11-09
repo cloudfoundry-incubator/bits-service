@@ -7,19 +7,33 @@ import (
 	"strings"
 	"time"
 
+	"net/url"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
+type PathSigner struct {
+	Secret string
+}
+
+func (signer *PathSigner) Sign(path string) string {
+	return fmt.Sprintf("%s?md5=%x", path, md5.Sum([]byte(path+signer.Secret)))
+}
+
+func (signer *PathSigner) SignatureValid(u *url.URL) bool {
+	return u.Query().Get("md5") == fmt.Sprintf("%x", md5.Sum([]byte(u.Path+signer.Secret)))
+}
+
 type SignedLocalUrlHandler struct {
-	Secret           string
+	Signer           *PathSigner
 	DelegateEndpoint string
 }
 
 func (handler *SignedLocalUrlHandler) Sign(responseWriter http.ResponseWriter, request *http.Request) {
-	signedPath := strings.Replace(request.URL.String(), "/sign", "", 1)
-	fmt.Fprintf(responseWriter, "%s%s?md5=%x", handler.DelegateEndpoint, signedPath, md5.Sum([]byte(signedPath+handler.Secret)))
+	signPath := strings.Replace(request.URL.Path, "/sign", "", 1)
+	fmt.Fprintf(responseWriter, "%s%s", handler.DelegateEndpoint, handler.Signer.Sign(signPath))
 }
 
 type SignedS3UrlHandler struct {
