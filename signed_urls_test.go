@@ -30,7 +30,7 @@ var _ = Describe("Signing URLs", func() {
 	XIt("signs and verifies URLs", func() {
 		delegateHandler := NewMockHandler()
 
-		handler := &SignedUrlHandler{
+		handler := &SignedLocalUrlHandler{
 			Secret:           "geheim",
 			DelegateEndpoint: "http://secondhost",
 		}

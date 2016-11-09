@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/md5"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -13,35 +11,42 @@ import (
 	"github.com/urfave/negroni"
 )
 
+const (
+	internalHostName = "internal.127.0.0.1.xip.io"
+	publicHostName   = "public.127.0.0.1.xip.io"
+	port             = "8000"
+	secret           = "geheim"
+)
+
 func main() {
 	router := mux.NewRouter()
-	internalHostName := "internal.127.0.0.1.xip.io"
-	publicHostName := "public.127.0.0.1.xip.io"
 
 	internalRouter := mux.NewRouter()
 	publicRouter := mux.NewRouter()
 	router.Host(internalHostName).Handler(internalRouter)
 	router.Host(publicHostName).Handler(negroni.New(
-		&SignatureVerifier{Secret: "geheim"},
+		&SignatureVerifier{Secret: secret},
 		negroni.Wrap(publicRouter),
 	))
 
-	blobstore := &LocalBlobStore{pathPrefix: "/tmp"}
-	signedURLHandler := &SignedUrlHandler{
-		DelegateEndpoint: "http://" + publicHostName + ":8000",
-		Secret:           "geheim",
-	}
+	blobstore, signedURLHandler := createBlobstoreAndSignedURLHandler()
 
+	setUpSignRoute(internalRouter, signedURLHandler)
 	setUpPackageRoutes(internalRouter, blobstore)
 	setUpPackageRoutes(publicRouter, blobstore)
-	internalRouter.PathPrefix("/sign/").Methods("GET").HandlerFunc(signedURLHandler.Sign)
+	setUpBuildpackRoutes(internalRouter, blobstore)
+	setUpBuildpackRoutes(publicRouter, blobstore)
+	setUpDropletRoutes(internalRouter, blobstore)
+	setUpDropletRoutes(publicRouter, blobstore)
+	setUpBuildpackCacheRoutes(internalRouter, blobstore)
+	setUpBuildpackCacheRoutes(publicRouter, blobstore)
 
 	srv := &http.Server{
 		Handler: negroni.New(
 			&negroni.Logger{log.New(os.Stdout, "[bitsgo] ", log.LstdFlags|log.Lshortfile|log.LUTC)},
 			negroni.Wrap(router),
 		),
-		Addr:         "0.0.0.0:8000",
+		Addr:         "0.0.0.0:" + port,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
@@ -49,28 +54,46 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-type SignatureVerifier struct {
-	Secret string
+func createBlobstoreAndSignedURLHandler() (BlobStore, SignedUrlHandler) {
+	return &LocalBlobStore{pathPrefix: "/tmp"},
+		&SignedLocalUrlHandler{
+			DelegateEndpoint: "http://" + publicHostName + ":" + port,
+			Secret:           secret,
+		}
 }
 
-func (l *SignatureVerifier) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	if r.URL.Query().Get("md5") == "" {
-		rw.WriteHeader(403)
-		return
-	}
-	if r.URL.Query().Get("md5") != fmt.Sprintf("%x", md5.Sum([]byte(r.URL.Path+l.Secret))) {
-		rw.WriteHeader(403)
-		return
-	}
-
-	next(rw, r)
+func setUpSignRoute(router *mux.Router, signedUrlHandler SignedUrlHandler) {
+	router.PathPrefix("/sign/").Methods("GET").HandlerFunc(signedUrlHandler.Sign)
 }
 
 func setUpPackageRoutes(router *mux.Router, blobStore BlobStore) {
-	packageHandler := &ResourceHandler{blobStore: blobStore, resourceType: "package"}
-	router.Path("/packages/{guid}").Methods("PUT").HandlerFunc(packageHandler.Put)
-	router.Path("/packages/{guid}").Methods("GET").HandlerFunc(packageHandler.Get)
-	router.Path("/packages/{guid}").Methods("DELETE").HandlerFunc(packageHandler.Delete)
+	handler := &ResourceHandler{blobStore: blobStore, resourceType: "package"}
+	router.Path("/packages/{guid}").Methods("PUT").HandlerFunc(handler.Put)
+	router.Path("/packages/{guid}").Methods("GET").HandlerFunc(handler.Get)
+	router.Path("/packages/{guid}").Methods("DELETE").HandlerFunc(handler.Delete)
+}
+
+func setUpBuildpackRoutes(router *mux.Router, blobStore BlobStore) {
+	handler := &ResourceHandler{blobStore: blobStore, resourceType: "buildpack"}
+	router.Path("/buildpacks/{guid}").Methods("PUT").HandlerFunc(handler.Put)
+	router.Path("/buildpacks/{guid}").Methods("GET").HandlerFunc(handler.Get)
+	router.Path("/buildpacks/{guid}").Methods("DELETE").HandlerFunc(handler.Delete)
+}
+
+func setUpDropletRoutes(router *mux.Router, blobStore BlobStore) {
+	handler := &ResourceHandler{blobStore: blobStore, resourceType: "droplet"}
+	router.Path("/droplets/{guid}").Methods("PUT").HandlerFunc(handler.Put)
+	router.Path("/droplets/{guid}").Methods("GET").HandlerFunc(handler.Get)
+	router.Path("/droplets/{guid}").Methods("DELETE").HandlerFunc(handler.Delete)
+}
+
+func setUpBuildpackCacheRoutes(router *mux.Router, blobStore BlobStore) {
+	handler := &BuildpackCacheHandler{blobStore: blobStore}
+	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("PUT").HandlerFunc(handler.Put)
+	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("GET").HandlerFunc(handler.Get)
+	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("DELETE").HandlerFunc(handler.Delete)
+	router.Path("/buildpack_cache/entries/{app_guid}/").Methods("DELETE").HandlerFunc(handler.DeleteAppGuid)
+	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(handler.DeleteEntries)
 }
 
 type BlobStore interface {
@@ -78,31 +101,6 @@ type BlobStore interface {
 	Put(path string, src io.ReadSeeker, responseWriter http.ResponseWriter)
 }
 
-type ResourceHandler struct {
-	blobStore    BlobStore
-	resourceType string
-}
-
-func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
-	file, _, e := request.FormFile(handler.resourceType)
-	if e != nil {
-		log.Println(e)
-		responseWriter.WriteHeader(400)
-		fmt.Fprintf(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
-		return
-	}
-	defer file.Close()
-	handler.blobStore.Put(pathFor(handler.resourceType, mux.Vars(request)["guid"]), file, responseWriter)
-}
-
-func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
-	handler.blobStore.Get(pathFor(handler.resourceType, mux.Vars(request)["guid"]), responseWriter)
-}
-
-func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
-	// TODO
-}
-
-func pathFor(resourceType string, identifier string) string {
-	return fmt.Sprintf("/%s/%s/%s/%s", resourceType, identifier[0:2], identifier[2:4], identifier)
+type SignedUrlHandler interface {
+	Sign(responseWriter http.ResponseWriter, request *http.Request)
 }
