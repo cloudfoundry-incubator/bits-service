@@ -27,33 +27,37 @@ func TestSuite(t *testing.T) {
 }
 
 var _ = Describe("Signing URLs", func() {
-	XIt("signs and verifies URLs", func() {
+	FIt("signs and verifies URLs", func() {
 		delegateHandler := NewMockHandler()
 
 		handler := &SignedLocalUrlHandler{
 			Secret:           "geheim",
-			DelegateEndpoint: "http://secondhost",
+			DelegateEndpoint: "http://example.com",
 		}
 
 		// signing
-		responseWriter := NewMockResponseWriter()
+		responseWriter := httptest.NewRecorder()
 		handler.Sign(responseWriter, &http.Request{URL: mustParse("/sign/my/path")})
 
-		responseBody := fmt.Sprintf("%s", responseWriter.VerifyWasCalledOnce().Write(AnyUint8Slice()).GetCapturedArguments())
-		Expect(responseBody).To(ContainSubstring("http://secondhost/my/path?md5="))
+		responseBody := responseWriter.Body.String()
+
+		Expect(responseBody).To(ContainSubstring("http://example.com/my/path?md5="))
 
 		// verifying
-		responseWriter = NewMockResponseWriter()
-		mux.NewRouter().Path("/packages/{guid}").Methods("GET").Handler(negroni.New(
+		responseWriter2 := httptest.NewRecorder()
+
+		mux.NewRouter().Path("/my/path").Methods("GET").Handler(negroni.New(
 			&SignatureVerifier{Secret: "geheim"},
 			negroni.Wrap(delegateHandler),
-		)).Subrouter().ServeHTTP(responseWriter, &http.Request{URL: mustParse(responseBody)})
-		responseWriter.VerifyWasCalled(Never()).WriteHeader(AnyInt())
+		)).Subrouter().ServeHTTP(responseWriter2, httptest.NewRequest("GET", responseBody, nil))
 
-		rw, request := delegateHandler.VerifyWasCalledOnce().ServeHTTP(AnyResponseWriter(), AnyRequestPtr()).GetCapturedArguments()
-		Expect(request.URL.Path).To(Equal("/my/path"))
-		Expect(request.URL.Host).To(Equal("secondhost"))
-		Expect(rw).To(Equal(responseWriter))
+		fmt.Println(responseWriter2.Body.String())
+		// responseWriter.VerifyWasCalled(Never()).WriteHeader(AnyInt())
+
+		// rw, request := delegateHandler.VerifyWasCalledOnce().ServeHTTP(AnyResponseWriter(), AnyRequestPtr()).GetCapturedArguments()
+		// Expect(request.URL.Path).To(Equal("/my/path"))
+		// Expect(request.URL.Host).To(Equal("secondhost"))
+		// Expect(rw).To(Equal(responseWriter))
 	})
 
 	It("Can create pre-signed URLs for S3", func() {
