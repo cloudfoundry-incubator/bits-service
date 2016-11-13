@@ -28,7 +28,7 @@ var _ = Describe("Signing URLs", func() {
 		session, err = gexec.Start(exec.Command(pathToWebserver), GinkgoWriter, GinkgoWriter)
 		Ω(err).ShouldNot(HaveOccurred())
 		time.Sleep(200 * time.Millisecond)
-		Expect(session.ExitCode()).To(Equal(-1))
+		Expect(session.ExitCode()).To(Equal(-1), "Webserver error message: %s", string(session.Err.Contents()))
 	})
 
 	AfterSuite(func() {
@@ -38,12 +38,12 @@ var _ = Describe("Signing URLs", func() {
 		gexec.CleanupBuildArtifacts()
 	})
 
-	It("return 404 for a package that does not exist", func() {
+	It("return http.StatusNotFound for a package that does not exist", func() {
 		Expect(http.Get("http://internal.127.0.0.1.xip.io:8000/packages/notexistent")).
-			To(WithTransform(GetStatusCode, Equal(404)))
+			To(WithTransform(GetStatusCode, Equal(http.StatusNotFound)))
 	})
 
-	It("return 200 for a package that does exist", func() {
+	It("return http.StatusOK for a package that does exist", func() {
 		request := NewPutRequest("http://internal.127.0.0.1.xip.io:8000/packages/myguid", map[string]map[string]io.Reader{
 			"package": map[string]io.Reader{"somefilename": strings.NewReader("My test string")},
 		})
@@ -51,15 +51,15 @@ var _ = Describe("Signing URLs", func() {
 		Expect(http.DefaultClient.Do(request)).To(WithTransform(GetStatusCode, Equal(201)))
 
 		Expect(http.Get("http://internal.127.0.0.1.xip.io:8000/packages/myguid")).
-			To(WithTransform(GetStatusCode, Equal(200)))
+			To(WithTransform(GetStatusCode, Equal(http.StatusOK)))
 	})
 
-	It("returns 403 when accessing package through public host without md5", func() {
+	It("returns http.StatusForbidden when accessing package through public host without md5", func() {
 		Expect(http.Get("http://public.127.0.0.1.xip.io:8000/packages/notexistent")).
-			To(WithTransform(GetStatusCode, Equal(403)))
+			To(WithTransform(GetStatusCode, Equal(http.StatusForbidden)))
 	})
 
-	It("returns 200 when accessing package through public host with md5", func() {
+	It("returns http.StatusOK when accessing package through public host with md5", func() {
 		request := NewPutRequest("http://internal.127.0.0.1.xip.io:8000/packages/myguid", map[string]map[string]io.Reader{
 			"package": map[string]io.Reader{"somefilename": strings.NewReader("lalala\n\n")},
 		})
@@ -67,7 +67,7 @@ var _ = Describe("Signing URLs", func() {
 
 		response, e := http.Get("http://internal.127.0.0.1.xip.io:8000/sign/packages/myguid")
 		Ω(e).ShouldNot(HaveOccurred())
-		Expect(response.StatusCode).To(Equal(200))
+		Expect(response.StatusCode).To(Equal(http.StatusOK))
 
 		signedUrl, e := ioutil.ReadAll(response.Body)
 		Ω(e).ShouldNot(HaveOccurred())

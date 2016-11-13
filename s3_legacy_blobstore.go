@@ -34,7 +34,7 @@ func (blobstore *S3LegacyBlobStore) Put(path string, src io.ReadSeeker, response
 	})
 	if e != nil {
 		log.Println(e)
-		responseWriter.WriteHeader(500)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	responseWriter.WriteHeader(201)

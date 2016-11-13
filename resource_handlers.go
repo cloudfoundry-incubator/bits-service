@@ -9,14 +9,14 @@ import (
 )
 
 type BuildpackCacheHandler struct {
-	blobStore BlobStore
+	blobStore Blobstore
 }
 
 func (handler *BuildpackCacheHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
 	file, _, e := request.FormFile("buildpack_cache")
 	if e != nil {
 		log.Println(e)
-		responseWriter.WriteHeader(400)
+		responseWriter.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(responseWriter, "Could not retrieve buildpack_cache form parameter")
 		return
 	}
@@ -45,7 +45,7 @@ func (handler *BuildpackCacheHandler) DeleteEntries(responseWriter http.Response
 }
 
 type ResourceHandler struct {
-	blobStore    BlobStore
+	blobstore    Blobstore
 	resourceType string
 }
 
@@ -53,22 +53,22 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 	file, _, e := request.FormFile(handler.resourceType)
 	if e != nil {
 		log.Println(e)
-		responseWriter.WriteHeader(400)
+		responseWriter.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
 		return
 	}
 	defer file.Close()
-	handler.blobStore.Put(pathFor(handler.resourceType, mux.Vars(request)["guid"]), file, responseWriter)
+	handler.blobstore.Put(pathFor(mux.Vars(request)["guid"]), file, responseWriter)
 }
 
 func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
-	handler.blobStore.Get(pathFor(handler.resourceType, mux.Vars(request)["guid"]), responseWriter)
+	handler.blobstore.Get(pathFor(mux.Vars(request)["guid"]), responseWriter)
 }
 
 func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
 	// TODO
 }
 
-func pathFor(resourceType string, identifier string) string {
-	return fmt.Sprintf("/%s/%s/%s/%s", resourceType, identifier[0:2], identifier[2:4], identifier)
+func pathFor(identifier string) string {
+	return fmt.Sprintf("/%s/%s/%s", identifier[0:2], identifier[2:4], identifier)
 }

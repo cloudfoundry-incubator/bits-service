@@ -62,7 +62,7 @@ var _ = Describe("Signing URLs", func() {
 		))
 		r.ServeHTTP(responseWriter, httptest.NewRequest("GET", responseBody, nil))
 
-		Expect(responseWriter.Code).To(Equal(200))
+		Expect(responseWriter.Code).To(Equal(http.StatusOK))
 	})
 
 	It("Can create pre-signed URLs for S3", func() {
