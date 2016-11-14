@@ -86,17 +86,32 @@ func NewPutRequest(url string, formFiles map[string]map[string]io.Reader) *http.
 	bodyBuf := &bytes.Buffer{}
 	request, e := http.NewRequest("PUT", url, bodyBuf)
 	Ω(e).ShouldNot(HaveOccurred())
+	header := AddFormFileTo(bodyBuf, formFiles)
+	AddHeaderTo(request, header)
+	return request
+}
+
+func AddHeaderTo(request *http.Request, header http.Header) {
+	for key, values := range header {
+		for _, value := range values {
+			request.Header.Add(key, value)
+		}
+	}
+}
+
+func AddFormFileTo(body io.Writer, formFiles map[string]map[string]io.Reader) (header http.Header) {
+	header = make(map[string][]string)
 	for name, fileAndReader := range formFiles {
-		multipartWriter := multipart.NewWriter(bodyBuf)
+		multipartWriter := multipart.NewWriter(body)
 		for file, reader := range fileAndReader {
 			formFileWriter, e := multipartWriter.CreateFormFile(name, file)
 			Ω(e).ShouldNot(HaveOccurred())
 			io.Copy(formFileWriter, reader)
 			multipartWriter.Close()
-			request.Header.Add("Content-Type", multipartWriter.FormDataContentType())
+			header["Content-Type"] = append(header["Content-Type"], multipartWriter.FormDataContentType())
 		}
 	}
-	return request
+	return
 }
 
 func GetStatusCode(response *http.Response) int { return response.StatusCode }

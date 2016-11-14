@@ -31,7 +31,7 @@ func main() {
 
 	blobstore, signedURLHandler := createBlobstoreAndSignedURLHandler()
 
-	setUpSignRoute(internalRouter, signedURLHandler)
+	SetUpSignRoute(internalRouter, signedURLHandler)
 	for _, router := range []*mux.Router{internalRouter, publicRouter} {
 		SetUpPackageRoutes(router, blobstore)
 		SetUpBuildpackRoutes(router, blobstore)
@@ -60,7 +60,7 @@ func createBlobstoreAndSignedURLHandler() (Blobstore, SignedUrlHandler) {
 		}
 }
 
-func setUpSignRoute(router *mux.Router, signedUrlHandler SignedUrlHandler) {
+func SetUpSignRoute(router *mux.Router, signedUrlHandler SignedUrlHandler) {
 	router.PathPrefix("/sign/").Methods("GET").HandlerFunc(signedUrlHandler.Sign)
 }
 

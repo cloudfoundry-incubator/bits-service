@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"io"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -95,5 +96,10 @@ func AnyRequestPtr() *http.Request {
 
 func AnyResponseWriter() http.ResponseWriter {
 	RegisterMatcher(NewAnyMatcher(reflect.TypeOf((*http.ResponseWriter)(nil)).Elem()))
+	return nil
+}
+
+func AnyReadSeeker() io.ReadSeeker {
+	RegisterMatcher(NewAnyMatcher(reflect.TypeOf((*io.ReadSeeker)(nil)).Elem()))
 	return nil
 }
