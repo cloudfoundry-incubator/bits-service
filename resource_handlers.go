@@ -8,6 +8,44 @@ import (
 	"github.com/gorilla/mux"
 )
 
+func SetUpPackageRoutes(router *mux.Router, blobstore Blobstore) {
+	handler := &ResourceHandler{blobstore: blobstore, resourceType: "package"}
+	router.Path("/packages/{guid}").Methods("PUT").HandlerFunc(handler.Put)
+	router.Path("/packages/{guid}").Methods("GET").HandlerFunc(handler.Get)
+	router.Path("/packages/{guid}").Methods("DELETE").HandlerFunc(handler.Delete)
+}
+
+func SetUpBuildpackRoutes(router *mux.Router, blobstore Blobstore) {
+	handler := &ResourceHandler{blobstore: blobstore, resourceType: "buildpack"}
+	router.Path("/buildpacks/{guid}").Methods("PUT").HandlerFunc(handler.Put)
+	// TODO change Put/Get/etc. signature to allow this:
+	// router.Path("/buildpacks/{guid}").Methods("PUT").HandlerFunc(delegateTo(handler.Put))
+	router.Path("/buildpacks/{guid}").Methods("GET").HandlerFunc(handler.Get)
+	router.Path("/buildpacks/{guid}").Methods("DELETE").HandlerFunc(handler.Delete)
+}
+
+func delegateTo(delegate func(http.ResponseWriter, *http.Request, map[string]string)) func(http.ResponseWriter, *http.Request) {
+	return func(responseWriter http.ResponseWriter, request *http.Request) {
+		delegate(responseWriter, request, mux.Vars(request))
+	}
+}
+
+func SetUpDropletRoutes(router *mux.Router, blobstore Blobstore) {
+	handler := &ResourceHandler{blobstore: blobstore, resourceType: "droplet"}
+	router.Path("/droplets/{guid}").Methods("PUT").HandlerFunc(handler.Put)
+	router.Path("/droplets/{guid}").Methods("GET").HandlerFunc(handler.Get)
+	router.Path("/droplets/{guid}").Methods("DELETE").HandlerFunc(handler.Delete)
+}
+
+func SetUpBuildpackCacheRoutes(router *mux.Router, blobstore Blobstore) {
+	handler := &BuildpackCacheHandler{blobStore: blobstore}
+	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("PUT").HandlerFunc(handler.Put)
+	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("GET").HandlerFunc(handler.Get)
+	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("DELETE").HandlerFunc(handler.Delete)
+	router.Path("/buildpack_cache/entries/{app_guid}/").Methods("DELETE").HandlerFunc(handler.DeleteAppGuid)
+	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(handler.DeleteEntries)
+}
+
 type ResourceHandler struct {
 	blobstore    Blobstore
 	resourceType string
