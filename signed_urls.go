@@ -36,6 +36,22 @@ func (handler *SignedLocalUrlHandler) Sign(responseWriter http.ResponseWriter, r
 	fmt.Fprintf(responseWriter, "%s%s", handler.DelegateEndpoint, handler.Signer.Sign(signPath))
 }
 
+type SignatureVerificationMiddleware struct {
+	Signer *PathSigner
+}
+
+func (middleware *SignatureVerificationMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
+	if request.URL.Query().Get("md5") == "" {
+		responseWriter.WriteHeader(403)
+		return
+	}
+	if !middleware.Signer.SignatureValid(request.URL) {
+		responseWriter.WriteHeader(403)
+		return
+	}
+	next(responseWriter, request)
+}
+
 type SignedS3UrlHandler struct {
 	s3Client *s3.S3
 }
