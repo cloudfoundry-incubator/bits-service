@@ -8,6 +8,35 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type ResourceHandler struct {
+	blobstore    Blobstore
+	resourceType string
+}
+
+func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
+	file, _, e := request.FormFile(handler.resourceType)
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
+		return
+	}
+	defer file.Close()
+	handler.blobstore.Put(pathFor(mux.Vars(request)["guid"]), file, responseWriter)
+}
+
+func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
+	handler.blobstore.Get(pathFor(mux.Vars(request)["guid"]), responseWriter)
+}
+
+func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
+	// TODO
+}
+
+func pathFor(identifier string) string {
+	return fmt.Sprintf("/%s/%s/%s", identifier[0:2], identifier[2:4], identifier)
+}
+
 type BuildpackCacheHandler struct {
 	blobStore Blobstore
 }
@@ -42,33 +71,4 @@ func (handler *BuildpackCacheHandler) DeleteAppGuid(responseWriter http.Response
 
 func (handler *BuildpackCacheHandler) DeleteEntries(responseWriter http.ResponseWriter, request *http.Request) {
 	// TODO
-}
-
-type ResourceHandler struct {
-	blobstore    Blobstore
-	resourceType string
-}
-
-func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
-	file, _, e := request.FormFile(handler.resourceType)
-	if e != nil {
-		log.Println(e)
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
-		return
-	}
-	defer file.Close()
-	handler.blobstore.Put(pathFor(mux.Vars(request)["guid"]), file, responseWriter)
-}
-
-func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
-	handler.blobstore.Get(pathFor(mux.Vars(request)["guid"]), responseWriter)
-}
-
-func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
-	// TODO
-}
-
-func pathFor(identifier string) string {
-	return fmt.Sprintf("/%s/%s/%s", identifier[0:2], identifier[2:4], identifier)
 }
