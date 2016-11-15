@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,25 +12,23 @@ import (
 	"github.com/urfave/negroni"
 )
 
-const (
-	internalHostName = "internal.127.0.0.1.xip.io"
-	publicHostName   = "public.127.0.0.1.xip.io"
-	port             = "8000"
-	secret           = "geheim"
-)
-
 func main() {
+	config, e := LoadConfig("config.yml")
+	if e != nil {
+		log.Fatalf("Could load config. Caused by: %s", e)
+	}
+
 	rootRouter := mux.NewRouter()
 
 	internalRouter := mux.NewRouter()
-	rootRouter.Host(internalHostName).Handler(internalRouter)
+	rootRouter.Host(config.PrivateEndpoint).Handler(internalRouter)
 	publicRouter := mux.NewRouter()
-	rootRouter.Host(publicHostName).Handler(negroni.New(
-		&SignatureVerificationMiddleware{&PathSigner{secret}},
+	rootRouter.Host(config.PublicEndpoint).Handler(negroni.New(
+		&SignatureVerificationMiddleware{&PathSigner{config.Secret}},
 		negroni.Wrap(publicRouter),
 	))
 
-	blobstore, signedURLHandler := createBlobstoreAndSignedURLHandler()
+	blobstore, signedURLHandler := createBlobstoreAndSignedURLHandler(config.PublicEndpoint, config.Port, config.Secret)
 
 	SetUpSignRoute(internalRouter, signedURLHandler)
 	for _, router := range []*mux.Router{internalRouter, publicRouter} {
@@ -44,7 +43,7 @@ func main() {
 			&negroni.Logger{log.New(os.Stdout, "[bitsgo] ", log.LstdFlags|log.Lshortfile|log.LUTC)},
 			negroni.Wrap(rootRouter),
 		),
-		Addr:         "0.0.0.0:" + port,
+		Addr:         fmt.Sprintf("0.0.0.0:%v", config.Port),
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
@@ -52,10 +51,10 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-func createBlobstoreAndSignedURLHandler() (Blobstore, SignedUrlHandler) {
+func createBlobstoreAndSignedURLHandler(publicHostName string, port int, secret string) (Blobstore, SignedUrlHandler) {
 	return &LocalBlobstore{pathPrefix: "/tmp"},
 		&SignedLocalUrlHandler{
-			DelegateEndpoint: "http://" + publicHostName + ":" + port,
+			DelegateEndpoint: fmt.Sprintf("http://%v:%v", publicHostName, port),
 			Signer:           &PathSigner{secret},
 		}
 }
