@@ -28,9 +28,9 @@ func main() {
 		negroni.Wrap(publicRouter),
 	))
 
-	blobstore, signedURLHandler := createBlobstoreAndSignedURLHandler(config.PublicEndpoint, config.Port, config.Secret)
+	blobstore, signURLHandler := createBlobstoreAndSignURLHandler(config.PublicEndpoint, config.Port, config.Secret)
 
-	SetUpSignRoute(internalRouter, signedURLHandler)
+	SetUpSignRoute(internalRouter, signURLHandler)
 	for _, router := range []*mux.Router{internalRouter, publicRouter} {
 		SetUpPackageRoutes(router, blobstore)
 		SetUpBuildpackRoutes(router, blobstore)
@@ -51,9 +51,9 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-func createBlobstoreAndSignedURLHandler(publicHostName string, port int, secret string) (Blobstore, SignedUrlHandler) {
+func createBlobstoreAndSignURLHandler(publicHostName string, port int, secret string) (Blobstore, SignedUrlHandler) {
 	return &LocalBlobstore{pathPrefix: "/tmp"},
-		&SignedLocalUrlHandler{
+		&SignLocalUrlHandler{
 			DelegateEndpoint: fmt.Sprintf("http://%v:%v", publicHostName, port),
 			Signer:           &PathSigner{secret},
 		}

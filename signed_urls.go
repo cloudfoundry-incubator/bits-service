@@ -26,12 +26,12 @@ func (signer *PathSigner) SignatureValid(u *url.URL) bool {
 	return u.Query().Get("md5") == fmt.Sprintf("%x", md5.Sum([]byte(u.Path+signer.Secret)))
 }
 
-type SignedLocalUrlHandler struct {
+type SignLocalUrlHandler struct {
 	Signer           *PathSigner
 	DelegateEndpoint string
 }
 
-func (handler *SignedLocalUrlHandler) Sign(responseWriter http.ResponseWriter, request *http.Request) {
+func (handler *SignLocalUrlHandler) Sign(responseWriter http.ResponseWriter, request *http.Request) {
 	signPath := strings.Replace(request.URL.Path, "/sign", "", 1)
 	fmt.Fprintf(responseWriter, "%s%s", handler.DelegateEndpoint, handler.Signer.Sign(signPath))
 }

@@ -39,7 +39,7 @@ var _ = Describe("PathSigner", func() {
 var _ = Describe("Signing URLs", func() {
 	It("signs and verifies URLs", func() {
 		signer := &PathSigner{"geheim"}
-		handler := &SignedLocalUrlHandler{
+		handler := &SignLocalUrlHandler{
 			Signer:           signer,
 			DelegateEndpoint: "http://example.com",
 		}
