@@ -67,7 +67,7 @@ var _ = Describe("Signing URLs", func() {
 	})
 
 	It("Can create pre-signed URLs for S3", func() {
-		signer := NewSignedS3UrlHandler()
+		signer := NewSignS3UrlHandler()
 		responseWriter := httptest.NewRecorder()
 
 		signer.Sign(responseWriter, &http.Request{URL: mustParse("/sign/my/path")})

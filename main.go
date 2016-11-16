@@ -78,7 +78,7 @@ func createPackageBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, pu
 			}
 	case "s3":
 		return &S3LegacyBlobStore{bucket: blobstoreConfig.S3Config.Bucket},
-			NewSignedS3UrlHandler()
+			NewSignS3UrlHandler()
 	default:
 		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
 		return nil, nil // dummy

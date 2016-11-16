@@ -52,19 +52,19 @@ func (middleware *SignatureVerificationMiddleware) ServeHTTP(responseWriter http
 	next(responseWriter, request)
 }
 
-type SignedS3UrlHandler struct {
+type SignS3UrlHandler struct {
 	s3Client *s3.S3
 }
 
-func NewSignedS3UrlHandler() *SignedS3UrlHandler {
+func NewSignS3UrlHandler() *SignS3UrlHandler {
 	session, e := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if e != nil {
 		panic(e)
 	}
-	return &SignedS3UrlHandler{s3Client: s3.New(session)}
+	return &SignS3UrlHandler{s3Client: s3.New(session)}
 }
 
-func (handler *SignedS3UrlHandler) Sign(responseWriter http.ResponseWriter, r *http.Request) {
+func (handler *SignS3UrlHandler) Sign(responseWriter http.ResponseWriter, r *http.Request) {
 	request, _ := handler.s3Client.PutObjectRequest(&s3.PutObjectInput{
 		Bucket: aws.String("mybucket"),
 		Key:    aws.String(strings.Replace(r.URL.String(), "/sign", "", 1)),
