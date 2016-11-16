@@ -1,6 +1,15 @@
-privatebuildpacks:
+buildpacks:
+  blobstore_type: local
+  local_config:
+    path_prefix: /tmp/buildpacks
 droplets:
+  blobstore_type: local
+  local_config:
+    path_prefix: /tmp/droplets
 packages:
+  blobstore_type: local
+  local_config:
+    path_prefix: /tmp/packages
 app_stash:
 logging:
   file: /tmp/bits-service.log

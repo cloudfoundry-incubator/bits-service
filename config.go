@@ -9,7 +9,20 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-type BlostoreConfig struct {
+type LocalBlobstoreConfig struct {
+	PathPrefix string `yaml:"path_prefix"`
+}
+
+type S3BlobstoreConfig struct {
+	Bucket         string
+	AccessKey      string `yaml:"access_key"`
+	SecretAccesKey string `yaml:"secret_access_key"`
+}
+
+type BlobstoreConfig struct {
+	BlobstoreType string                `yaml:"blobstore_type"`
+	LocalConfig   *LocalBlobstoreConfig `yaml:"local_config"`
+	S3Config      *S3BlobstoreConfig    `yaml:"s3_config"`
 }
 
 type LoggingConfig struct {
@@ -19,10 +32,10 @@ type LoggingConfig struct {
 }
 
 type Config struct {
-	Buildpacks      BlostoreConfig
-	Droplets        BlostoreConfig
-	Packages        BlostoreConfig
-	AppStash        BlostoreConfig
+	Buildpacks      BlobstoreConfig
+	Droplets        BlobstoreConfig
+	Packages        BlobstoreConfig
+	AppStash        BlobstoreConfig
 	Logging         LoggingConfig
 	PublicEndpoint  string `yaml:"public_endpoint"`
 	PrivateEndpoint string `yaml:"private_endpoint"`

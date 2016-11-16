@@ -15,27 +15,44 @@ import (
 func main() {
 	config, e := LoadConfig("config.yml")
 	if e != nil {
-		log.Fatalf("Could load config. Caused by: %s", e)
+		log.Fatalf("Could not load config. Caused by: %s", e)
 	}
 
 	rootRouter := mux.NewRouter()
 
 	internalRouter := mux.NewRouter()
 	rootRouter.Host(config.PrivateEndpoint).Handler(internalRouter)
-	publicRouter := mux.NewRouter()
-	rootRouter.Host(config.PublicEndpoint).Handler(negroni.New(
-		&SignatureVerificationMiddleware{&PathSigner{config.Secret}},
-		negroni.Wrap(publicRouter),
-	))
 
-	blobstore, signURLHandler := createBlobstoreAndSignURLHandler(config.PublicEndpoint, config.Port, config.Secret)
+	packageBlobstore, signPackageURLHandler := createPackageBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpoint, config.Port, config.Secret)
+	dropletBlobstore, signDropletURLHandler := createPackageBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpoint, config.Port, config.Secret)
+	buildpackBlobstore, signBuildpackURLHandler := createPackageBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpoint, config.Port, config.Secret)
 
-	SetUpSignRoute(internalRouter, signURLHandler)
-	for _, router := range []*mux.Router{internalRouter, publicRouter} {
-		SetUpPackageRoutes(router, blobstore)
-		SetUpBuildpackRoutes(router, blobstore)
-		SetUpDropletRoutes(router, blobstore)
-		SetUpBuildpackCacheRoutes(router, blobstore)
+	SetUpSignRoute(internalRouter, signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler)
+
+	SetUpPackageRoutes(internalRouter, packageBlobstore)
+	SetUpBuildpackRoutes(internalRouter, buildpackBlobstore)
+	SetUpDropletRoutes(internalRouter, dropletBlobstore)
+	SetUpBuildpackCacheRoutes(internalRouter, dropletBlobstore)
+
+	if config.Packages.BlobstoreType == "local" ||
+		config.Buildpacks.BlobstoreType == "local" ||
+		config.Droplets.BlobstoreType == "local" {
+
+		publicRouter := mux.NewRouter()
+		rootRouter.Host(config.PublicEndpoint).Handler(negroni.New(
+			&SignatureVerificationMiddleware{&PathSigner{config.Secret}},
+			negroni.Wrap(publicRouter),
+		))
+		if config.Packages.BlobstoreType == "local" {
+			SetUpPackageRoutes(publicRouter, packageBlobstore)
+		}
+		if config.Buildpacks.BlobstoreType == "local" {
+			SetUpBuildpackRoutes(publicRouter, buildpackBlobstore)
+		}
+		if config.Droplets.BlobstoreType == "local" {
+			SetUpDropletRoutes(publicRouter, dropletBlobstore)
+			SetUpBuildpackCacheRoutes(publicRouter, dropletBlobstore)
+		}
 	}
 
 	srv := &http.Server{
@@ -51,16 +68,28 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-func createBlobstoreAndSignURLHandler(publicHostName string, port int, secret string) (Blobstore, SignedUrlHandler) {
-	return &LocalBlobstore{pathPrefix: "/tmp"},
-		&SignLocalUrlHandler{
-			DelegateEndpoint: fmt.Sprintf("http://%v:%v", publicHostName, port),
-			Signer:           &PathSigner{secret},
-		}
+func createPackageBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, publicEndpoint string, port int, secret string) (Blobstore, SignURLHandler) {
+	switch blobstoreConfig.BlobstoreType {
+	case "local":
+		return &LocalBlobstore{pathPrefix: blobstoreConfig.LocalConfig.PathPrefix},
+			&SignLocalUrlHandler{
+				DelegateEndpoint: fmt.Sprintf("http://%v:%v", publicEndpoint, port),
+				Signer:           &PathSigner{secret},
+			}
+	case "s3":
+		return &S3LegacyBlobStore{bucket: blobstoreConfig.S3Config.Bucket},
+			NewSignedS3UrlHandler()
+	default:
+		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
+		return nil, nil // dummy
+	}
 }
 
-func SetUpSignRoute(router *mux.Router, signedUrlHandler SignedUrlHandler) {
-	router.PathPrefix("/sign/").Methods("GET").HandlerFunc(signedUrlHandler.Sign)
+func SetUpSignRoute(router *mux.Router,
+	signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler SignURLHandler) {
+	router.PathPrefix("/sign/packages").Methods("GET").HandlerFunc(signPackageURLHandler.Sign)
+	router.PathPrefix("/sign/droplets").Methods("GET").HandlerFunc(signDropletURLHandler.Sign)
+	router.PathPrefix("/sign/buildpacks").Methods("GET").HandlerFunc(signBuildpackURLHandler.Sign)
 }
 
 type Blobstore interface {
@@ -68,6 +97,6 @@ type Blobstore interface {
 	Put(path string, src io.ReadSeeker, responseWriter http.ResponseWriter)
 }
 
-type SignedUrlHandler interface {
+type SignURLHandler interface {
 	Sign(responseWriter http.ResponseWriter, request *http.Request)
 }
