@@ -9,28 +9,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-type LocalBlobstoreConfig struct {
-	PathPrefix string `yaml:"path_prefix"`
-}
-
-type S3BlobstoreConfig struct {
-	Bucket         string
-	AccessKey      string `yaml:"access_key"`
-	SecretAccesKey string `yaml:"secret_access_key"`
-}
-
-type BlobstoreConfig struct {
-	BlobstoreType string                `yaml:"blobstore_type"`
-	LocalConfig   *LocalBlobstoreConfig `yaml:"local_config"`
-	S3Config      *S3BlobstoreConfig    `yaml:"s3_config"`
-}
-
-type LoggingConfig struct {
-	File   string
-	Syslog string
-	Level  string
-}
-
 type Config struct {
 	Buildpacks      BlobstoreConfig
 	Droplets        BlobstoreConfig
@@ -41,6 +19,28 @@ type Config struct {
 	PrivateEndpoint string `yaml:"private_endpoint"`
 	Secret          string
 	Port            int
+}
+
+type BlobstoreConfig struct {
+	BlobstoreType string                `yaml:"blobstore_type"`
+	LocalConfig   *LocalBlobstoreConfig `yaml:"local_config"`
+	S3Config      *S3BlobstoreConfig    `yaml:"s3_config"`
+}
+
+type LocalBlobstoreConfig struct {
+	PathPrefix string `yaml:"path_prefix"`
+}
+
+type S3BlobstoreConfig struct {
+	Bucket         string
+	AccessKey      string `yaml:"access_key"`
+	SecretAccesKey string `yaml:"secret_access_key"`
+}
+
+type LoggingConfig struct {
+	File   string
+	Syslog string
+	Level  string
 }
 
 func LoadConfig(filename string) (config Config, err error) {
