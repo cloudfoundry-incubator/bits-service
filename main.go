@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/petergtz/bitsgo/pathsigner"
+	"github.com/petergtz/bitsgo/s3_blobstore"
 	"github.com/urfave/negroni"
 )
 
@@ -40,7 +42,7 @@ func main() {
 
 		publicRouter := mux.NewRouter()
 		rootRouter.Host(config.PublicEndpoint).Handler(negroni.New(
-			&SignatureVerificationMiddleware{&PathSigner{config.Secret}},
+			&SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret}},
 			negroni.Wrap(publicRouter),
 		))
 		if config.Packages.BlobstoreType == "local" {
@@ -74,11 +76,17 @@ func createPackageBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, pu
 		return &LocalBlobstore{pathPrefix: blobstoreConfig.LocalConfig.PathPrefix},
 			&SignLocalUrlHandler{
 				DelegateEndpoint: fmt.Sprintf("http://%v:%v", publicEndpoint, port),
-				Signer:           &PathSigner{secret},
+				Signer:           &pathsigner.PathSigner{secret},
 			}
 	case "s3":
-		return &S3LegacyBlobStore{bucket: blobstoreConfig.S3Config.Bucket},
-			NewSignS3UrlHandler()
+		return s3_blobstore.NewS3LegacyBlobstore(
+				blobstoreConfig.S3Config.Bucket,
+				blobstoreConfig.S3Config.AccessKeyID,
+				blobstoreConfig.S3Config.SecretAccessKey),
+			s3_blobstore.NewSignS3UrlHandler(
+				blobstoreConfig.S3Config.Bucket,
+				blobstoreConfig.S3Config.AccessKeyID,
+				blobstoreConfig.S3Config.SecretAccessKey)
 	default:
 		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
 		return nil, nil // dummy

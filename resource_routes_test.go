@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -14,6 +15,7 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 	. "github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/httputil"
 	. "github.com/petergtz/pegomock"
 )
 
@@ -119,8 +121,19 @@ func writeStatusCodeAndBody(statusCode int, body string) func([]Param) ReturnVal
 
 func newHttpTestPutRequest(path string, formFiles map[string]map[string]io.Reader) *http.Request {
 	bodyBuf := &bytes.Buffer{}
-	header := AddFormFileTo(bodyBuf, formFiles)
+	header, e := httputil.AddFormFileTo(bodyBuf, formFiles)
+	Expect(e).NotTo(HaveOccurred())
 	request := httptest.NewRequest("PUT", path, bodyBuf)
-	AddHeaderTo(request, header)
+	httputil.AddHeaderTo(request, header)
 	return request
+}
+
+func AnyResponseWriter() http.ResponseWriter {
+	RegisterMatcher(NewAnyMatcher(reflect.TypeOf((*http.ResponseWriter)(nil)).Elem()))
+	return nil
+}
+
+func AnyReadSeeker() io.ReadSeeker {
+	RegisterMatcher(NewAnyMatcher(reflect.TypeOf((*io.ReadSeeker)(nil)).Elem()))
+	return nil
 }

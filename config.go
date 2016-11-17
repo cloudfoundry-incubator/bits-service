@@ -32,9 +32,9 @@ type LocalBlobstoreConfig struct {
 }
 
 type S3BlobstoreConfig struct {
-	Bucket         string
-	AccessKey      string `yaml:"access_key"`
-	SecretAccesKey string `yaml:"secret_access_key"`
+	Bucket          string
+	AccessKeyID     string `yaml:"access_key_id"`
+	SecretAccessKey string `yaml:"secret_access_key"`
 }
 
 type LoggingConfig struct {
@@ -48,6 +48,7 @@ func LoadConfig(filename string) (config Config, err error) {
 	if e != nil {
 		return Config{}, errors.New("error opening config. Caused by: " + e.Error())
 	}
+	defer file.Close()
 	content, e := ioutil.ReadAll(file)
 	if e != nil {
 		return Config{}, errors.New("error reading config. Caused by: " + e.Error())

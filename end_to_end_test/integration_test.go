@@ -6,16 +6,23 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
+	"testing"
 	"time"
-
-	"mime/multipart"
 
 	"strings"
 
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/petergtz/bitsgo/httputil"
 )
+
+func TestEndToEnd(t *testing.T) {
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "EndToEnd")
+}
 
 var _ = Describe("Signing URLs", func() {
 
@@ -86,32 +93,10 @@ func NewPutRequest(url string, formFiles map[string]map[string]io.Reader) *http.
 	bodyBuf := &bytes.Buffer{}
 	request, e := http.NewRequest("PUT", url, bodyBuf)
 	Ω(e).ShouldNot(HaveOccurred())
-	header := AddFormFileTo(bodyBuf, formFiles)
-	AddHeaderTo(request, header)
+	header, e := httputil.AddFormFileTo(bodyBuf, formFiles)
+	Ω(e).ShouldNot(HaveOccurred())
+	httputil.AddHeaderTo(request, header)
 	return request
-}
-
-func AddHeaderTo(request *http.Request, header http.Header) {
-	for key, values := range header {
-		for _, value := range values {
-			request.Header.Add(key, value)
-		}
-	}
-}
-
-func AddFormFileTo(body io.Writer, formFiles map[string]map[string]io.Reader) (header http.Header) {
-	header = make(map[string][]string)
-	for name, fileAndReader := range formFiles {
-		multipartWriter := multipart.NewWriter(body)
-		for file, reader := range fileAndReader {
-			formFileWriter, e := multipartWriter.CreateFormFile(name, file)
-			Ω(e).ShouldNot(HaveOccurred())
-			io.Copy(formFileWriter, reader)
-			multipartWriter.Close()
-			header["Content-Type"] = append(header["Content-Type"], multipartWriter.FormDataContentType())
-		}
-	}
-	return
 }
 
 func GetStatusCode(response *http.Response) int { return response.StatusCode }

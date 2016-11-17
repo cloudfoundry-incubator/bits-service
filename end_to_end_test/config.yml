@@ -10,6 +10,7 @@ packages:
   blobstore_type: local
   local_config:
     path_prefix: /tmp/packages
+
 app_stash:
 logging:
   file: /tmp/bits-service.log
