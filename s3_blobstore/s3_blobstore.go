@@ -56,6 +56,13 @@ type S3PureRedirectBlobStore struct {
 	bucket   string
 }
 
+func NewS3PureRedirectBlobstore(bucket string, accessKeyID, secretAccessKey string) *S3PureRedirectBlobStore {
+	return &S3PureRedirectBlobStore{
+		s3Client: newS3Client(DefaultS3Region, accessKeyID, secretAccessKey),
+		bucket:   bucket,
+	}
+}
+
 func (blobstore *S3PureRedirectBlobStore) Get(path string, responseWriter http.ResponseWriter) {
 	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
@@ -65,7 +72,11 @@ func (blobstore *S3PureRedirectBlobStore) Get(path string, responseWriter http.R
 	if e != nil {
 		panic(e)
 	}
-	http.Redirect(responseWriter, nil, signedURL, 302)
+	r, e := http.NewRequest("GET", path, nil)
+	if e != nil {
+		panic(e)
+	}
+	http.Redirect(responseWriter, r, signedURL, 302)
 }
 
 func (blobstore *S3PureRedirectBlobStore) Put(path string, src io.Reader, responseWriter http.ResponseWriter) {
@@ -77,5 +88,9 @@ func (blobstore *S3PureRedirectBlobStore) Put(path string, src io.Reader, respon
 	if e != nil {
 		panic(e)
 	}
-	http.Redirect(responseWriter, nil, signedURL, 302)
+	r, e := http.NewRequest("GET", path, nil)
+	if e != nil {
+		panic(e)
+	}
+	http.Redirect(responseWriter, r, signedURL, 302)
 }

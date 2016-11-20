@@ -31,8 +31,11 @@ func TestS3Blobstore(t *testing.T) {
 	ginkgo.RunSpecs(t, "S3Blobstore Integration")
 }
 
-var _ = Describe("S3LegacyBlobstore", func() {
-	var config S3BlobstoreConfig
+var _ = Describe("S3 Blobstores", func() {
+	var (
+		config   S3BlobstoreConfig
+		filepath string
+	)
 
 	BeforeEach(func() {
 		filename := os.Getenv("CONFIG")
@@ -50,25 +53,56 @@ var _ = Describe("S3LegacyBlobstore", func() {
 		Expect(config.Bucket).NotTo(BeEmpty())
 		Expect(config.AccessKeyID).NotTo(BeEmpty())
 		Expect(config.SecretAccessKey).NotTo(BeEmpty())
+
+		filepath = fmt.Sprintf("testfile-%v", time.Now())
 	})
 
-	It("can put and get a resource there", func() {
-		filepath := fmt.Sprintf("testfile-%v", time.Now())
-		blobstore := NewS3LegacyBlobstore(config.Bucket, config.AccessKeyID, config.SecretAccessKey)
+	Describe("S3LegacyBlobstore", func() {
+		It("can put and get a resource there", func() {
+			blobstore := NewS3LegacyBlobstore(config.Bucket, config.AccessKeyID, config.SecretAccessKey)
 
-		// Put:
-		responseWriter := httptest.NewRecorder()
-		blobstore.Put(filepath, strings.NewReader("the file content"), responseWriter)
-		Expect(responseWriter.Code).To(Equal(http.StatusCreated))
+			// Put:
+			responseWriter := httptest.NewRecorder()
+			blobstore.Put(filepath, strings.NewReader("the file content"), responseWriter)
+			Expect(responseWriter.Code).To(Equal(http.StatusCreated))
 
-		// Get:
-		responseWriter = httptest.NewRecorder()
-		blobstore.Get(filepath, responseWriter)
-		Expect(responseWriter.Code).To(Equal(http.StatusFound))
+			// Get:
+			responseWriter = httptest.NewRecorder()
+			blobstore.Get(filepath, responseWriter)
+			Expect(responseWriter.Code).To(Equal(http.StatusFound))
 
-		// Resolve redirect:
-		response, e := http.Get(responseWriter.Header().Get("location"))
-		Expect(e).NotTo(HaveOccurred())
-		Expect(ioutil.ReadAll(response.Body)).To(MatchRegexp("the file content"))
+			// Follow redirect:
+			response, e := http.Get(responseWriter.Header().Get("location"))
+			Expect(e).NotTo(HaveOccurred())
+			Expect(ioutil.ReadAll(response.Body)).To(MatchRegexp("the file content"))
+		})
+	})
+
+	Describe("S3PureRedirectBlobstore", func() {
+		It("can put and get a resource there", func() {
+			blobstore := NewS3PureRedirectBlobstore(config.Bucket, config.AccessKeyID, config.SecretAccessKey)
+
+			// Put:
+			responseWriter := httptest.NewRecorder()
+			blobstore.Put(filepath, nil, responseWriter)
+			Expect(responseWriter.Code).To(Equal(http.StatusFound))
+
+			// Follow redirect:
+			request, e := http.NewRequest("PUT", responseWriter.Header().Get("location"), strings.NewReader("the file content"))
+			Expect(e).NotTo(HaveOccurred())
+			response, e := http.DefaultClient.Do(request)
+			Expect(e).NotTo(HaveOccurred())
+			Expect(response.StatusCode).To(Equal(http.StatusOK))
+
+			// Get:
+			responseWriter = httptest.NewRecorder()
+			blobstore.Get(filepath, responseWriter)
+			Expect(responseWriter.Code).To(Equal(http.StatusFound))
+
+			// Follow redirect:
+			response, e = http.Get(responseWriter.Header().Get("location"))
+			Expect(e).NotTo(HaveOccurred())
+			Expect(ioutil.ReadAll(response.Body)).To(MatchRegexp("the file content"))
+		})
 	})
 })
