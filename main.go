@@ -37,10 +37,7 @@ func main() {
 	SetUpDropletRoutes(internalRouter, dropletBlobstore)
 	SetUpBuildpackCacheRoutes(internalRouter, dropletBlobstore)
 
-	if config.Packages.BlobstoreType == "local" ||
-		config.Buildpacks.BlobstoreType == "local" ||
-		config.Droplets.BlobstoreType == "local" {
-
+	if usesLocalBlobstore(config) {
 		publicRouter := mux.NewRouter()
 		rootRouter.Host(config.PublicEndpoint).Handler(negroni.New(
 			&local_blobstore.SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret}},
@@ -90,7 +87,7 @@ func createPackageBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, pu
 				blobstoreConfig.S3Config.SecretAccessKey)
 	default:
 		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
-		return nil, nil // dummy
+		return nil, nil // satisfy compiler
 	}
 }
 
@@ -99,6 +96,12 @@ func SetUpSignRoute(router *mux.Router,
 	router.PathPrefix("/sign/packages").Methods("GET").HandlerFunc(signPackageURLHandler.Sign)
 	router.PathPrefix("/sign/droplets").Methods("GET").HandlerFunc(signDropletURLHandler.Sign)
 	router.PathPrefix("/sign/buildpacks").Methods("GET").HandlerFunc(signBuildpackURLHandler.Sign)
+}
+
+func usesLocalBlobstore(config Config) bool {
+	return config.Packages.BlobstoreType == "local" ||
+		config.Buildpacks.BlobstoreType == "local" ||
+		config.Droplets.BlobstoreType == "local"
 }
 
 type Blobstore interface {
