@@ -1,12 +1,26 @@
 package main
 
 import (
+	"archive/zip"
+	"crypto/sha1"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
+
+	"io/ioutil"
 
 	"github.com/gorilla/mux"
 )
+
+func SetUpAppStashRoutes(router *mux.Router, blobstore Blobstore) {
+	handler := &AppStashHandler{blobstore: blobstore}
+	router.Path("/app_stash/entries").Methods("POST").HandlerFunc(handler.PostEntries)
+	router.Path("/app_stash/matches").Methods("POST").HandlerFunc(handler.PostMatches)
+	router.Path("/app_stash/bundles").Methods("POST").HandlerFunc(handler.PostBundles)
+}
 
 func SetUpPackageRoutes(router *mux.Router, blobstore Blobstore) {
 	handler := &ResourceHandler{blobstore: blobstore, resourceType: "package"}
@@ -44,6 +58,138 @@ func SetUpBuildpackCacheRoutes(router *mux.Router, blobstore Blobstore) {
 	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("DELETE").HandlerFunc(handler.Delete)
 	router.Path("/buildpack_cache/entries/{app_guid}/").Methods("DELETE").HandlerFunc(handler.DeleteAppGuid)
 	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(handler.DeleteEntries)
+}
+
+type AppStashHandler struct {
+	blobstore Blobstore
+}
+
+func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, request *http.Request) {
+	uploadedFile, _, e := request.FormFile("application")
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(responseWriter, "Could not retrieve 'application' form parameter")
+		return
+	}
+	defer uploadedFile.Close()
+
+	tempZipFile, e := ioutil.TempFile("", "")
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer os.Remove(tempZipFile.Name())
+	defer tempZipFile.Close()
+
+	_, e = io.Copy(tempZipFile, uploadedFile)
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	openZipFile, e := zip.OpenReader(tempZipFile.Name())
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(responseWriter, "Not a valid zip file")
+		return
+	}
+	defer openZipFile.Close()
+
+	for _, zipFileEntry := range openZipFile.File {
+		copyTo(handler.blobstore, zipFileEntry, responseWriter)
+	}
+}
+
+func copyTo(blobstore Blobstore, zipFileEntry *zip.File, responseWriter http.ResponseWriter) {
+	unzippedReader, e := zipFileEntry.Open()
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer unzippedReader.Close()
+
+	tempZipEntryFile, e := ioutil.TempFile("", zipFileEntry.Name)
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer os.Remove(tempZipEntryFile.Name())
+	defer tempZipEntryFile.Close()
+
+	sha, e := writeToFile(tempZipEntryFile, unzippedReader)
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	entryFileRead, e := os.Open(tempZipEntryFile.Name())
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer entryFileRead.Close()
+
+	blobstore.Put(sha, entryFileRead, responseWriter)
+}
+
+func writeToFile(writer io.Writer, reader io.Reader) (sha string, e error) {
+	checkSum := sha1.New()
+	multiWriter := io.MultiWriter(writer, checkSum)
+
+	_, e = io.Copy(multiWriter, reader)
+	if e != nil {
+		return "", fmt.Errorf("error copying. Caused by: %v", e)
+	}
+
+	return string(checkSum.Sum(nil)), nil
+}
+
+func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, request *http.Request) {
+	body, e := ioutil.ReadAll(request.Body)
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	var sha1s []map[string]string
+	e = json.Unmarshal(body, &sha1s)
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+		fmt.Fprintf(responseWriter, "Invalid body %v", body)
+		return
+	}
+	var responseSha1 []map[string]string
+	for _, entry := range sha1s {
+		exists, e := handler.blobstore.Exists(entry["sha1"])
+		if e != nil {
+			log.Println(e)
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if !exists {
+			responseSha1 = append(responseSha1, map[string]string{"sha1": entry["sha1"]})
+		}
+	}
+	response, e := json.Marshal(&responseSha1)
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(responseWriter, "%v", response)
+}
+
+func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, request *http.Request) {
+	// TODO
 }
 
 type ResourceHandler struct {

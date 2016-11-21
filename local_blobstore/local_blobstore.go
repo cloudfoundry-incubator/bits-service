@@ -1,6 +1,7 @@
 package local_blobstore
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -16,9 +17,15 @@ func NewLocalBlobstore(pathPrefix string) *LocalBlobstore {
 	return &LocalBlobstore{pathPrefix: pathPrefix}
 }
 
-func (blobstore *LocalBlobstore) Exists(path string) bool {
+func (blobstore *LocalBlobstore) Exists(path string) (bool, error) {
 	_, err := os.Stat(filepath.Join(blobstore.pathPrefix, path))
-	return err == nil
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("Could not stat on %v. Caused by: %v", filepath.Join(blobstore.pathPrefix, path), err)
+	}
+	return true, nil
 }
 func (blobstore *LocalBlobstore) Get(path string, responseWriter http.ResponseWriter) {
 	file, e := os.Open(filepath.Join(blobstore.pathPrefix, path))

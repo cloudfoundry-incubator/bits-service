@@ -51,6 +51,10 @@ func (blobstore *S3LegacyBlobStore) Put(path string, src io.ReadSeeker, response
 	responseWriter.WriteHeader(201)
 }
 
+func (blobstore *S3LegacyBlobStore) Exists(path string) (bool, error) {
+	panic("TODO")
+}
+
 type S3PureRedirectBlobStore struct {
 	s3Client *s3.S3
 	bucket   string

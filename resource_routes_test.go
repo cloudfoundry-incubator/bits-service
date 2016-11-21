@@ -19,6 +19,8 @@ import (
 	. "github.com/petergtz/pegomock"
 )
 
+//go:generate pegomock generate --use-experimental-model-gen --package main_test Blobstore
+
 var _ = Describe("routes", func() {
 	Describe("/packages/{guid}", func() {
 		ItSupportsMethodsGetPutDeleteFor("packages", "package", SetUpPackageRoutes)

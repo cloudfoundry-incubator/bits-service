@@ -4,11 +4,10 @@
 package main_test
 
 import (
+	pegomock "github.com/petergtz/pegomock"
 	io "io"
 	http "net/http"
 	"reflect"
-
-	pegomock "github.com/petergtz/pegomock"
 )
 
 type MockBlobstore struct {
@@ -27,6 +26,22 @@ func (mock *MockBlobstore) Get(path string, responseWriter http.ResponseWriter) 
 func (mock *MockBlobstore) Put(path string, src io.ReadSeeker, responseWriter http.ResponseWriter) {
 	params := []pegomock.Param{path, src, responseWriter}
 	pegomock.GetGenericMockFrom(mock).Invoke("Put", params, []reflect.Type{})
+}
+
+func (mock *MockBlobstore) Exists(path string) (bool, error) {
+	params := []pegomock.Param{path}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("Exists", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 bool
+	var ret1 error
+	if len(result) != 0 {
+		if result[0] != nil {
+			ret0 = result[0].(bool)
+		}
+		if result[1] != nil {
+			ret1 = result[1].(error)
+		}
+	}
+	return ret0, ret1
 }
 
 func (mock *MockBlobstore) VerifyWasCalledOnce() *VerifierBlobstore {
@@ -108,6 +123,33 @@ func (c *Blobstore_Put_OngoingVerification) GetAllCapturedArguments() (_param0 [
 		_param2 = make([]http.ResponseWriter, len(params[2]))
 		for u, param := range params[2] {
 			_param2[u] = param.(http.ResponseWriter)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierBlobstore) Exists(path string) *Blobstore_Exists_OngoingVerification {
+	params := []pegomock.Param{path}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "Exists", params)
+	return &Blobstore_Exists_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type Blobstore_Exists_OngoingVerification struct {
+	mock              *MockBlobstore
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *Blobstore_Exists_OngoingVerification) GetCapturedArguments() string {
+	path := c.GetAllCapturedArguments()
+	return path[len(path)-1]
+}
+
+func (c *Blobstore_Exists_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]string, len(params[0]))
+		for u, param := range params[0] {
+			_param0[u] = param.(string)
 		}
 	}
 	return
