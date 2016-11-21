@@ -1,7 +1,8 @@
-package main_test
+package local_blobstore_test
 
 import (
 	"net/http"
+	"testing"
 
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo/httputil"
@@ -10,10 +11,17 @@ import (
 
 	"net/http/httptest"
 
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	. "github.com/petergtz/bitsgo"
+	. "github.com/petergtz/bitsgo/local_blobstore"
 )
+
+func TestLocalBlobstore(t *testing.T) {
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "LocalBlobstore")
+}
 
 var _ = Describe("Signing URLs", func() {
 	It("signs and verifies URLs", func() {

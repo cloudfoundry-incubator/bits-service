@@ -1,4 +1,4 @@
-package main
+package local_blobstore
 
 import (
 	"io"
@@ -10,6 +10,10 @@ import (
 
 type LocalBlobstore struct {
 	pathPrefix string
+}
+
+func NewLocalBlobstore(pathPrefix string) *LocalBlobstore {
+	return &LocalBlobstore{pathPrefix: pathPrefix}
 }
 
 func (blobstore *LocalBlobstore) Exists(path string) bool {

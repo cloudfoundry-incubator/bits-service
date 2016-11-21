@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/petergtz/bitsgo/local_blobstore"
 	"github.com/petergtz/bitsgo/pathsigner"
 	"github.com/petergtz/bitsgo/s3_blobstore"
 	"github.com/urfave/negroni"
@@ -42,7 +43,7 @@ func main() {
 
 		publicRouter := mux.NewRouter()
 		rootRouter.Host(config.PublicEndpoint).Handler(negroni.New(
-			&SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret}},
+			&local_blobstore.SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret}},
 			negroni.Wrap(publicRouter),
 		))
 		if config.Packages.BlobstoreType == "local" {
@@ -73,8 +74,8 @@ func main() {
 func createPackageBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, publicEndpoint string, port int, secret string) (Blobstore, SignURLHandler) {
 	switch blobstoreConfig.BlobstoreType {
 	case "local":
-		return &LocalBlobstore{pathPrefix: blobstoreConfig.LocalConfig.PathPrefix},
-			&SignLocalUrlHandler{
+		return local_blobstore.NewLocalBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
+			&local_blobstore.SignLocalUrlHandler{
 				DelegateEndpoint: fmt.Sprintf("http://%v:%v", publicEndpoint, port),
 				Signer:           &pathsigner.PathSigner{secret},
 			}
