@@ -1,4 +1,4 @@
-package main
+package routes
 
 import (
 	"archive/zip"
@@ -14,6 +14,20 @@ import (
 
 	"github.com/gorilla/mux"
 )
+
+type NotFoundError struct {
+	error
+}
+
+func NewNotFoundError() *NotFoundError {
+	return &NotFoundError{fmt.Errorf("NotFoundError")}
+}
+
+type Blobstore interface {
+	Get(path string) (body io.ReadCloser, redirectLocation string, err error)
+	Put(path string, src io.ReadSeeker) (redirectLocation string, err error)
+	Exists(path string) (bool, error)
+}
 
 func SetUpAppStashRoutes(router *mux.Router, blobstore Blobstore) {
 	handler := &AppStashHandler{blobstore: blobstore}
@@ -100,44 +114,47 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 	defer openZipFile.Close()
 
 	for _, zipFileEntry := range openZipFile.File {
-		copyTo(handler.blobstore, zipFileEntry, responseWriter)
+		e = copyTo(handler.blobstore, zipFileEntry, responseWriter)
+		if e != nil {
+			log.Printf("Cannot copy file (%v) to blobstore. Caused by: %v", zipFileEntry.Name, e)
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
-func copyTo(blobstore Blobstore, zipFileEntry *zip.File, responseWriter http.ResponseWriter) {
+func copyTo(blobstore Blobstore, zipFileEntry *zip.File, responseWriter http.ResponseWriter) error {
 	unzippedReader, e := zipFileEntry.Open()
 	if e != nil {
-		log.Println(e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
+		return e
 	}
 	defer unzippedReader.Close()
 
 	tempZipEntryFile, e := ioutil.TempFile("", zipFileEntry.Name)
 	if e != nil {
-		log.Println(e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
+		return e
 	}
 	defer os.Remove(tempZipEntryFile.Name())
 	defer tempZipEntryFile.Close()
 
 	sha, e := writeToFile(tempZipEntryFile, unzippedReader)
 	if e != nil {
-		log.Println(e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
+		return e
 	}
 
 	entryFileRead, e := os.Open(tempZipEntryFile.Name())
 	if e != nil {
-		log.Println(e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
+		return e
 	}
 	defer entryFileRead.Close()
 
-	blobstore.Put(sha, entryFileRead, responseWriter)
+	// TODO: this assumes no redirect on PUTs. Is that always true?
+	_, e = blobstore.Put(sha, entryFileRead)
+	if e != nil {
+		return e
+	}
+
+	return nil
 }
 
 func writeToFile(writer io.Writer, reader io.Reader) (sha string, e error) {
@@ -206,11 +223,43 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 		return
 	}
 	defer file.Close()
-	handler.blobstore.Put(pathFor(mux.Vars(request)["guid"]), file, responseWriter)
+
+	redirectLocation, e := handler.blobstore.Put(pathFor(mux.Vars(request)["guid"]), file)
+
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if redirectLocation != "" {
+		responseWriter.WriteHeader(http.StatusFound)
+		responseWriter.Header().Set("Location", redirectLocation)
+		return
+	}
+
+	responseWriter.WriteHeader(http.StatusCreated)
 }
 
 func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
-	handler.blobstore.Get(pathFor(mux.Vars(request)["guid"]), responseWriter)
+	body, redirectLocation, e := handler.blobstore.Get(pathFor(mux.Vars(request)["guid"]))
+	switch e.(type) {
+	case *NotFoundError:
+		responseWriter.WriteHeader(http.StatusNotFound)
+		return
+	case error:
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if redirectLocation != "" {
+		responseWriter.WriteHeader(http.StatusFound)
+		responseWriter.Header().Set("Location", redirectLocation)
+		return
+	}
+	defer body.Close()
+	responseWriter.WriteHeader(http.StatusOK)
+	io.Copy(responseWriter, body)
 }
 
 func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
@@ -234,15 +283,44 @@ func (handler *BuildpackCacheHandler) Put(responseWriter http.ResponseWriter, re
 		return
 	}
 	defer file.Close()
-	handler.blobStore.Put(
-		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]),
-		file, responseWriter)
+
+	redirecLocation, e := handler.blobStore.Put(
+		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]), file)
+
+	if e != nil {
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if redirecLocation != "" {
+		responseWriter.WriteHeader(http.StatusFound)
+		responseWriter.Header().Set("Location", redirecLocation)
+		return
+	}
+	responseWriter.WriteHeader(http.StatusCreated)
 }
 
 func (handler *BuildpackCacheHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
-	handler.blobStore.Get(
-		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]),
-		responseWriter)
+	body, redirectLocation, e := handler.blobStore.Get(
+		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]))
+	switch e.(type) {
+	case NotFoundError:
+		responseWriter.WriteHeader(http.StatusNotFound)
+		return
+	case error:
+		log.Println(e)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if redirectLocation != "" {
+		responseWriter.WriteHeader(http.StatusFound)
+		responseWriter.Header().Set("Location", redirectLocation)
+		return
+	}
+	defer body.Close()
+	responseWriter.WriteHeader(http.StatusOK)
+	io.Copy(responseWriter, body)
 }
 
 func (handler *BuildpackCacheHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {

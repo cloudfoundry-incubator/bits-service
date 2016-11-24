@@ -1,8 +1,8 @@
 package s3_blobstore
 
 import (
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"time"
 
@@ -21,7 +21,7 @@ func NewS3LegacyBlobstore(bucket string, accessKeyID, secretAccessKey string) *S
 	}
 }
 
-func (blobstore *S3LegacyBlobStore) Get(path string, responseWriter http.ResponseWriter) {
+func (blobstore *S3LegacyBlobStore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -30,25 +30,19 @@ func (blobstore *S3LegacyBlobStore) Get(path string, responseWriter http.Respons
 	if e != nil {
 		panic(e)
 	}
-	r, e := http.NewRequest("GET", path, nil)
-	if e != nil {
-		panic(e)
-	}
-	http.Redirect(responseWriter, r, signedURL, 302)
+	return nil, signedURL, nil
 }
 
-func (blobstore *S3LegacyBlobStore) Put(path string, src io.ReadSeeker, responseWriter http.ResponseWriter) {
+func (blobstore *S3LegacyBlobStore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	_, e := blobstore.s3Client.PutObject(&s3.PutObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
 		Body:   src,
 	})
 	if e != nil {
-		log.Println(e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
+		return "", fmt.Errorf("TODO %v", e)
 	}
-	responseWriter.WriteHeader(201)
+	return "", nil
 }
 
 func (blobstore *S3LegacyBlobStore) Exists(path string) (bool, error) {
@@ -67,7 +61,7 @@ func NewS3PureRedirectBlobstore(bucket string, accessKeyID, secretAccessKey stri
 	}
 }
 
-func (blobstore *S3PureRedirectBlobStore) Get(path string, responseWriter http.ResponseWriter) {
+func (blobstore *S3PureRedirectBlobStore) Get(path string) (statusCode int, body io.ReadCloser, header map[string][]string) {
 	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -76,14 +70,10 @@ func (blobstore *S3PureRedirectBlobStore) Get(path string, responseWriter http.R
 	if e != nil {
 		panic(e)
 	}
-	r, e := http.NewRequest("GET", path, nil)
-	if e != nil {
-		panic(e)
-	}
-	http.Redirect(responseWriter, r, signedURL, 302)
+	return http.StatusFound, nil, map[string][]string{"Location": []string{signedURL}}
 }
 
-func (blobstore *S3PureRedirectBlobStore) Put(path string, src io.Reader, responseWriter http.ResponseWriter) {
+func (blobstore *S3PureRedirectBlobStore) Put(path string, src io.Reader) (statusCode int, header map[string][]string) {
 	request, _ := blobstore.s3Client.PutObjectRequest(&s3.PutObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -92,9 +82,5 @@ func (blobstore *S3PureRedirectBlobStore) Put(path string, src io.Reader, respon
 	if e != nil {
 		panic(e)
 	}
-	r, e := http.NewRequest("GET", path, nil)
-	if e != nil {
-		panic(e)
-	}
-	http.Redirect(responseWriter, r, signedURL, 302)
+	return http.StatusFound, map[string][]string{"Location": []string{signedURL}}
 }
