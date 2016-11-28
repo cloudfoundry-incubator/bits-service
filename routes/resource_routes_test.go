@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -32,6 +34,10 @@ func TestRoutes(t *testing.T) {
 }
 
 var _ = Describe("routes", func() {
+	BeforeSuite(func() {
+		log.SetFlags(log.LstdFlags | log.Lshortfile | log.LUTC)
+	})
+
 	Describe("/packages/{guid}", func() {
 		ItSupportsMethodsGetPutDeleteFor("packages", "package", SetUpPackageRoutes)
 	})
@@ -43,9 +49,50 @@ var _ = Describe("routes", func() {
 	Describe("/buildpacks/{guid}", func() {
 		ItSupportsMethodsGetPutDeleteFor("buildpacks", "buildpack", SetUpBuildpackRoutes)
 	})
+
+	Describe("/app_stash/entries", func() {
+		var (
+			blobstore      *MockBlobstore
+			router         *mux.Router
+			responseWriter *httptest.ResponseRecorder
+		)
+
+		BeforeEach(func() {
+			blobstore = NewMockBlobstore()
+			router = mux.NewRouter()
+			responseWriter = httptest.NewRecorder()
+		})
+
+		It("Unzips file and copies bits to blobstore", func() {
+			SetUpAppStashRoutes(router, blobstore)
+
+			zipFile, e := os.Open("test_data/test_archive.zip")
+			Expect(e).NotTo(HaveOccurred())
+			defer zipFile.Close()
+
+			entries := make(map[string]string)
+
+			When(blobstore.Put(AnyString(), AnyReadSeeker())).Then(func(params []pegomock.Param) pegomock.ReturnValues {
+				content, e := ioutil.ReadAll(params[1].(io.ReadSeeker))
+				Expect(e).NotTo(HaveOccurred())
+				entries[params[0].(string)] = string(content)
+				return nil
+			})
+
+			router.ServeHTTP(responseWriter, newHttpTestPostRequest("/app_stash/entries", map[string]map[string]io.Reader{
+				"application": map[string]io.Reader{"application": zipFile},
+			}))
+
+			Expect(responseWriter.Code).To(Equal(http.StatusOK), responseWriter.Body.String())
+			Expect(entries).To(HaveKeyWithValue("971555ab39d1dfe8dff8b78c2b20e85e01c06595", "1\n\n"))
+			Expect(entries).To(HaveKeyWithValue("bbd33de01c17b165b4ce00308e8a19a942023ab8", "2\n\n"))
+			Expect(entries).To(HaveKeyWithValue("27cc6f77ee63df90ab3285f9d5fc4ebcb2448c12", "3\n\n"))
+		})
+	})
 })
 
 func ItSupportsMethodsGetPutDeleteFor(routeName string, resourceType string, setUp func(router *mux.Router, blobstore Blobstore)) {
+
 	var (
 		blobstore      *MockBlobstore
 		router         *mux.Router
@@ -124,10 +171,18 @@ func writeStatusCodeAndBody(statusCode int, body string) func([]Param) ReturnVal
 }
 
 func newHttpTestPutRequest(path string, formFiles map[string]map[string]io.Reader) *http.Request {
+	return newHttpTestRequest("PUT", path, formFiles)
+}
+
+func newHttpTestPostRequest(path string, formFiles map[string]map[string]io.Reader) *http.Request {
+	return newHttpTestRequest("POST", path, formFiles)
+}
+
+func newHttpTestRequest(method string, path string, formFiles map[string]map[string]io.Reader) *http.Request {
 	bodyBuf := &bytes.Buffer{}
 	header, e := httputil.AddFormFileTo(bodyBuf, formFiles)
 	Expect(e).NotTo(HaveOccurred())
-	request := httptest.NewRequest("PUT", path, bodyBuf)
+	request := httptest.NewRequest(method, path, bodyBuf)
 	httputil.AddHeaderTo(request, header)
 	return request
 }

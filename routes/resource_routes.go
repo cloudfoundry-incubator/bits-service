@@ -12,7 +12,10 @@ import (
 
 	"io/ioutil"
 
+	"path/filepath"
+
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 type NotFoundError struct {
@@ -81,7 +84,7 @@ type AppStashHandler struct {
 func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, request *http.Request) {
 	uploadedFile, _, e := request.FormFile("application")
 	if e != nil {
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(responseWriter, "Could not retrieve 'application' form parameter")
 		return
@@ -90,7 +93,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 
 	tempZipFile, e := ioutil.TempFile("", "")
 	if e != nil {
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -99,24 +102,27 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 
 	_, e = io.Copy(tempZipFile, uploadedFile)
 	if e != nil {
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	openZipFile, e := zip.OpenReader(tempZipFile.Name())
 	if e != nil {
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(responseWriter, "Not a valid zip file")
+		fmt.Fprintf(responseWriter, "Bad Request: Not a valid zip file")
 		return
 	}
 	defer openZipFile.Close()
 
 	for _, zipFileEntry := range openZipFile.File {
+		if !zipFileEntry.FileInfo().Mode().IsRegular() {
+			continue
+		}
 		e = copyTo(handler.blobstore, zipFileEntry)
 		if e != nil {
-			log.Printf("Cannot copy file (%v) to blobstore. Caused by: %v", zipFileEntry.Name, e)
+			log.Printf("Cannot copy file (%v) to blobstore. Caused by: %+v", zipFileEntry.Name, e)
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -126,32 +132,32 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 func copyTo(blobstore Blobstore, zipFileEntry *zip.File) error {
 	unzippedReader, e := zipFileEntry.Open()
 	if e != nil {
-		return e
+		return errors.WithStack(e)
 	}
 	defer unzippedReader.Close()
 
-	tempZipEntryFile, e := ioutil.TempFile("", zipFileEntry.Name)
+	tempZipEntryFile, e := ioutil.TempFile("", filepath.Base(zipFileEntry.Name))
 	if e != nil {
-		return e
+		return errors.WithStack(e)
 	}
 	defer os.Remove(tempZipEntryFile.Name())
 	defer tempZipEntryFile.Close()
 
 	sha, e := copyCalculatingSha(tempZipEntryFile, unzippedReader)
 	if e != nil {
-		return e
+		return errors.WithStack(e)
 	}
 
 	entryFileRead, e := os.Open(tempZipEntryFile.Name())
 	if e != nil {
-		return e
+		return errors.WithStack(e)
 	}
 	defer entryFileRead.Close()
 
 	// TODO: this assumes no redirect on PUTs. Is that always true?
 	_, e = blobstore.Put(sha, entryFileRead)
 	if e != nil {
-		return e
+		return errors.WithStack(e)
 	}
 
 	return nil
@@ -166,20 +172,20 @@ func copyCalculatingSha(writer io.Writer, reader io.Reader) (sha string, e error
 		return "", fmt.Errorf("error copying. Caused by: %v", e)
 	}
 
-	return string(checkSum.Sum(nil)), nil
+	return fmt.Sprintf("%x", checkSum.Sum(nil)), nil
 }
 
 func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, request *http.Request) {
 	body, e := ioutil.ReadAll(request.Body)
 	if e != nil {
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	var sha1s []map[string]string
 	e = json.Unmarshal(body, &sha1s)
 	if e != nil {
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 		fmt.Fprintf(responseWriter, "Invalid body %v", body)
 		return
@@ -188,7 +194,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	for _, entry := range sha1s {
 		exists, e := handler.blobstore.Exists(entry["sha1"])
 		if e != nil {
-			log.Println(e)
+			log.Printf("%+v", e)
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -198,7 +204,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	}
 	response, e := json.Marshal(&responseSha1)
 	if e != nil {
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -217,7 +223,7 @@ type ResourceHandler struct {
 func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
 	file, _, e := request.FormFile(handler.resourceType)
 	if e != nil {
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
 		return
@@ -227,7 +233,7 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 	redirectLocation, e := handler.blobstore.Put(pathFor(mux.Vars(request)["guid"]), file)
 
 	if e != nil {
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -248,7 +254,7 @@ func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request 
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	case error:
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -277,7 +283,7 @@ type BuildpackCacheHandler struct {
 func (handler *BuildpackCacheHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
 	file, _, e := request.FormFile("buildpack_cache")
 	if e != nil {
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(responseWriter, "Could not retrieve buildpack_cache form parameter")
 		return
@@ -288,7 +294,7 @@ func (handler *BuildpackCacheHandler) Put(responseWriter http.ResponseWriter, re
 		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]), file)
 
 	if e != nil {
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -309,7 +315,7 @@ func (handler *BuildpackCacheHandler) Get(responseWriter http.ResponseWriter, re
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	case error:
-		log.Println(e)
+		log.Printf("%+v", e)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
