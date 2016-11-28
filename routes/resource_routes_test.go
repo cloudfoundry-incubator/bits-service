@@ -69,7 +69,7 @@ func ItSupportsMethodsGetPutDeleteFor(routeName string, resourceType string, set
 			Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
 		})
 
-		It("returns StatusOK and fills body with contents from file located at the paritioned path", func() {
+		It("returns StatusOK and fills body with contents from file located at the partitioned path", func() {
 			When(func() { blobstore.Get("/th/eg/theguid") }).
 				ThenReturn(ioutil.NopCloser(strings.NewReader("thecontent")), "", nil)
 
@@ -97,8 +97,8 @@ func ItSupportsMethodsGetPutDeleteFor(routeName string, resourceType string, set
 				Equal(http.StatusCreated),
 				BeEmpty()))
 
-			// _, fileContent, _ := blobstore.VerifyWasCalledOnce().Put(EqString("/th/eg/theguid"), AnyReadSeeker(), AnyResponseWriter()).GetCapturedArguments()
-			// Expect(ioutil.ReadAll(fileContent)).To(MatchRegexp("My test string"))
+			_, fileContent := blobstore.VerifyWasCalledOnce().Put(EqString("/th/eg/theguid"), AnyReadSeeker()).GetCapturedArguments()
+			Expect(ioutil.ReadAll(fileContent)).To(MatchRegexp("My test string"))
 		})
 	})
 }
@@ -130,11 +130,6 @@ func newHttpTestPutRequest(path string, formFiles map[string]map[string]io.Reade
 	request := httptest.NewRequest("PUT", path, bodyBuf)
 	httputil.AddHeaderTo(request, header)
 	return request
-}
-
-func AnyResponseWriter() http.ResponseWriter {
-	RegisterMatcher(NewAnyMatcher(reflect.TypeOf((*http.ResponseWriter)(nil)).Elem()))
-	return nil
 }
 
 func AnyReadSeeker() io.ReadSeeker {
