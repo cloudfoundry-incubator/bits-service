@@ -23,7 +23,7 @@ import (
 	. "github.com/petergtz/pegomock"
 )
 
-//go:generate pegomock generate --use-experimental-model-gen --package main_test Blobstore
+//go:generate pegomock generate --use-experimental-model-gen --package routes_test Blobstore
 
 func TestRoutes(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
