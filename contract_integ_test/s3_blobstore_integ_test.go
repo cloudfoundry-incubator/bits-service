@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -28,7 +27,7 @@ type S3BlobstoreConfig struct {
 
 func TestS3Blobstore(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "S3Blobstore Integration")
+	ginkgo.RunSpecs(t, "S3 Blobstore Contract Integration")
 }
 
 var _ = Describe("S3 Blobstores", func() {
@@ -62,19 +61,23 @@ var _ = Describe("S3 Blobstores", func() {
 			blobstore := NewS3LegacyBlobstore(config.Bucket, config.AccessKeyID, config.SecretAccessKey)
 
 			// Put:
-			responseWriter := httptest.NewRecorder()
-			blobstore.Put(filepath, strings.NewReader("the file content"), responseWriter)
-			Expect(responseWriter.Code).To(Equal(http.StatusCreated))
+			redirectLocation, e := blobstore.Put(filepath, strings.NewReader("the file content"))
+			Expect(e).NotTo(HaveOccurred())
+			Expect(redirectLocation).To(BeEmpty())
 
 			// Get:
-			responseWriter = httptest.NewRecorder()
-			blobstore.Get(filepath, responseWriter)
-			Expect(responseWriter.Code).To(Equal(http.StatusFound))
+			_, redirectLocation, e = blobstore.Get(filepath)
+			Expect(e).NotTo(HaveOccurred())
+			Expect(redirectLocation).NotTo(BeEmpty())
 
 			// Follow redirect:
-			response, e := http.Get(responseWriter.Header().Get("location"))
+			response, e := http.Get(redirectLocation)
 			Expect(e).NotTo(HaveOccurred())
 			Expect(ioutil.ReadAll(response.Body)).To(MatchRegexp("the file content"))
+
+			// Delete:
+			e = blobstore.Delete(filepath)
+			Expect(e).NotTo(HaveOccurred())
 		})
 	})
 
@@ -83,26 +86,30 @@ var _ = Describe("S3 Blobstores", func() {
 			blobstore := NewS3PureRedirectBlobstore(config.Bucket, config.AccessKeyID, config.SecretAccessKey)
 
 			// Put:
-			responseWriter := httptest.NewRecorder()
-			blobstore.Put(filepath, nil, responseWriter)
-			Expect(responseWriter.Code).To(Equal(http.StatusFound))
+			redirectLocation, e := blobstore.Put(filepath, nil)
+			Expect(e).NotTo(HaveOccurred())
+			Expect(redirectLocation).NotTo(BeEmpty())
 
 			// Follow redirect:
-			request, e := http.NewRequest("PUT", responseWriter.Header().Get("location"), strings.NewReader("the file content"))
+			request, e := http.NewRequest("PUT", redirectLocation, strings.NewReader("the file content"))
 			Expect(e).NotTo(HaveOccurred())
 			response, e := http.DefaultClient.Do(request)
 			Expect(e).NotTo(HaveOccurred())
 			Expect(response.StatusCode).To(Equal(http.StatusOK))
 
 			// Get:
-			responseWriter = httptest.NewRecorder()
-			blobstore.Get(filepath, responseWriter)
-			Expect(responseWriter.Code).To(Equal(http.StatusFound))
+			_, redirectLocation, e = blobstore.Get(filepath)
+			Expect(e).NotTo(HaveOccurred())
+			Expect(redirectLocation).NotTo(BeEmpty())
 
 			// Follow redirect:
-			response, e = http.Get(responseWriter.Header().Get("location"))
+			response, e = http.Get(redirectLocation)
 			Expect(e).NotTo(HaveOccurred())
 			Expect(ioutil.ReadAll(response.Body)).To(MatchRegexp("the file content"))
+
+			// Delete:
+			e = blobstore.Delete(filepath)
+			Expect(e).NotTo(HaveOccurred())
 		})
 	})
 })

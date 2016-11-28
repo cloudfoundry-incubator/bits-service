@@ -3,7 +3,6 @@ package s3_blobstore
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -49,6 +48,17 @@ func (blobstore *S3LegacyBlobStore) Exists(path string) (bool, error) {
 	panic("TODO")
 }
 
+func (blobstore *S3LegacyBlobStore) Delete(path string) error {
+	_, e := blobstore.s3Client.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: &blobstore.bucket,
+		Key:    &path,
+	})
+	if e != nil {
+		return fmt.Errorf("TODO %v", e)
+	}
+	return nil
+}
+
 type S3PureRedirectBlobStore struct {
 	s3Client *s3.S3
 	bucket   string
@@ -61,7 +71,7 @@ func NewS3PureRedirectBlobstore(bucket string, accessKeyID, secretAccessKey stri
 	}
 }
 
-func (blobstore *S3PureRedirectBlobStore) Get(path string) (statusCode int, body io.ReadCloser, header map[string][]string) {
+func (blobstore *S3PureRedirectBlobStore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -70,10 +80,10 @@ func (blobstore *S3PureRedirectBlobStore) Get(path string) (statusCode int, body
 	if e != nil {
 		panic(e)
 	}
-	return http.StatusFound, nil, map[string][]string{"Location": []string{signedURL}}
+	return nil, signedURL, nil
 }
 
-func (blobstore *S3PureRedirectBlobStore) Put(path string, src io.Reader) (statusCode int, header map[string][]string) {
+func (blobstore *S3PureRedirectBlobStore) Put(path string, src io.Reader) (redirectLocation string, err error) {
 	request, _ := blobstore.s3Client.PutObjectRequest(&s3.PutObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -82,5 +92,16 @@ func (blobstore *S3PureRedirectBlobStore) Put(path string, src io.Reader) (statu
 	if e != nil {
 		panic(e)
 	}
-	return http.StatusFound, map[string][]string{"Location": []string{signedURL}}
+	return signedURL, nil
+}
+
+func (blobstore *S3PureRedirectBlobStore) Delete(path string) error {
+	_, e := blobstore.s3Client.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: &blobstore.bucket,
+		Key:    &path,
+	})
+	if e != nil {
+		return fmt.Errorf("TODO %v", e)
+	}
+	return nil
 }
