@@ -114,7 +114,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 	defer openZipFile.Close()
 
 	for _, zipFileEntry := range openZipFile.File {
-		e = copyTo(handler.blobstore, zipFileEntry, responseWriter)
+		e = copyTo(handler.blobstore, zipFileEntry)
 		if e != nil {
 			log.Printf("Cannot copy file (%v) to blobstore. Caused by: %v", zipFileEntry.Name, e)
 			responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -123,7 +123,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 	}
 }
 
-func copyTo(blobstore Blobstore, zipFileEntry *zip.File, responseWriter http.ResponseWriter) error {
+func copyTo(blobstore Blobstore, zipFileEntry *zip.File) error {
 	unzippedReader, e := zipFileEntry.Open()
 	if e != nil {
 		return e
@@ -137,7 +137,7 @@ func copyTo(blobstore Blobstore, zipFileEntry *zip.File, responseWriter http.Res
 	defer os.Remove(tempZipEntryFile.Name())
 	defer tempZipEntryFile.Close()
 
-	sha, e := writeToFile(tempZipEntryFile, unzippedReader)
+	sha, e := copyCalculatingSha(tempZipEntryFile, unzippedReader)
 	if e != nil {
 		return e
 	}
@@ -157,7 +157,7 @@ func copyTo(blobstore Blobstore, zipFileEntry *zip.File, responseWriter http.Res
 	return nil
 }
 
-func writeToFile(writer io.Writer, reader io.Reader) (sha string, e error) {
+func copyCalculatingSha(writer io.Writer, reader io.Reader) (sha string, e error) {
 	checkSum := sha1.New()
 	multiWriter := io.MultiWriter(writer, checkSum)
 
