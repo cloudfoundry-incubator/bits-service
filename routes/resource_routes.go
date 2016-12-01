@@ -308,6 +308,18 @@ func (handler *BuildpackCacheHandler) Get(responseWriter http.ResponseWriter, re
 	io.Copy(responseWriter, body)
 }
 
+func (handler *BuildpackCacheHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
+	// TODO
+}
+
+func (handler *BuildpackCacheHandler) DeleteAppGuid(responseWriter http.ResponseWriter, request *http.Request) {
+	// TODO
+}
+
+func (handler *BuildpackCacheHandler) DeleteEntries(responseWriter http.ResponseWriter, request *http.Request) {
+	// TODO
+}
+
 func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
 	responseWriter.WriteHeader(http.StatusFound)
 	responseWriter.Header().Set("Location", redirectLocation)
@@ -321,16 +333,4 @@ func internalServerError(responseWriter http.ResponseWriter, e error) {
 func badRequest(responseWriter http.ResponseWriter, message string, args ...interface{}) {
 	responseWriter.WriteHeader(http.StatusBadRequest)
 	fmt.Fprintf(responseWriter, message, args...)
-}
-
-func (handler *BuildpackCacheHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
-	// TODO
-}
-
-func (handler *BuildpackCacheHandler) DeleteAppGuid(responseWriter http.ResponseWriter, request *http.Request) {
-	// TODO
-}
-
-func (handler *BuildpackCacheHandler) DeleteEntries(responseWriter http.ResponseWriter, request *http.Request) {
-	// TODO
 }
