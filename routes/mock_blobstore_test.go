@@ -69,6 +69,18 @@ func (mock *MockBlobstore) Exists(path string) (bool, error) {
 	return ret0, ret1
 }
 
+func (mock *MockBlobstore) Delete(path string) error {
+	params := []pegomock.Param{path}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("Delete", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 error
+	if len(result) != 0 {
+		if result[0] != nil {
+			ret0 = result[0].(error)
+		}
+	}
+	return ret0
+}
+
 func (mock *MockBlobstore) VerifyWasCalledOnce() *VerifierBlobstore {
 	return &VerifierBlobstore{mock, pegomock.Times(1), nil}
 }
@@ -162,6 +174,33 @@ func (c *Blobstore_Exists_OngoingVerification) GetCapturedArguments() string {
 }
 
 func (c *Blobstore_Exists_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]string, len(params[0]))
+		for u, param := range params[0] {
+			_param0[u] = param.(string)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierBlobstore) Delete(path string) *Blobstore_Delete_OngoingVerification {
+	params := []pegomock.Param{path}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "Delete", params)
+	return &Blobstore_Delete_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type Blobstore_Delete_OngoingVerification struct {
+	mock              *MockBlobstore
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *Blobstore_Delete_OngoingVerification) GetCapturedArguments() string {
+	path := c.GetAllCapturedArguments()
+	return path[len(path)-1]
+}
+
+func (c *Blobstore_Delete_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
 	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
 	if len(params) > 0 {
 		_param0 = make([]string, len(params[0]))

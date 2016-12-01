@@ -30,6 +30,7 @@ type Blobstore interface {
 	Get(path string) (body io.ReadCloser, redirectLocation string, err error)
 	Put(path string, src io.ReadSeeker) (redirectLocation string, err error)
 	Exists(path string) (bool, error)
+	Delete(path string) error
 }
 
 func SetUpAppStashRoutes(router *mux.Router, blobstore Blobstore) {
