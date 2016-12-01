@@ -84,17 +84,14 @@ type AppStashHandler struct {
 func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, request *http.Request) {
 	uploadedFile, _, e := request.FormFile("application")
 	if e != nil {
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(responseWriter, "Could not retrieve 'application' form parameter")
+		badRequest(responseWriter, "Could not retrieve 'application' form parameter")
 		return
 	}
 	defer uploadedFile.Close()
 
 	tempZipFile, e := ioutil.TempFile("", "")
 	if e != nil {
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
+		internalServerError(responseWriter, e)
 		return
 	}
 	defer os.Remove(tempZipFile.Name())
@@ -102,16 +99,13 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 
 	_, e = io.Copy(tempZipFile, uploadedFile)
 	if e != nil {
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
+		internalServerError(responseWriter, e)
 		return
 	}
 
 	openZipFile, e := zip.OpenReader(tempZipFile.Name())
 	if e != nil {
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(responseWriter, "Bad Request: Not a valid zip file")
+		badRequest(responseWriter, "Bad Request: Not a valid zip file")
 		return
 	}
 	defer openZipFile.Close()
@@ -122,8 +116,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 		}
 		e = copyTo(handler.blobstore, zipFileEntry)
 		if e != nil {
-			log.Printf("Cannot copy file (%v) to blobstore. Caused by: %+v", zipFileEntry.Name, e)
-			responseWriter.WriteHeader(http.StatusInternalServerError)
+			internalServerError(responseWriter, e)
 			return
 		}
 	}
@@ -178,8 +171,7 @@ func copyCalculatingSha(writer io.Writer, reader io.Reader) (sha string, e error
 func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, request *http.Request) {
 	body, e := ioutil.ReadAll(request.Body)
 	if e != nil {
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
+		internalServerError(responseWriter, e)
 		return
 	}
 	var sha1s []map[string]string
@@ -194,8 +186,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	for _, entry := range sha1s {
 		exists, e := handler.blobstore.Exists(entry["sha1"])
 		if e != nil {
-			log.Printf("%+v", e)
-			responseWriter.WriteHeader(http.StatusInternalServerError)
+			internalServerError(responseWriter, e)
 			return
 		}
 		if !exists {
@@ -204,8 +195,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	}
 	response, e := json.Marshal(&responseSha1)
 	if e != nil {
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
+		internalServerError(responseWriter, e)
 		return
 	}
 	fmt.Fprintf(responseWriter, "%v", response)
@@ -223,9 +213,7 @@ type ResourceHandler struct {
 func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
 	file, _, e := request.FormFile(handler.resourceType)
 	if e != nil {
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
+		badRequest(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
 		return
 	}
 	defer file.Close()
@@ -233,14 +221,12 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 	redirectLocation, e := handler.blobstore.Put(pathFor(mux.Vars(request)["guid"]), file)
 
 	if e != nil {
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
+		internalServerError(responseWriter, e)
 		return
 	}
 
 	if redirectLocation != "" {
-		responseWriter.WriteHeader(http.StatusFound)
-		responseWriter.Header().Set("Location", redirectLocation)
+		redirect(responseWriter, redirectLocation)
 		return
 	}
 
@@ -254,13 +240,11 @@ func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request 
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	case error:
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
+		internalServerError(responseWriter, e)
 		return
 	}
 	if redirectLocation != "" {
-		responseWriter.WriteHeader(http.StatusFound)
-		responseWriter.Header().Set("Location", redirectLocation)
+		redirect(responseWriter, redirectLocation)
 		return
 	}
 	defer body.Close()
@@ -283,25 +267,21 @@ type BuildpackCacheHandler struct {
 func (handler *BuildpackCacheHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
 	file, _, e := request.FormFile("buildpack_cache")
 	if e != nil {
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(responseWriter, "Could not retrieve buildpack_cache form parameter")
+		badRequest(responseWriter, "Could not retrieve buildpack_cache form parameter")
 		return
 	}
 	defer file.Close()
 
-	redirecLocation, e := handler.blobStore.Put(
+	redirectLocation, e := handler.blobStore.Put(
 		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]), file)
 
 	if e != nil {
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
+		internalServerError(responseWriter, e)
 		return
 	}
 
-	if redirecLocation != "" {
-		responseWriter.WriteHeader(http.StatusFound)
-		responseWriter.Header().Set("Location", redirecLocation)
+	if redirectLocation != "" {
+		redirect(responseWriter, redirectLocation)
 		return
 	}
 	responseWriter.WriteHeader(http.StatusCreated)
@@ -315,18 +295,31 @@ func (handler *BuildpackCacheHandler) Get(responseWriter http.ResponseWriter, re
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	case error:
-		log.Printf("%+v", e)
-		responseWriter.WriteHeader(http.StatusInternalServerError)
+		internalServerError(responseWriter, e)
 		return
 	}
 	if redirectLocation != "" {
-		responseWriter.WriteHeader(http.StatusFound)
-		responseWriter.Header().Set("Location", redirectLocation)
+		redirect(responseWriter, redirectLocation)
 		return
 	}
 	defer body.Close()
 	responseWriter.WriteHeader(http.StatusOK)
 	io.Copy(responseWriter, body)
+}
+
+func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
+	responseWriter.WriteHeader(http.StatusFound)
+	responseWriter.Header().Set("Location", redirectLocation)
+}
+
+func internalServerError(responseWriter http.ResponseWriter, e error) {
+	log.Printf("%+v", e)
+	responseWriter.WriteHeader(http.StatusInternalServerError)
+}
+
+func badRequest(responseWriter http.ResponseWriter, message string, args ...interface{}) {
+	responseWriter.WriteHeader(http.StatusBadRequest)
+	fmt.Fprintf(responseWriter, message, args...)
 }
 
 func (handler *BuildpackCacheHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
