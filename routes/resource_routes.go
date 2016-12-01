@@ -177,9 +177,9 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	var sha1s []map[string]string
 	e = json.Unmarshal(body, &sha1s)
 	if e != nil {
-		log.Printf("%+v", e)
+		log.Printf("Invalid body %s", body)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-		fmt.Fprintf(responseWriter, "Invalid body %v", body)
+		fmt.Fprintf(responseWriter, "Invalid body %s", body)
 		return
 	}
 	var responseSha1 []map[string]string
@@ -198,7 +198,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 		internalServerError(responseWriter, e)
 		return
 	}
-	fmt.Fprintf(responseWriter, "%v", response)
+	fmt.Fprintf(responseWriter, "%s", response)
 }
 
 func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, request *http.Request) {

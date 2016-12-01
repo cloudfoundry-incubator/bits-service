@@ -38,61 +38,6 @@ var _ = Describe("routes", func() {
 		log.SetFlags(log.LstdFlags | log.Lshortfile | log.LUTC)
 	})
 
-	Describe("/packages/{guid}", func() {
-		ItSupportsMethodsGetPutDeleteFor("packages", "package", SetUpPackageRoutes)
-	})
-
-	Describe("/droplets/{guid}", func() {
-		ItSupportsMethodsGetPutDeleteFor("droplets", "droplet", SetUpDropletRoutes)
-	})
-
-	Describe("/buildpacks/{guid}", func() {
-		ItSupportsMethodsGetPutDeleteFor("buildpacks", "buildpack", SetUpBuildpackRoutes)
-	})
-
-	Describe("/app_stash/entries", func() {
-		var (
-			blobstore      *MockBlobstore
-			router         *mux.Router
-			responseWriter *httptest.ResponseRecorder
-		)
-
-		BeforeEach(func() {
-			blobstore = NewMockBlobstore()
-			router = mux.NewRouter()
-			responseWriter = httptest.NewRecorder()
-		})
-
-		It("Unzips file and copies bits to blobstore", func() {
-			SetUpAppStashRoutes(router, blobstore)
-
-			zipFile, e := os.Open("test_data/test_archive.zip")
-			Expect(e).NotTo(HaveOccurred())
-			defer zipFile.Close()
-
-			entries := make(map[string]string)
-
-			When(blobstore.Put(AnyString(), AnyReadSeeker())).Then(func(params []pegomock.Param) pegomock.ReturnValues {
-				content, e := ioutil.ReadAll(params[1].(io.ReadSeeker))
-				Expect(e).NotTo(HaveOccurred())
-				entries[params[0].(string)] = string(content)
-				return nil
-			})
-
-			router.ServeHTTP(responseWriter, newHttpTestPostRequest("/app_stash/entries", map[string]map[string]io.Reader{
-				"application": map[string]io.Reader{"application": zipFile},
-			}))
-
-			Expect(responseWriter.Code).To(Equal(http.StatusOK), responseWriter.Body.String())
-			Expect(entries).To(HaveKeyWithValue("971555ab39d1dfe8dff8b78c2b20e85e01c06595", "1\n\n"))
-			Expect(entries).To(HaveKeyWithValue("bbd33de01c17b165b4ce00308e8a19a942023ab8", "2\n\n"))
-			Expect(entries).To(HaveKeyWithValue("27cc6f77ee63df90ab3285f9d5fc4ebcb2448c12", "3\n\n"))
-		})
-	})
-})
-
-func ItSupportsMethodsGetPutDeleteFor(routeName string, resourceType string, setUp func(router *mux.Router, blobstore Blobstore)) {
-
 	var (
 		blobstore      *MockBlobstore
 		router         *mux.Router
@@ -103,52 +48,120 @@ func ItSupportsMethodsGetPutDeleteFor(routeName string, resourceType string, set
 		blobstore = NewMockBlobstore()
 		router = mux.NewRouter()
 		responseWriter = httptest.NewRecorder()
-		setUp(router, blobstore)
 	})
 
-	Context("Method GET", func() {
-		It("returns StatusNotFound when blobstore returns NotFoundError", func() {
-			When(func() { blobstore.Get(AnyString()) }).
-				ThenReturn(nil, "", NewNotFoundError())
+	ItSupportsMethodsGetPutDeleteFor := func(routeName string, resourceType string) {
+		Context("Method GET", func() {
+			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
+				When(func() { blobstore.Get(AnyString()) }).
+					ThenReturn(nil, "", NewNotFoundError())
 
-			router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/"+routeName+"/theguid", nil))
+				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/"+routeName+"/theguid", nil))
 
-			Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
+				Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
+			})
+
+			It("returns StatusOK and fills body with contents from file located at the partitioned path", func() {
+				When(func() { blobstore.Get("/th/eg/theguid") }).
+					ThenReturn(ioutil.NopCloser(strings.NewReader("thecontent")), "", nil)
+
+				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/"+routeName+"/theguid", nil))
+
+				Expect(*responseWriter).To(haveStatusCodeAndBody(
+					Equal(http.StatusOK),
+					Equal("thecontent")))
+			})
 		})
 
-		It("returns StatusOK and fills body with contents from file located at the partitioned path", func() {
-			When(func() { blobstore.Get("/th/eg/theguid") }).
-				ThenReturn(ioutil.NopCloser(strings.NewReader("thecontent")), "", nil)
+		Context("Method PUT", func() {
+			It("returns StatusBadRequest when "+resourceType+" form file field is missing in request body", func() {
+				router.ServeHTTP(responseWriter, httptest.NewRequest("PUT", "/"+routeName+"/theguid", nil))
 
-			router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/"+routeName+"/theguid", nil))
+				Expect(responseWriter.Code).To(Equal(http.StatusBadRequest))
+			})
 
-			Expect(*responseWriter).To(haveStatusCodeAndBody(
-				Equal(http.StatusOK),
-				Equal("thecontent")))
+			It("returns StatusOK and an empty body, and forwards the file reader to the blobstore", func() {
+				router.ServeHTTP(responseWriter, newHttpTestPutRequest("/"+routeName+"/theguid", map[string]map[string]io.Reader{
+					resourceType: map[string]io.Reader{"somefilename": strings.NewReader("My test string")},
+				}))
+
+				Expect(*responseWriter).To(haveStatusCodeAndBody(
+					Equal(http.StatusCreated),
+					BeEmpty()))
+
+				_, fileContent := blobstore.VerifyWasCalledOnce().Put(EqString("/th/eg/theguid"), AnyReadSeeker()).GetCapturedArguments()
+				Expect(ioutil.ReadAll(fileContent)).To(MatchRegexp("My test string"))
+			})
 		})
+	}
+
+	Describe("/packages/{guid}", func() {
+		BeforeEach(func() { SetUpPackageRoutes(router, blobstore) })
+		ItSupportsMethodsGetPutDeleteFor("packages", "package")
 	})
 
-	Context("Method PUT", func() {
-		It("returns StatusBadRequest when "+resourceType+" form file field is missing in request body", func() {
-			router.ServeHTTP(responseWriter, httptest.NewRequest("PUT", "/"+routeName+"/theguid", nil))
+	Describe("/droplets/{guid}", func() {
+		BeforeEach(func() { SetUpDropletRoutes(router, blobstore) })
+		ItSupportsMethodsGetPutDeleteFor("droplets", "droplet")
+	})
 
-			Expect(responseWriter.Code).To(Equal(http.StatusBadRequest))
+	Describe("/buildpacks/{guid}", func() {
+		BeforeEach(func() { SetUpBuildpackRoutes(router, blobstore) })
+		ItSupportsMethodsGetPutDeleteFor("buildpacks", "buildpack")
+	})
+
+	Describe("/app_stash", func() {
+		BeforeEach(func() {
+			SetUpAppStashRoutes(router, blobstore)
 		})
 
-		It("returns StatusOK and an empty body, and forwards the file reader to the blobstore", func() {
-			router.ServeHTTP(responseWriter, newHttpTestPutRequest("/"+routeName+"/theguid", map[string]map[string]io.Reader{
-				resourceType: map[string]io.Reader{"somefilename": strings.NewReader("My test string")},
-			}))
+		Describe("/app_stash/entries", func() {
+			It("Unzips file and copies bits to blobstore", func() {
+				zipFile, e := os.Open("test_data/test_archive.zip")
+				Expect(e).NotTo(HaveOccurred())
+				defer zipFile.Close()
 
-			Expect(*responseWriter).To(haveStatusCodeAndBody(
-				Equal(http.StatusCreated),
-				BeEmpty()))
+				entries := make(map[string]string)
 
-			_, fileContent := blobstore.VerifyWasCalledOnce().Put(EqString("/th/eg/theguid"), AnyReadSeeker()).GetCapturedArguments()
-			Expect(ioutil.ReadAll(fileContent)).To(MatchRegexp("My test string"))
+				When(blobstore.Put(AnyString(), AnyReadSeeker())).Then(func(params []pegomock.Param) pegomock.ReturnValues {
+					content, e := ioutil.ReadAll(params[1].(io.ReadSeeker))
+					Expect(e).NotTo(HaveOccurred())
+					entries[params[0].(string)] = string(content)
+					return nil
+				})
+
+				router.ServeHTTP(responseWriter, newHttpTestPostRequest("/app_stash/entries", map[string]map[string]io.Reader{
+					"application": map[string]io.Reader{"application": zipFile},
+				}))
+
+				Expect(responseWriter.Code).To(Equal(http.StatusOK), responseWriter.Body.String())
+				Expect(entries).To(HaveKeyWithValue("971555ab39d1dfe8dff8b78c2b20e85e01c06595", "1\n\n"))
+				Expect(entries).To(HaveKeyWithValue("bbd33de01c17b165b4ce00308e8a19a942023ab8", "2\n\n"))
+				Expect(entries).To(HaveKeyWithValue("27cc6f77ee63df90ab3285f9d5fc4ebcb2448c12", "3\n\n"))
+			})
+		})
+
+		Describe("/app_stash/matches", func() {
+			It("returns StatusUnprocessableEntity when body is invalid", func() {
+				router.ServeHTTP(responseWriter, httptest.NewRequest(
+					"POST", "/app_stash/matches", strings.NewReader("some invalid format")))
+
+				Expect(responseWriter.Code).To(Equal(http.StatusUnprocessableEntity), responseWriter.Body.String())
+			})
+
+			It("returns StatusOK and missing fingerprints when body is valid", func() {
+				When(blobstore.Exists("abc")).ThenReturn(true, nil)
+
+				router.ServeHTTP(responseWriter, httptest.NewRequest(
+					"POST", "/app_stash/matches", strings.NewReader("[{\"sha1\":\"abc\"}, {\"sha1\":\"def\"}]")))
+
+				Expect(*responseWriter).To(haveStatusCodeAndBody(
+					Equal(http.StatusOK),
+					Equal("[{\"sha1\":\"def\"}]")))
+			})
 		})
 	})
-}
+})
 
 func haveStatusCodeAndBody(statusCode types.GomegaMatcher, body types.GomegaMatcher) types.GomegaMatcher {
 	return MatchFields(IgnoreExtras, Fields{
