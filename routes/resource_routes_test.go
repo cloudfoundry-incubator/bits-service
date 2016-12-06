@@ -11,6 +11,10 @@ import (
 	"strings"
 	"testing"
 
+	"archive/zip"
+
+	"io/ioutil"
+
 	"github.com/gorilla/mux"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
@@ -148,8 +152,49 @@ var _ = Describe("routes", func() {
 					Equal("[{\"sha1\":\"def\"}]")))
 			})
 		})
+
+		Describe("/app_stash/bundles", func() {
+			It("returns StatusUnprocessableEntity when body is invalid", func() {
+				router.ServeHTTP(responseWriter, httptest.NewRequest(
+					"POST", "/app_stash/bundles", strings.NewReader("some invalid format")))
+
+				Expect(responseWriter.Code).To(Equal(http.StatusUnprocessableEntity), responseWriter.Body.String())
+			})
+
+			It("downloads files identified by sha1s from blobstore, zips them and returns zip", func() {
+				entries["sha1xyz"] = []byte("some content")
+				entries["sha1abc"] = []byte("some more content")
+
+				router.ServeHTTP(responseWriter, httptest.NewRequest(
+					"POST", "/app_stash/bundles", strings.NewReader("[{\"sha1\":\"sha1xyz\", \"fn\":\"filename1\"}, {\"sha1\":\"sha1abc\", \"fn\":\"filename2\"}]")))
+
+				Expect(responseWriter.Code).To(Equal(http.StatusOK))
+				Expect(zipContentsOf(responseWriter.Body)).To(SatisfyAll(
+					HaveKeyWithValue("filename1", []byte("some content")),
+					HaveKeyWithValue("filename2", []byte("some more content"))))
+			})
+		})
 	})
 })
+
+func zipContentsOf(buffer *bytes.Buffer) map[string][]byte {
+	zipReader, e := zip.NewReader(bytes.NewReader(buffer.Bytes()), int64(buffer.Len()))
+	Expect(e).NotTo(HaveOccurred())
+
+	zipContents := make(map[string][]byte)
+	for _, zipFileEntry := range zipReader.File {
+		reader, e := zipFileEntry.Open()
+		Expect(e).NotTo(HaveOccurred())
+		zipContents[zipFileEntry.Name] = MustReadAll(reader)
+	}
+	return zipContents
+}
+
+func MustReadAll(reader io.Reader) []byte {
+	content, e := ioutil.ReadAll(reader)
+	Expect(e).NotTo(HaveOccurred())
+	return content
+}
 
 func haveStatusCodeAndBody(statusCode types.GomegaMatcher, body types.GomegaMatcher) types.GomegaMatcher {
 	return MatchFields(IgnoreExtras, Fields{

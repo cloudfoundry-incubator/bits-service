@@ -202,8 +202,85 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	fmt.Fprintf(responseWriter, "%s", response)
 }
 
+type BundlesPayload struct {
+	Sha1 string
+	Fn   string
+	Mode os.FileMode
+}
+
 func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, request *http.Request) {
-	// TODO
+	body, e := ioutil.ReadAll(request.Body)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+
+	var bundlesPayload []BundlesPayload
+	e = json.Unmarshal(body, &bundlesPayload)
+	if e != nil {
+		log.Printf("Invalid body %s", body)
+		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+		fmt.Fprintf(responseWriter, "Invalid body %s", body)
+		return
+	}
+
+	tempZipFilename, e := handler.createTempZipFileFrom(bundlesPayload)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	defer os.Remove(tempZipFilename)
+
+	tempZipFile, e := os.Open(tempZipFilename)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	defer tempZipFile.Close()
+
+	_, e = io.Copy(responseWriter, tempZipFile)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+}
+
+func (handler *AppStashHandler) createTempZipFileFrom(bundlesPayload []BundlesPayload) (tempFilename string, err error) {
+	tempFile, e := ioutil.TempFile("", "bundles")
+	if e != nil {
+		return "", e
+	}
+	defer tempFile.Close()
+	zipWriter := zip.NewWriter(tempFile)
+	for _, entry := range bundlesPayload {
+		zipEntry, e := zipWriter.CreateHeader(zipEntryHeader(entry.Fn, entry.Mode))
+		if e != nil {
+			return "", e
+		}
+
+		// TODO this assumes no redirects. Probably app_stash should have its own interface for blobstore that expresses no redirects
+		b, _, e := handler.blobstore.Get(entry.Sha1)
+		if e != nil {
+			return "", e
+		}
+		defer b.Close()
+
+		_, e = io.Copy(zipEntry, b)
+		if e != nil {
+			return "", e
+		}
+	}
+	zipWriter.Close()
+	return tempFile.Name(), nil
+}
+
+func zipEntryHeader(name string, mode os.FileMode) *zip.FileHeader {
+	header := &zip.FileHeader{
+		Name:   name,
+		Method: zip.Deflate,
+	}
+	header.SetMode(mode)
+	return header
 }
 
 type ResourceHandler struct {
