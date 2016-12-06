@@ -3,7 +3,6 @@ package routes_test
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -20,6 +19,7 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 	"github.com/petergtz/bitsgo/httputil"
+	"github.com/petergtz/bitsgo/inmemory_blobstore"
 	. "github.com/petergtz/bitsgo/routes"
 	"github.com/petergtz/pegomock"
 	. "github.com/petergtz/pegomock"
@@ -39,13 +39,15 @@ var _ = Describe("routes", func() {
 	})
 
 	var (
-		blobstore      *MockBlobstore
+		entries        map[string][]byte
+		blobstore      *inmemory_blobstore.InMemoryBlobstore
 		router         *mux.Router
 		responseWriter *httptest.ResponseRecorder
 	)
 
 	BeforeEach(func() {
-		blobstore = NewMockBlobstore()
+		entries = make(map[string][]byte)
+		blobstore = inmemory_blobstore.NewInMemoryBlobstoreWithEntries(entries)
 		router = mux.NewRouter()
 		responseWriter = httptest.NewRecorder()
 	})
@@ -53,17 +55,13 @@ var _ = Describe("routes", func() {
 	ItSupportsMethodsGetPutDeleteFor := func(routeName string, resourceType string) {
 		Context("Method GET", func() {
 			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
-				When(func() { blobstore.Get(AnyString()) }).
-					ThenReturn(nil, "", NewNotFoundError())
-
 				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/"+routeName+"/theguid", nil))
 
 				Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
 			})
 
 			It("returns StatusOK and fills body with contents from file located at the partitioned path", func() {
-				When(func() { blobstore.Get("/th/eg/theguid") }).
-					ThenReturn(ioutil.NopCloser(strings.NewReader("thecontent")), "", nil)
+				entries["/th/eg/theguid"] = []byte("thecontent")
 
 				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/"+routeName+"/theguid", nil))
 
@@ -89,8 +87,7 @@ var _ = Describe("routes", func() {
 					Equal(http.StatusCreated),
 					BeEmpty()))
 
-				_, fileContent := blobstore.VerifyWasCalledOnce().Put(EqString("/th/eg/theguid"), AnyReadSeeker()).GetCapturedArguments()
-				Expect(ioutil.ReadAll(fileContent)).To(MatchRegexp("My test string"))
+				Expect(entries).To(HaveKeyWithValue("/th/eg/theguid", []byte("My test string")))
 			})
 		})
 	}
@@ -121,23 +118,14 @@ var _ = Describe("routes", func() {
 				Expect(e).NotTo(HaveOccurred())
 				defer zipFile.Close()
 
-				entries := make(map[string]string)
-
-				When(blobstore.Put(AnyString(), AnyReadSeeker())).Then(func(params []pegomock.Param) pegomock.ReturnValues {
-					content, e := ioutil.ReadAll(params[1].(io.ReadSeeker))
-					Expect(e).NotTo(HaveOccurred())
-					entries[params[0].(string)] = string(content)
-					return nil
-				})
-
 				router.ServeHTTP(responseWriter, newHttpTestPostRequest("/app_stash/entries", map[string]map[string]io.Reader{
 					"application": map[string]io.Reader{"application": zipFile},
 				}))
 
 				Expect(responseWriter.Code).To(Equal(http.StatusOK), responseWriter.Body.String())
-				Expect(entries).To(HaveKeyWithValue("971555ab39d1dfe8dff8b78c2b20e85e01c06595", "1\n\n"))
-				Expect(entries).To(HaveKeyWithValue("bbd33de01c17b165b4ce00308e8a19a942023ab8", "2\n\n"))
-				Expect(entries).To(HaveKeyWithValue("27cc6f77ee63df90ab3285f9d5fc4ebcb2448c12", "3\n\n"))
+				Expect(entries).To(HaveKeyWithValue("971555ab39d1dfe8dff8b78c2b20e85e01c06595", []byte("1\n\n")))
+				Expect(entries).To(HaveKeyWithValue("bbd33de01c17b165b4ce00308e8a19a942023ab8", []byte("2\n\n")))
+				Expect(entries).To(HaveKeyWithValue("27cc6f77ee63df90ab3285f9d5fc4ebcb2448c12", []byte("3\n\n")))
 			})
 		})
 
@@ -150,7 +138,7 @@ var _ = Describe("routes", func() {
 			})
 
 			It("returns StatusOK and missing fingerprints when body is valid", func() {
-				When(blobstore.Exists("abc")).ThenReturn(true, nil)
+				entries["abc"] = []byte("not relevant")
 
 				router.ServeHTTP(responseWriter, httptest.NewRequest(
 					"POST", "/app_stash/matches", strings.NewReader("[{\"sha1\":\"abc\"}, {\"sha1\":\"def\"}]")))
@@ -170,6 +158,7 @@ func haveStatusCodeAndBody(statusCode types.GomegaMatcher, body types.GomegaMatc
 	})
 }
 
+// TODO: either remove or add tests that use this function, e.g. tests where blobstore return an error
 func writeStatusCodeAndBody(statusCode int, body string) func([]Param) ReturnValues {
 	return func(params []Param) ReturnValues {
 		for _, param := range params {
