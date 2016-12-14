@@ -32,7 +32,7 @@ var _ = Describe("Accessing the bits-service", func() {
 		pathToWebserver, err := gexec.Build("github.com/petergtz/bitsgo")
 		Ω(err).ShouldNot(HaveOccurred())
 
-		session, err = gexec.Start(exec.Command(pathToWebserver), GinkgoWriter, GinkgoWriter)
+		session, err = gexec.Start(exec.Command(pathToWebserver, "--config", "config.yml"), GinkgoWriter, GinkgoWriter)
 		Ω(err).ShouldNot(HaveOccurred())
 		time.Sleep(200 * time.Millisecond)
 		Expect(session.ExitCode()).To(Equal(-1), "Webserver error message: %s", string(session.Err.Contents()))

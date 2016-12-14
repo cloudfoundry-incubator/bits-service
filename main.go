@@ -13,10 +13,17 @@ import (
 	"github.com/petergtz/bitsgo/routes"
 	"github.com/petergtz/bitsgo/s3_blobstore"
 	"github.com/urfave/negroni"
+	"gopkg.in/alecthomas/kingpin.v2"
+)
+
+var (
+	configPath = kingpin.Flag("config", "specify config to use").Required().Short('c').String()
 )
 
 func main() {
-	config, e := LoadConfig("config.yml")
+	kingpin.Parse()
+
+	config, e := LoadConfig(*configPath)
 	if e != nil {
 		log.Fatalf("Could not load config. Caused by: %s", e)
 	}
