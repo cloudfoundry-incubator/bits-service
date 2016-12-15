@@ -331,7 +331,22 @@ func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request 
 }
 
 func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
-	// TODO
+	exists, e := handler.blobstore.Exists(pathFor(mux.Vars(request)["guid"]))
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	if !exists {
+		responseWriter.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	e = handler.blobstore.Delete(pathFor(mux.Vars(request)["guid"]))
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	responseWriter.WriteHeader(http.StatusNoContent)
 }
 
 func pathFor(identifier string) string {
