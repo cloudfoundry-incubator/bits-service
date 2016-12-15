@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"net/url"
+
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo/local_blobstore"
 	"github.com/petergtz/bitsgo/pathsigner"
@@ -25,17 +27,27 @@ func main() {
 
 	config, e := LoadConfig(*configPath)
 	if e != nil {
-		log.Fatalf("Could not load config. Caused by: %s", e)
+		log.Fatalf("Could not load config. Caused by: %v", e)
 	}
 
 	rootRouter := mux.NewRouter()
 
 	internalRouter := mux.NewRouter()
-	rootRouter.Host(config.PrivateEndpoint).Handler(internalRouter)
 
-	packageBlobstore, signPackageURLHandler := createPackageBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpoint, config.Port, config.Secret)
-	dropletBlobstore, signDropletURLHandler := createPackageBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpoint, config.Port, config.Secret)
-	buildpackBlobstore, signBuildpackURLHandler := createPackageBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpoint, config.Port, config.Secret)
+	privateEndpoint, e := url.Parse(config.PrivateEndpoint)
+	if e != nil {
+		log.Fatalf("Private endpoint invalid: %v", e)
+	}
+	rootRouter.Host(privateEndpoint.Host).Handler(internalRouter)
+
+	publicEndpoint, e := url.Parse(config.PublicEndpoint)
+	if e != nil {
+		log.Fatalf("Public endpoint invalid: %v", e)
+	}
+	rootRouter.Host(privateEndpoint.Host).Handler(internalRouter)
+	packageBlobstore, signPackageURLHandler := createPackageBlobstoreAndSignURLHandler(config.Packages, publicEndpoint.Host, config.Port, config.Secret)
+	dropletBlobstore, signDropletURLHandler := createPackageBlobstoreAndSignURLHandler(config.Droplets, publicEndpoint.Host, config.Port, config.Secret)
+	buildpackBlobstore, signBuildpackURLHandler := createPackageBlobstoreAndSignURLHandler(config.Buildpacks, publicEndpoint.Host, config.Port, config.Secret)
 
 	routes.SetUpSignRoute(internalRouter, signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler)
 
@@ -46,7 +58,7 @@ func main() {
 
 	if usesLocalBlobstore(config) {
 		publicRouter := mux.NewRouter()
-		rootRouter.Host(config.PublicEndpoint).Handler(negroni.New(
+		rootRouter.Host(publicEndpoint.Host).Handler(negroni.New(
 			&local_blobstore.SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret}},
 			negroni.Wrap(publicRouter),
 		))
@@ -75,12 +87,13 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-func createPackageBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, publicEndpoint string, port int, secret string) (routes.Blobstore, routes.SignURLHandler) {
+func createPackageBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, publicHost string, port int, secret string) (routes.Blobstore, routes.SignURLHandler) {
 	switch blobstoreConfig.BlobstoreType {
 	case "local":
+		fmt.Println("Creating local blobstore", "path prefix:", blobstoreConfig.LocalConfig.PathPrefix)
 		return local_blobstore.NewLocalBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
 			&local_blobstore.SignLocalUrlHandler{
-				DelegateEndpoint: fmt.Sprintf("http://%v:%v", publicEndpoint, port),
+				DelegateEndpoint: fmt.Sprintf("http://%v:%v", publicHost, port),
 				Signer:           &pathsigner.PathSigner{secret},
 			}
 	case "s3":
