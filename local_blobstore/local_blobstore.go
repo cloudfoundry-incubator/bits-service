@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"log"
+
 	"github.com/petergtz/bitsgo/routes"
 )
 
@@ -29,6 +31,7 @@ func (blobstore *LocalBlobstore) Exists(path string) (bool, error) {
 }
 
 func (blobstore *LocalBlobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+	log.Printf("%v", filepath.Join(blobstore.pathPrefix, path))
 	file, e := os.Open(filepath.Join(blobstore.pathPrefix, path))
 
 	if os.IsNotExist(e) {
