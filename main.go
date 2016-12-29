@@ -10,6 +10,7 @@ import (
 	"net/url"
 
 	"github.com/gorilla/mux"
+	"github.com/petergtz/bitsgo/basic_auth_middleware"
 	"github.com/petergtz/bitsgo/local_blobstore"
 	"github.com/petergtz/bitsgo/pathsigner"
 	"github.com/petergtz/bitsgo/routes"
@@ -49,7 +50,8 @@ func main() {
 	dropletBlobstore, signDropletURLHandler := createPackageBlobstoreAndSignURLHandler(config.Droplets, publicEndpoint.Host, config.Port, config.Secret)
 	buildpackBlobstore, signBuildpackURLHandler := createPackageBlobstoreAndSignURLHandler(config.Buildpacks, publicEndpoint.Host, config.Port, config.Secret)
 
-	routes.SetUpSignRoute(internalRouter, signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler)
+	routes.SetUpSignRoute(internalRouter, &basic_auth_middleware.BasicAuthMiddleware{config.SigningUsers[0].Username, config.SigningUsers[0].Password},
+		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler)
 
 	routes.SetUpPackageRoutes(internalRouter, packageBlobstore)
 	routes.SetUpBuildpackRoutes(internalRouter, buildpackBlobstore)

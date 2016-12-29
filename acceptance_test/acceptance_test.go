@@ -76,7 +76,8 @@ var _ = Describe("Accessing the bits-service", func() {
 				})
 				Expect(http.DefaultClient.Do(request)).To(WithTransform(GetStatusCode, Equal(201)))
 
-				response, e := http.Get("http://internal.127.0.0.1.xip.io:8000/sign/packages/myguid")
+				response, e := http.DefaultClient.Do(
+					newGetRequest("http://internal.127.0.0.1.xip.io:8000/sign/packages/myguid", "the-username", "the-password"))
 				Ω(e).ShouldNot(HaveOccurred())
 				Expect(response.StatusCode).To(Equal(http.StatusOK))
 
@@ -91,6 +92,13 @@ var _ = Describe("Accessing the bits-service", func() {
 	})
 
 })
+
+func newGetRequest(url string, username string, password string) *http.Request {
+	request, e := http.NewRequest("GET", url, nil)
+	Expect(e).NotTo(HaveOccurred())
+	request.SetBasicAuth(username, password)
+	return request
+}
 
 func NewPutRequest(url string, formFiles map[string]map[string]io.Reader) *http.Request {
 	if len(formFiles) > 1 {

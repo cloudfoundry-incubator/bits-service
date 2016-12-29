@@ -19,6 +19,7 @@ type Config struct {
 	PrivateEndpoint string `yaml:"private_endpoint"`
 	Secret          string
 	Port            int
+	SigningUsers    []Credential `yaml:"signing_users"`
 }
 
 type BlobstoreConfig struct {
@@ -35,6 +36,11 @@ type S3BlobstoreConfig struct {
 	Bucket          string
 	AccessKeyID     string `yaml:"access_key_id"`
 	SecretAccessKey string `yaml:"secret_access_key"`
+}
+
+type Credential struct {
+	Username string
+	Password string
 }
 
 type LoggingConfig struct {

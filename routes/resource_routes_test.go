@@ -20,11 +20,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gstruct"
-	"github.com/onsi/gomega/types"
 	"github.com/petergtz/bitsgo/httputil"
 	"github.com/petergtz/bitsgo/inmemory_blobstore"
 	. "github.com/petergtz/bitsgo/routes"
+	. "github.com/petergtz/bitsgo/testutil"
 	"github.com/petergtz/pegomock"
 	. "github.com/petergtz/pegomock"
 )
@@ -69,7 +68,7 @@ var _ = Describe("routes", func() {
 
 				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/"+routeName+"/theguid", nil))
 
-				Expect(*responseWriter).To(haveStatusCodeAndBody(
+				Expect(*responseWriter).To(HaveStatusCodeAndBody(
 					Equal(http.StatusOK),
 					Equal("thecontent")))
 			})
@@ -87,7 +86,7 @@ var _ = Describe("routes", func() {
 					resourceType: map[string]io.Reader{"somefilename": strings.NewReader("My test string")},
 				}))
 
-				Expect(*responseWriter).To(haveStatusCodeAndBody(
+				Expect(*responseWriter).To(HaveStatusCodeAndBody(
 					Equal(http.StatusCreated),
 					BeEmpty()))
 
@@ -147,7 +146,7 @@ var _ = Describe("routes", func() {
 				router.ServeHTTP(responseWriter, httptest.NewRequest(
 					"POST", "/app_stash/matches", strings.NewReader("[{\"sha1\":\"abc\"}, {\"sha1\":\"def\"}]")))
 
-				Expect(*responseWriter).To(haveStatusCodeAndBody(
+				Expect(*responseWriter).To(HaveStatusCodeAndBody(
 					Equal(http.StatusOK),
 					Equal("[{\"sha1\":\"def\"}]")))
 			})
@@ -194,13 +193,6 @@ func MustReadAll(reader io.Reader) []byte {
 	content, e := ioutil.ReadAll(reader)
 	Expect(e).NotTo(HaveOccurred())
 	return content
-}
-
-func haveStatusCodeAndBody(statusCode types.GomegaMatcher, body types.GomegaMatcher) types.GomegaMatcher {
-	return MatchFields(IgnoreExtras, Fields{
-		"Code": statusCode,
-		"Body": WithTransform(func(body *bytes.Buffer) string { return body.String() }, body),
-	})
 }
 
 // TODO: either remove or add tests that use this function, e.g. tests where blobstore return an error
