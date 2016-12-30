@@ -148,7 +148,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 		// TODO improve messages
 		log.Printf("Empty list %s\n\n%v", body, e)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-		fmt.Fprintf(responseWriter, `{"description":"The request is semantically invalid: must be a non-empty array."}`)
+		fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: must be a non-empty array.")
 		return
 	}
 	responseSha1 := []map[string]string{}
@@ -188,13 +188,13 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 	if e != nil {
 		log.Printf("Invalid body %s", body)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-		fmt.Fprintf(responseWriter, `{"description":"Invalid body %s"}`, body)
+		fprintDescriptionAsJSON(responseWriter, "Invalid body %s", body)
 		return
 	}
 
-	if missing, what := sha1MissingIn(bundlesPayload); missing {
+	if isMissing, key := anyKeyMissingIn(bundlesPayload); isMissing {
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-		fmt.Fprintf(responseWriter, `{"description":"The request is semantically invalid: key `+"`"+what+"`"+` missing or empty"}`)
+		fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: key `%v` missing or empty", key)
 		return
 	}
 
@@ -202,7 +202,7 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 	if e != nil {
 		if notFoundError, ok := e.(*NotFoundError); ok {
 			responseWriter.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(responseWriter, `{"description":"%v not found"}`, notFoundError.Error())
+			fprintDescriptionAsJSON(responseWriter, "%v not found", notFoundError.Error())
 			return
 		}
 		internalServerError(responseWriter, e)
@@ -224,7 +224,11 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 	}
 }
 
-func sha1MissingIn(bundlesPayload []BundlesPayload) (bool, string) {
+func fprintDescriptionAsJSON(responseWriter http.ResponseWriter, description string, a ...interface{}) {
+	fmt.Fprintf(responseWriter, `{"description":"%v"}`, fmt.Sprintf(description, a...))
+}
+
+func anyKeyMissingIn(bundlesPayload []BundlesPayload) (bool, string) {
 	for _, entry := range bundlesPayload {
 		if entry.Sha1 == "" {
 			return true, "sha1"
@@ -244,7 +248,7 @@ func (handler *AppStashHandler) createTempZipFileFrom(bundlesPayload []BundlesPa
 	defer tempFile.Close()
 	zipWriter := zip.NewWriter(tempFile)
 	for _, entry := range bundlesPayload {
-		zipEntry, e := zipWriter.CreateHeader(zipEntryHeader(entry.Fn, parseMode(entry.Mode)))
+		zipEntry, e := zipWriter.CreateHeader(zipEntryHeader(entry.Fn, fileModeFrom(entry.Mode)))
 		if e != nil {
 			return "", e
 		}
@@ -268,7 +272,7 @@ func (handler *AppStashHandler) createTempZipFileFrom(bundlesPayload []BundlesPa
 	return tempFile.Name(), nil
 }
 
-func parseMode(s string) os.FileMode {
+func fileModeFrom(s string) os.FileMode {
 	mode, e := strconv.ParseInt(s, 8, 32)
 	if e != nil {
 		return 0744
