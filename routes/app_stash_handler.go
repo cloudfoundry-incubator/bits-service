@@ -20,6 +20,49 @@ type AppStashHandler struct {
 	blobstore Blobstore
 }
 
+func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, request *http.Request) {
+	body, e := ioutil.ReadAll(request.Body)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	var sha1s []struct {
+		Sha1 string
+		Size int
+	}
+	e = json.Unmarshal(body, &sha1s)
+	if e != nil {
+		log.Printf("Invalid body %s\n\n%v", body, e)
+		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+		fmt.Fprintf(responseWriter, "Invalid body %s", body)
+		return
+	}
+	if len(sha1s) == 0 {
+		// TODO improve messages
+		log.Printf("Empty list %s\n\n%v", body, e)
+		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+		fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: must be a non-empty array.")
+		return
+	}
+	responseSha1 := []map[string]string{}
+	for _, entry := range sha1s {
+		exists, e := handler.blobstore.Exists(entry.Sha1)
+		if e != nil {
+			internalServerError(responseWriter, e)
+			return
+		}
+		if exists {
+			responseSha1 = append(responseSha1, map[string]string{"sha1": entry.Sha1})
+		}
+	}
+	response, e := json.Marshal(&responseSha1)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	responseWriter.Write(response)
+}
+
 func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, request *http.Request) {
 	uploadedFile, _, e := request.FormFile("application")
 	if e != nil {
@@ -79,7 +122,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 	responseWriter.Write(receipt)
 }
 
-func copyTo(blobstore Blobstore, zipFileEntry *zip.File) (string, error) {
+func copyTo(blobstore Blobstore, zipFileEntry *zip.File) (sha string, err error) {
 	unzippedReader, e := zipFileEntry.Open()
 	if e != nil {
 		return "", errors.WithStack(e)
@@ -93,7 +136,7 @@ func copyTo(blobstore Blobstore, zipFileEntry *zip.File) (string, error) {
 	defer os.Remove(tempZipEntryFile.Name())
 	defer tempZipEntryFile.Close()
 
-	sha, e := copyCalculatingSha(tempZipEntryFile, unzippedReader)
+	sha, e = copyCalculatingSha(tempZipEntryFile, unzippedReader)
 	if e != nil {
 		return "", errors.WithStack(e)
 	}
@@ -110,7 +153,7 @@ func copyTo(blobstore Blobstore, zipFileEntry *zip.File) (string, error) {
 		return "", errors.WithStack(e)
 	}
 
-	return sha, nil
+	return
 }
 
 func copyCalculatingSha(writer io.Writer, reader io.Reader) (sha string, e error) {
@@ -123,51 +166,6 @@ func copyCalculatingSha(writer io.Writer, reader io.Reader) (sha string, e error
 	}
 
 	return fmt.Sprintf("%x", checkSum.Sum(nil)), nil
-}
-
-type entry struct {
-	Sha1 string
-	Size int
-}
-
-func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, request *http.Request) {
-	body, e := ioutil.ReadAll(request.Body)
-	if e != nil {
-		internalServerError(responseWriter, e)
-		return
-	}
-	var sha1s []entry
-	e = json.Unmarshal(body, &sha1s)
-	if e != nil {
-		log.Printf("Invalid body %s\n\n%v", body, e)
-		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-		fmt.Fprintf(responseWriter, "Invalid body %s", body)
-		return
-	}
-	if len(sha1s) == 0 {
-		// TODO improve messages
-		log.Printf("Empty list %s\n\n%v", body, e)
-		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-		fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: must be a non-empty array.")
-		return
-	}
-	responseSha1 := []map[string]string{}
-	for _, entry := range sha1s {
-		exists, e := handler.blobstore.Exists(entry.Sha1)
-		if e != nil {
-			internalServerError(responseWriter, e)
-			return
-		}
-		if exists {
-			responseSha1 = append(responseSha1, map[string]string{"sha1": entry.Sha1})
-		}
-	}
-	response, e := json.Marshal(&responseSha1)
-	if e != nil {
-		internalServerError(responseWriter, e)
-		return
-	}
-	responseWriter.Write(response)
 }
 
 type BundlesPayload struct {
