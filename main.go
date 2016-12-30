@@ -46,6 +46,7 @@ func main() {
 		log.Fatalf("Public endpoint invalid: %v", e)
 	}
 	rootRouter.Host(privateEndpoint.Host).Handler(internalRouter)
+	appStashBlobstore, _ := createPackageBlobstoreAndSignURLHandler(config.AppStash, publicEndpoint.Host, config.Port, config.Secret)
 	packageBlobstore, signPackageURLHandler := createPackageBlobstoreAndSignURLHandler(config.Packages, publicEndpoint.Host, config.Port, config.Secret)
 	dropletBlobstore, signDropletURLHandler := createPackageBlobstoreAndSignURLHandler(config.Droplets, publicEndpoint.Host, config.Port, config.Secret)
 	buildpackBlobstore, signBuildpackURLHandler := createPackageBlobstoreAndSignURLHandler(config.Buildpacks, publicEndpoint.Host, config.Port, config.Secret)
@@ -53,6 +54,7 @@ func main() {
 	routes.SetUpSignRoute(internalRouter, &basic_auth_middleware.BasicAuthMiddleware{config.SigningUsers[0].Username, config.SigningUsers[0].Password},
 		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler)
 
+	routes.SetUpAppStashRoutes(internalRouter, appStashBlobstore)
 	routes.SetUpPackageRoutes(internalRouter, packageBlobstore)
 	routes.SetUpBuildpackRoutes(internalRouter, buildpackBlobstore)
 	routes.SetUpDropletRoutes(internalRouter, dropletBlobstore)
@@ -76,9 +78,12 @@ func main() {
 		}
 	}
 
+	logger := &negroni.Logger{ALogger: log.New(os.Stdout, "[bitsgo] ", log.LstdFlags|log.Lshortfile|log.LUTC)}
+	logger.SetFormat(negroni.LoggerDefaultFormat)
+	logger.SetDateFormat(negroni.LoggerDefaultDateFormat)
 	srv := &http.Server{
 		Handler: negroni.New(
-			&negroni.Logger{log.New(os.Stdout, "[bitsgo] ", log.LstdFlags|log.Lshortfile|log.LUTC)},
+			logger,
 			negroni.Wrap(rootRouter),
 		),
 		Addr:         fmt.Sprintf("0.0.0.0:%v", config.Port),

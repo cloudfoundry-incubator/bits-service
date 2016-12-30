@@ -13,7 +13,7 @@ type Config struct {
 	Buildpacks      BlobstoreConfig
 	Droplets        BlobstoreConfig
 	Packages        BlobstoreConfig
-	AppStash        BlobstoreConfig
+	AppStash        BlobstoreConfig `yaml:"app_stash"`
 	Logging         LoggingConfig
 	PublicEndpoint  string `yaml:"public_endpoint"`
 	PrivateEndpoint string `yaml:"private_endpoint"`

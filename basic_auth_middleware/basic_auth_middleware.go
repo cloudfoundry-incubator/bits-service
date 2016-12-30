@@ -10,8 +10,12 @@ type BasicAuthMiddleware struct {
 
 func (middleware *BasicAuthMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
 	username, password, ok := request.BasicAuth()
-	if !ok || username != middleware.Username || password != middleware.Password {
-		responseWriter.WriteHeader(http.StatusForbidden)
+	if !ok {
+		responseWriter.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	if username != middleware.Username || password != middleware.Password {
+		responseWriter.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	next(responseWriter, request)

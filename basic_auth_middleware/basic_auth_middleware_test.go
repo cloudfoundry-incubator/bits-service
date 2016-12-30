@@ -56,7 +56,7 @@ var _ = Describe("BasicAuthMiddle", func() {
 			MatchRegexp("Hello")))
 	})
 
-	It("returns status forbidden when basic auth is invalid", func() {
+	It("returns status unauthorized when basic auth is invalid", func() {
 		request := newGetRequest(server.URL)
 		request.SetBasicAuth("the-username", "wrong-password")
 
@@ -64,18 +64,18 @@ var _ = Describe("BasicAuthMiddle", func() {
 		Expect(e).NotTo(HaveOccurred())
 
 		Expect(*response).To(HaveStatusCodeAndBody(
-			Equal(http.StatusForbidden),
+			Equal(http.StatusUnauthorized),
 			BeEmpty()))
 	})
 
-	It("returns status forbidden when basic auth is not set", func() {
+	It("returns status unauthorized when basic auth is not set", func() {
 		request := newGetRequest(server.URL)
 
 		response, e := http.DefaultClient.Do(request)
 		Expect(e).NotTo(HaveOccurred())
 
 		Expect(*response).To(HaveStatusCodeAndBody(
-			Equal(http.StatusForbidden),
+			Equal(http.StatusUnauthorized),
 			BeEmpty()))
 	})
 })

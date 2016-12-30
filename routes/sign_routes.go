@@ -17,6 +17,8 @@ func SetUpSignRoute(router *mux.Router, basicAuthMiddleware *basic_auth_middlewa
 	router.PathPrefix("/sign/packages").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signPackageURLHandler))
 	router.PathPrefix("/sign/droplets").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signDropletURLHandler))
 	router.PathPrefix("/sign/buildpacks").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackURLHandler))
+	// TODO should this rather get its own handler instead of using the droplets' one?
+	router.PathPrefix("/sign/buildpack_cache").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signDropletURLHandler))
 }
 
 func wrapWith(basicAuthMiddleware *basic_auth_middleware.BasicAuthMiddleware, handler SignURLHandler) http.Handler {

@@ -14,6 +14,8 @@ import (
 
 	"path/filepath"
 
+	"strconv"
+
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -24,6 +26,10 @@ type NotFoundError struct {
 
 func NewNotFoundError() *NotFoundError {
 	return &NotFoundError{fmt.Errorf("NotFoundError")}
+}
+
+func NewNotFoundErrorWithMessage(message string) *NotFoundError {
+	return &NotFoundError{fmt.Errorf(message)}
 }
 
 type Blobstore interface {
@@ -43,6 +49,7 @@ func SetUpAppStashRoutes(router *mux.Router, blobstore Blobstore) {
 func SetUpPackageRoutes(router *mux.Router, blobstore Blobstore) {
 	handler := &ResourceHandler{blobstore: blobstore, resourceType: "package"}
 	router.Path("/packages/{guid}").Methods("PUT").HandlerFunc(handler.Put)
+	router.Path("/packages/{guid}").Methods("HEAD").HandlerFunc(handler.Head)
 	router.Path("/packages/{guid}").Methods("GET").HandlerFunc(handler.Get)
 	router.Path("/packages/{guid}").Methods("DELETE").HandlerFunc(handler.Delete)
 }
@@ -52,6 +59,7 @@ func SetUpBuildpackRoutes(router *mux.Router, blobstore Blobstore) {
 	router.Path("/buildpacks/{guid}").Methods("PUT").HandlerFunc(handler.Put)
 	// TODO change Put/Get/etc. signature to allow this:
 	// router.Path("/buildpacks/{guid}").Methods("PUT").HandlerFunc(delegateTo(handler.Put))
+	router.Path("/buildpacks/{guid}").Methods("HEAD").HandlerFunc(handler.Head)
 	router.Path("/buildpacks/{guid}").Methods("GET").HandlerFunc(handler.Get)
 	router.Path("/buildpacks/{guid}").Methods("DELETE").HandlerFunc(handler.Delete)
 }
@@ -63,15 +71,30 @@ func delegateTo(delegate func(http.ResponseWriter, *http.Request, map[string]str
 }
 
 func SetUpDropletRoutes(router *mux.Router, blobstore Blobstore) {
-	handler := &ResourceHandler{blobstore: blobstore, resourceType: "droplet"}
-	router.Path("/droplets/{guid}").Methods("PUT").HandlerFunc(handler.Put)
-	router.Path("/droplets/{guid}").Methods("GET").HandlerFunc(handler.Get)
-	router.Path("/droplets/{guid}").Methods("DELETE").HandlerFunc(handler.Delete)
+	setUpMethodRoutes(
+		// TODO we could probably be more specific in the regex below:
+		router.Path("/droplets/{guid:.*}").Subrouter(),
+		&ResourceHandler{blobstore: blobstore, resourceType: "droplet"})
+}
+
+func setUpMethodRoutes(router *mux.Router, handler *ResourceHandler) {
+	router.Methods("PUT").HandlerFunc(handler.Put)
+	router.Methods("HEAD").HandlerFunc(handler.Head)
+	router.Methods("GET").HandlerFunc(handler.Get)
+	router.Methods("DELETE").HandlerFunc(handler.Delete)
+	setRouteNotFoundStatusCode(router, http.StatusMethodNotAllowed)
+}
+
+func setRouteNotFoundStatusCode(router *mux.Router, statusCode int) {
+	router.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(statusCode)
+	})
 }
 
 func SetUpBuildpackCacheRoutes(router *mux.Router, blobstore Blobstore) {
 	handler := &BuildpackCacheHandler{blobStore: blobstore}
 	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("PUT").HandlerFunc(handler.Put)
+	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("HEAD").HandlerFunc(handler.Head)
 	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("GET").HandlerFunc(handler.Get)
 	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("DELETE").HandlerFunc(handler.Delete)
 	router.Path("/buildpack_cache/entries/{app_guid}/").Methods("DELETE").HandlerFunc(handler.DeleteAppGuid)
@@ -111,50 +134,68 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 	}
 	defer openZipFile.Close()
 
+	bundlesPayload := []BundlesPayload{}
 	for _, zipFileEntry := range openZipFile.File {
 		if !zipFileEntry.FileInfo().Mode().IsRegular() {
 			continue
 		}
-		e = copyTo(handler.blobstore, zipFileEntry)
+		sha, e := copyTo(handler.blobstore, zipFileEntry)
 		if e != nil {
 			internalServerError(responseWriter, e)
 			return
 		}
+		fmt.Println(zipFileEntry.FileInfo().Mode().String())
+		if e != nil {
+			internalServerError(responseWriter, e)
+			return
+		}
+		bundlesPayload = append(bundlesPayload, BundlesPayload{
+			Sha1: sha,
+			Fn:   zipFileEntry.Name,
+			Mode: strconv.FormatInt(int64(zipFileEntry.FileInfo().Mode()), 8),
+		})
 	}
+	receipt, e := json.Marshal(bundlesPayload)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	responseWriter.WriteHeader(http.StatusCreated)
+	responseWriter.Write(receipt)
 }
 
-func copyTo(blobstore Blobstore, zipFileEntry *zip.File) error {
+func copyTo(blobstore Blobstore, zipFileEntry *zip.File) (string, error) {
 	unzippedReader, e := zipFileEntry.Open()
 	if e != nil {
-		return errors.WithStack(e)
+		return "", errors.WithStack(e)
 	}
 	defer unzippedReader.Close()
 
 	tempZipEntryFile, e := ioutil.TempFile("", filepath.Base(zipFileEntry.Name))
 	if e != nil {
-		return errors.WithStack(e)
+		return "", errors.WithStack(e)
 	}
 	defer os.Remove(tempZipEntryFile.Name())
 	defer tempZipEntryFile.Close()
 
 	sha, e := copyCalculatingSha(tempZipEntryFile, unzippedReader)
 	if e != nil {
-		return errors.WithStack(e)
+		return "", errors.WithStack(e)
 	}
 
 	entryFileRead, e := os.Open(tempZipEntryFile.Name())
 	if e != nil {
-		return errors.WithStack(e)
+		return "", errors.WithStack(e)
 	}
 	defer entryFileRead.Close()
 
 	// TODO: this assumes no redirect on PUTs. Is that always true?
 	_, e = blobstore.Put(sha, entryFileRead)
 	if e != nil {
-		return errors.WithStack(e)
+		return "", errors.WithStack(e)
 	}
 
-	return nil
+	return sha, nil
 }
 
 func copyCalculatingSha(writer io.Writer, reader io.Reader) (sha string, e error) {
@@ -169,29 +210,41 @@ func copyCalculatingSha(writer io.Writer, reader io.Reader) (sha string, e error
 	return fmt.Sprintf("%x", checkSum.Sum(nil)), nil
 }
 
+type entry struct {
+	Sha1 string
+	Size int
+}
+
 func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, request *http.Request) {
 	body, e := ioutil.ReadAll(request.Body)
 	if e != nil {
 		internalServerError(responseWriter, e)
 		return
 	}
-	var sha1s []map[string]string
+	var sha1s []entry
 	e = json.Unmarshal(body, &sha1s)
 	if e != nil {
-		log.Printf("Invalid body %s", body)
+		log.Printf("Invalid body %s\n\n%v", body, e)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 		fmt.Fprintf(responseWriter, "Invalid body %s", body)
 		return
 	}
-	var responseSha1 []map[string]string
+	if len(sha1s) == 0 {
+		// TODO improve messages
+		log.Printf("Empty list %s\n\n%v", body, e)
+		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+		fmt.Fprintf(responseWriter, `{"description":"The request is semantically invalid: must be a non-empty array."}`)
+		return
+	}
+	responseSha1 := []map[string]string{}
 	for _, entry := range sha1s {
-		exists, e := handler.blobstore.Exists(entry["sha1"])
+		exists, e := handler.blobstore.Exists(entry.Sha1)
 		if e != nil {
 			internalServerError(responseWriter, e)
 			return
 		}
-		if !exists {
-			responseSha1 = append(responseSha1, map[string]string{"sha1": entry["sha1"]})
+		if exists {
+			responseSha1 = append(responseSha1, map[string]string{"sha1": entry.Sha1})
 		}
 	}
 	response, e := json.Marshal(&responseSha1)
@@ -199,13 +252,13 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 		internalServerError(responseWriter, e)
 		return
 	}
-	fmt.Fprintf(responseWriter, "%s", response)
+	responseWriter.Write(response)
 }
 
 type BundlesPayload struct {
-	Sha1 string
-	Fn   string
-	Mode os.FileMode
+	Sha1 string `json:"sha1"`
+	Fn   string `json:"fn"`
+	Mode string `json:"mode"`
 }
 
 func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, request *http.Request) {
@@ -220,12 +273,23 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 	if e != nil {
 		log.Printf("Invalid body %s", body)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-		fmt.Fprintf(responseWriter, "Invalid body %s", body)
+		fmt.Fprintf(responseWriter, `{"description":"Invalid body %s"}`, body)
+		return
+	}
+
+	if missing, what := sha1MissingIn(bundlesPayload); missing {
+		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+		fmt.Fprintf(responseWriter, `{"description":"The request is semantically invalid: key `+"`"+what+"`"+` missing or empty"}`)
 		return
 	}
 
 	tempZipFilename, e := handler.createTempZipFileFrom(bundlesPayload)
 	if e != nil {
+		if notFoundError, ok := e.(*NotFoundError); ok {
+			responseWriter.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(responseWriter, `{"description":"%v not found"}`, notFoundError.Error())
+			return
+		}
 		internalServerError(responseWriter, e)
 		return
 	}
@@ -245,6 +309,18 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 	}
 }
 
+func sha1MissingIn(bundlesPayload []BundlesPayload) (bool, string) {
+	for _, entry := range bundlesPayload {
+		if entry.Sha1 == "" {
+			return true, "sha1"
+		}
+		if entry.Fn == "" {
+			return true, "fn"
+		}
+	}
+	return false, ""
+}
+
 func (handler *AppStashHandler) createTempZipFileFrom(bundlesPayload []BundlesPayload) (tempFilename string, err error) {
 	tempFile, e := ioutil.TempFile("", "bundles")
 	if e != nil {
@@ -253,7 +329,7 @@ func (handler *AppStashHandler) createTempZipFileFrom(bundlesPayload []BundlesPa
 	defer tempFile.Close()
 	zipWriter := zip.NewWriter(tempFile)
 	for _, entry := range bundlesPayload {
-		zipEntry, e := zipWriter.CreateHeader(zipEntryHeader(entry.Fn, entry.Mode))
+		zipEntry, e := zipWriter.CreateHeader(zipEntryHeader(entry.Fn, parseMode(entry.Mode)))
 		if e != nil {
 			return "", e
 		}
@@ -261,6 +337,9 @@ func (handler *AppStashHandler) createTempZipFileFrom(bundlesPayload []BundlesPa
 		// TODO this assumes no redirects. Probably app_stash should have its own interface for blobstore that expresses no redirects
 		b, _, e := handler.blobstore.Get(entry.Sha1)
 		if e != nil {
+			if _, ok := e.(*NotFoundError); ok {
+				return "", NewNotFoundErrorWithMessage(entry.Sha1)
+			}
 			return "", e
 		}
 		defer b.Close()
@@ -272,6 +351,14 @@ func (handler *AppStashHandler) createTempZipFileFrom(bundlesPayload []BundlesPa
 	}
 	zipWriter.Close()
 	return tempFile.Name(), nil
+}
+
+func parseMode(s string) os.FileMode {
+	mode, e := strconv.ParseInt(s, 8, 32)
+	if e != nil {
+		return 0744
+	}
+	return os.FileMode(mode)
 }
 
 func zipEntryHeader(name string, mode os.FileMode) *zip.FileHeader {
@@ -309,6 +396,19 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 	}
 
 	responseWriter.WriteHeader(http.StatusCreated)
+}
+
+func (handler *ResourceHandler) Head(responseWriter http.ResponseWriter, request *http.Request) {
+	exists, e := handler.blobstore.Exists(pathFor(mux.Vars(request)["guid"]))
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	if exists {
+		responseWriter.WriteHeader(http.StatusOK)
+	} else {
+		responseWriter.WriteHeader(http.StatusNotFound)
+	}
 }
 
 func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
@@ -380,11 +480,25 @@ func (handler *BuildpackCacheHandler) Put(responseWriter http.ResponseWriter, re
 	responseWriter.WriteHeader(http.StatusCreated)
 }
 
+func (handler *BuildpackCacheHandler) Head(responseWriter http.ResponseWriter, request *http.Request) {
+	exists, e := handler.blobStore.Exists(
+		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]))
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	if exists {
+		responseWriter.WriteHeader(http.StatusOK)
+	} else {
+		responseWriter.WriteHeader(http.StatusNotFound)
+	}
+}
+
 func (handler *BuildpackCacheHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
 	body, redirectLocation, e := handler.blobStore.Get(
 		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]))
 	switch e.(type) {
-	case NotFoundError:
+	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	case error:
@@ -419,7 +533,7 @@ func (handler *BuildpackCacheHandler) DeleteEntries(responseWriter http.Response
 
 func writeResponseBasedOnError(responseWriter http.ResponseWriter, e error) {
 	switch e.(type) {
-	case NotFoundError:
+	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	case error:
@@ -435,7 +549,7 @@ func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
 }
 
 func internalServerError(responseWriter http.ResponseWriter, e error) {
-	log.Printf("%+v", e)
+	log.Printf("Internal Server Error. Caused by: %+v", e)
 	responseWriter.WriteHeader(http.StatusInternalServerError)
 }
 

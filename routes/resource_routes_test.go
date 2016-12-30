@@ -42,15 +42,15 @@ var _ = Describe("routes", func() {
 	})
 
 	var (
-		entries        map[string][]byte
-		blobstore      *inmemory_blobstore.InMemoryBlobstore
-		router         *mux.Router
-		responseWriter *httptest.ResponseRecorder
+		blobstoreEntries map[string][]byte
+		blobstore        *inmemory_blobstore.InMemoryBlobstore
+		router           *mux.Router
+		responseWriter   *httptest.ResponseRecorder
 	)
 
 	BeforeEach(func() {
-		entries = make(map[string][]byte)
-		blobstore = inmemory_blobstore.NewInMemoryBlobstoreWithEntries(entries)
+		blobstoreEntries = make(map[string][]byte)
+		blobstore = inmemory_blobstore.NewInMemoryBlobstoreWithEntries(blobstoreEntries)
 		router = mux.NewRouter()
 		responseWriter = httptest.NewRecorder()
 	})
@@ -64,7 +64,7 @@ var _ = Describe("routes", func() {
 			})
 
 			It("returns StatusOK and fills body with contents from file located at the partitioned path", func() {
-				entries["/th/eg/theguid"] = []byte("thecontent")
+				blobstoreEntries["/th/eg/theguid"] = []byte("thecontent")
 
 				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/"+routeName+"/theguid", nil))
 
@@ -90,7 +90,7 @@ var _ = Describe("routes", func() {
 					Equal(http.StatusCreated),
 					BeEmpty()))
 
-				Expect(entries).To(HaveKeyWithValue("/th/eg/theguid", []byte("My test string")))
+				Expect(blobstoreEntries).To(HaveKeyWithValue("/th/eg/theguid", []byte("My test string")))
 			})
 		})
 	}
@@ -125,10 +125,16 @@ var _ = Describe("routes", func() {
 					"application": map[string]io.Reader{"application": zipFile},
 				}))
 
-				Expect(responseWriter.Code).To(Equal(http.StatusOK), responseWriter.Body.String())
-				Expect(entries).To(HaveKeyWithValue("971555ab39d1dfe8dff8b78c2b20e85e01c06595", []byte("1\n\n")))
-				Expect(entries).To(HaveKeyWithValue("bbd33de01c17b165b4ce00308e8a19a942023ab8", []byte("2\n\n")))
-				Expect(entries).To(HaveKeyWithValue("27cc6f77ee63df90ab3285f9d5fc4ebcb2448c12", []byte("3\n\n")))
+				Expect(responseWriter.Code).To(Equal(http.StatusCreated), responseWriter.Body.String())
+				Expect(responseWriter.Body.String()).To(ContainSubstring(
+					`{"sha1":"971555ab39d1dfe8dff8b78c2b20e85e01c06595","fn":"one","mode":"664"}`))
+				Expect(responseWriter.Body.String()).To(ContainSubstring(
+					`{"sha1":"bbd33de01c17b165b4ce00308e8a19a942023ab8","fn":"two","mode":"664"}`))
+				Expect(responseWriter.Body.String()).To(ContainSubstring(
+					`{"sha1":"27cc6f77ee63df90ab3285f9d5fc4ebcb2448c12","fn":"test folder/three","mode":"664"}`))
+				Expect(blobstoreEntries).To(HaveKeyWithValue("971555ab39d1dfe8dff8b78c2b20e85e01c06595", []byte("1\n\n")))
+				Expect(blobstoreEntries).To(HaveKeyWithValue("bbd33de01c17b165b4ce00308e8a19a942023ab8", []byte("2\n\n")))
+				Expect(blobstoreEntries).To(HaveKeyWithValue("27cc6f77ee63df90ab3285f9d5fc4ebcb2448c12", []byte("3\n\n")))
 			})
 		})
 
@@ -140,15 +146,24 @@ var _ = Describe("routes", func() {
 				Expect(responseWriter.Code).To(Equal(http.StatusUnprocessableEntity), responseWriter.Body.String())
 			})
 
-			It("returns StatusOK and missing fingerprints when body is valid", func() {
-				entries["abc"] = []byte("not relevant")
+			It("returns StatusOK and matching fingerprints when body is valid", func() {
+				blobstoreEntries["abc"] = []byte("not relevant")
 
 				router.ServeHTTP(responseWriter, httptest.NewRequest(
-					"POST", "/app_stash/matches", strings.NewReader("[{\"sha1\":\"abc\"}, {\"sha1\":\"def\"}]")))
+					"POST", "/app_stash/matches", strings.NewReader(`[{"sha1":"abc","size":123}, {"sha1":"def","size":456}]`)))
 
 				Expect(*responseWriter).To(HaveStatusCodeAndBody(
 					Equal(http.StatusOK),
-					Equal("[{\"sha1\":\"def\"}]")))
+					Equal("[{\"sha1\":\"abc\"}]")))
+			})
+
+			It("returns StatusOK and an empty list when none of the entries match", func() {
+				router.ServeHTTP(responseWriter, httptest.NewRequest(
+					"POST", "/app_stash/matches", strings.NewReader(`[{"sha1":"abc","size":123}, {"sha1":"def","size":456}]`)))
+
+				Expect(*responseWriter).To(HaveStatusCodeAndBody(
+					Equal(http.StatusOK),
+					Equal("[]")))
 			})
 		})
 
@@ -161,13 +176,14 @@ var _ = Describe("routes", func() {
 			})
 
 			It("downloads files identified by sha1s from blobstore, zips them and returns zip", func() {
-				entries["sha1xyz"] = []byte("some content")
-				entries["sha1abc"] = []byte("some more content")
+				blobstoreEntries["sha1xyz"] = []byte("some content")
+				blobstoreEntries["sha1abc"] = []byte("some more content")
 
 				router.ServeHTTP(responseWriter, httptest.NewRequest(
 					"POST", "/app_stash/bundles", strings.NewReader("[{\"sha1\":\"sha1xyz\", \"fn\":\"filename1\"}, {\"sha1\":\"sha1abc\", \"fn\":\"filename2\"}]")))
 
 				Expect(responseWriter.Code).To(Equal(http.StatusOK))
+				// TODO: this should also verify filemodes of the newly created files
 				Expect(zipContentsOf(responseWriter.Body)).To(SatisfyAll(
 					HaveKeyWithValue("filename1", []byte("some content")),
 					HaveKeyWithValue("filename2", []byte("some more content"))))
