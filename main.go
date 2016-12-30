@@ -32,6 +32,9 @@ func main() {
 	}
 
 	rootRouter := mux.NewRouter()
+	rootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
 
 	internalRouter := mux.NewRouter()
 
@@ -45,11 +48,10 @@ func main() {
 	if e != nil {
 		log.Fatalf("Public endpoint invalid: %v", e)
 	}
-	rootRouter.Host(privateEndpoint.Host).Handler(internalRouter)
-	appStashBlobstore, _ := createPackageBlobstoreAndSignURLHandler(config.AppStash, publicEndpoint.Host, config.Port, config.Secret)
-	packageBlobstore, signPackageURLHandler := createPackageBlobstoreAndSignURLHandler(config.Packages, publicEndpoint.Host, config.Port, config.Secret)
-	dropletBlobstore, signDropletURLHandler := createPackageBlobstoreAndSignURLHandler(config.Droplets, publicEndpoint.Host, config.Port, config.Secret)
-	buildpackBlobstore, signBuildpackURLHandler := createPackageBlobstoreAndSignURLHandler(config.Buildpacks, publicEndpoint.Host, config.Port, config.Secret)
+	appStashBlobstore, _ := createBlobstoreAndSignURLHandler(config.AppStash, publicEndpoint.Host, config.Port, config.Secret)
+	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, publicEndpoint.Host, config.Port, config.Secret)
+	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, publicEndpoint.Host, config.Port, config.Secret)
+	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, publicEndpoint.Host, config.Port, config.Secret)
 
 	routes.SetUpSignRoute(internalRouter, &basic_auth_middleware.BasicAuthMiddleware{config.SigningUsers[0].Username, config.SigningUsers[0].Password},
 		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler)
@@ -78,12 +80,9 @@ func main() {
 		}
 	}
 
-	logger := &negroni.Logger{ALogger: log.New(os.Stdout, "[bitsgo] ", log.LstdFlags|log.Lshortfile|log.LUTC)}
-	logger.SetFormat(negroni.LoggerDefaultFormat)
-	logger.SetDateFormat(negroni.LoggerDefaultDateFormat)
 	srv := &http.Server{
 		Handler: negroni.New(
-			logger,
+			newLogger(),
 			negroni.Wrap(rootRouter),
 		),
 		Addr:         fmt.Sprintf("0.0.0.0:%v", config.Port),
@@ -94,7 +93,7 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-func createPackageBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, publicHost string, port int, secret string) (routes.Blobstore, routes.SignURLHandler) {
+func createBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, publicHost string, port int, secret string) (routes.Blobstore, routes.SignURLHandler) {
 	switch blobstoreConfig.BlobstoreType {
 	case "local":
 		fmt.Println("Creating local blobstore", "path prefix:", blobstoreConfig.LocalConfig.PathPrefix)
@@ -122,4 +121,11 @@ func usesLocalBlobstore(config Config) bool {
 	return config.Packages.BlobstoreType == "local" ||
 		config.Buildpacks.BlobstoreType == "local" ||
 		config.Droplets.BlobstoreType == "local"
+}
+
+func newLogger() *negroni.Logger {
+	logger := &negroni.Logger{ALogger: log.New(os.Stdout, "[bitsgo] ", log.LstdFlags|log.Lshortfile|log.LUTC)}
+	logger.SetFormat(negroni.LoggerDefaultFormat)
+	logger.SetDateFormat(negroni.LoggerDefaultDateFormat)
+	return logger
 }
