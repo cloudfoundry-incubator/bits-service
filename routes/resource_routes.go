@@ -37,7 +37,7 @@ func SetUpBuildpackCacheRoutes(router *mux.Router, blobstore Blobstore) {
 	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("HEAD").HandlerFunc(handler.Head)
 	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("GET").HandlerFunc(handler.Get)
 	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("DELETE").HandlerFunc(handler.Delete)
-	router.Path("/buildpack_cache/entries/{app_guid}/").Methods("DELETE").HandlerFunc(handler.DeleteAppGuid)
+	router.Path("/buildpack_cache/entries/{app_guid}").Methods("DELETE").HandlerFunc(handler.DeleteAppGuid)
 	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(handler.DeleteEntries)
 }
 

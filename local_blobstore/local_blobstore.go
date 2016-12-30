@@ -61,10 +61,11 @@ func (blobstore *LocalBlobstore) Put(path string, src io.ReadSeeker) (redirectLo
 }
 
 func (blobstore *LocalBlobstore) Delete(path string) error {
-	e := os.Remove(filepath.Join(blobstore.pathPrefix, path))
+	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
 	if os.IsNotExist(e) {
 		return routes.NewNotFoundError()
 	}
+	e = os.RemoveAll(filepath.Join(blobstore.pathPrefix, path))
 	if e != nil {
 		return fmt.Errorf("Error while deleting file %v. Caused by: %v", path, e)
 	}

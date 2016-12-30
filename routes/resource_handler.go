@@ -156,7 +156,15 @@ func (handler *BuildpackCacheHandler) Get(responseWriter http.ResponseWriter, re
 func (handler *BuildpackCacheHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
 	e := handler.blobStore.Delete(
 		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]))
-	writeResponseBasedOnError(responseWriter, e)
+	switch e.(type) {
+	case *NotFoundError:
+		responseWriter.WriteHeader(http.StatusNotFound)
+		return
+	case error:
+		internalServerError(responseWriter, e)
+		return
+	}
+	responseWriter.WriteHeader(http.StatusNoContent)
 }
 
 func (handler *BuildpackCacheHandler) DeleteAppGuid(responseWriter http.ResponseWriter, request *http.Request) {
@@ -173,13 +181,13 @@ func (handler *BuildpackCacheHandler) DeleteEntries(responseWriter http.Response
 func writeResponseBasedOnError(responseWriter http.ResponseWriter, e error) {
 	switch e.(type) {
 	case *NotFoundError:
-		responseWriter.WriteHeader(http.StatusNotFound)
+		responseWriter.WriteHeader(http.StatusNoContent)
 		return
 	case error:
 		internalServerError(responseWriter, e)
 		return
 	}
-	responseWriter.WriteHeader(http.StatusOK)
+	responseWriter.WriteHeader(http.StatusNoContent)
 }
 
 func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
