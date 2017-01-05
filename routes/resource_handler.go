@@ -38,16 +38,21 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 }
 
 func (handler *ResourceHandler) Head(responseWriter http.ResponseWriter, request *http.Request) {
-	exists, e := handler.blobstore.Exists(pathFor(mux.Vars(request)["guid"]))
-	if e != nil {
+	body, redirectLocation, e := handler.blobstore.Get(pathFor(mux.Vars(request)["guid"]))
+	switch e.(type) {
+	case *NotFoundError:
+		responseWriter.WriteHeader(http.StatusNotFound)
+		return
+	case error:
 		internalServerError(responseWriter, e)
 		return
 	}
-	if exists {
-		responseWriter.WriteHeader(http.StatusOK)
-	} else {
-		responseWriter.WriteHeader(http.StatusNotFound)
+	if redirectLocation != "" {
+		redirect(responseWriter, redirectLocation)
+		return
 	}
+	defer body.Close()
+	responseWriter.WriteHeader(http.StatusOK)
 }
 
 func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
@@ -105,7 +110,7 @@ func (handler *BuildpackCacheHandler) Put(responseWriter http.ResponseWriter, re
 	defer file.Close()
 
 	redirectLocation, e := handler.blobStore.Put(
-		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]), file)
+		fmt.Sprintf("/buildpack_cache/%s/%s", pathFor(mux.Vars(request)["app_guid"]), mux.Vars(request)["stack_name"]), file)
 
 	if e != nil {
 		internalServerError(responseWriter, e)
@@ -120,22 +125,27 @@ func (handler *BuildpackCacheHandler) Put(responseWriter http.ResponseWriter, re
 }
 
 func (handler *BuildpackCacheHandler) Head(responseWriter http.ResponseWriter, request *http.Request) {
-	exists, e := handler.blobStore.Exists(
-		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]))
-	if e != nil {
+	body, redirectLocation, e := handler.blobStore.Get(
+		fmt.Sprintf("/buildpack_cache/%s/%s", pathFor(mux.Vars(request)["app_guid"]), mux.Vars(request)["stack_name"]))
+	switch e.(type) {
+	case *NotFoundError:
+		responseWriter.WriteHeader(http.StatusNotFound)
+		return
+	case error:
 		internalServerError(responseWriter, e)
 		return
 	}
-	if exists {
-		responseWriter.WriteHeader(http.StatusOK)
-	} else {
-		responseWriter.WriteHeader(http.StatusNotFound)
+	if redirectLocation != "" {
+		redirect(responseWriter, redirectLocation)
+		return
 	}
+	defer body.Close()
+	responseWriter.WriteHeader(http.StatusOK)
 }
 
 func (handler *BuildpackCacheHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
 	body, redirectLocation, e := handler.blobStore.Get(
-		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]))
+		fmt.Sprintf("/buildpack_cache/%s/%s", pathFor(mux.Vars(request)["app_guid"]), mux.Vars(request)["stack_name"]))
 	switch e.(type) {
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
@@ -155,7 +165,7 @@ func (handler *BuildpackCacheHandler) Get(responseWriter http.ResponseWriter, re
 
 func (handler *BuildpackCacheHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
 	e := handler.blobStore.Delete(
-		fmt.Sprintf("/buildpack_cache/entries/%s/%s", mux.Vars(request)["app_guid"], mux.Vars(request)["stack_name"]))
+		fmt.Sprintf("/buildpack_cache/%s/%s", pathFor(mux.Vars(request)["app_guid"]), mux.Vars(request)["stack_name"]))
 	switch e.(type) {
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
@@ -169,12 +179,12 @@ func (handler *BuildpackCacheHandler) Delete(responseWriter http.ResponseWriter,
 
 func (handler *BuildpackCacheHandler) DeleteAppGuid(responseWriter http.ResponseWriter, request *http.Request) {
 	e := handler.blobStore.Delete(
-		fmt.Sprintf("/buildpack_cache/entries/%s", mux.Vars(request)["app_guid"]))
+		fmt.Sprintf("/buildpack_cache/%s", pathFor(mux.Vars(request)["app_guid"])))
 	writeResponseBasedOnError(responseWriter, e)
 }
 
 func (handler *BuildpackCacheHandler) DeleteEntries(responseWriter http.ResponseWriter, request *http.Request) {
-	e := handler.blobStore.Delete("/buildpack_cache/entries")
+	e := handler.blobStore.Delete("/buildpack_cache")
 	writeResponseBasedOnError(responseWriter, e)
 }
 
@@ -191,8 +201,10 @@ func writeResponseBasedOnError(responseWriter http.ResponseWriter, e error) {
 }
 
 func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
-	responseWriter.WriteHeader(http.StatusFound)
+	// TODO this should actually be logged as part of the middleware, so that it is easier to map it to a specific request
+	log.Printf("Location: %v", redirectLocation)
 	responseWriter.Header().Set("Location", redirectLocation)
+	responseWriter.WriteHeader(http.StatusFound)
 }
 
 func internalServerError(responseWriter http.ResponseWriter, e error) {

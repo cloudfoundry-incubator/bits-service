@@ -23,6 +23,7 @@ type S3BlobstoreConfig struct {
 	Bucket          string
 	AccessKeyID     string `yaml:"access_key_id"`
 	SecretAccessKey string `yaml:"secret_access_key"`
+	Region          string
 }
 
 func TestS3Blobstore(t *testing.T) {
@@ -58,7 +59,7 @@ var _ = Describe("S3 Blobstores", func() {
 
 	Describe("S3LegacyBlobstore", func() {
 		It("can put and get a resource there", func() {
-			blobstore := NewS3LegacyBlobstore(config.Bucket, config.AccessKeyID, config.SecretAccessKey)
+			blobstore := NewS3LegacyBlobstore(config.Bucket, config.AccessKeyID, config.SecretAccessKey, config.Region)
 
 			// Put:
 			redirectLocation, e := blobstore.Put(filepath, strings.NewReader("the file content"))
@@ -83,7 +84,7 @@ var _ = Describe("S3 Blobstores", func() {
 
 	Describe("S3PureRedirectBlobstore", func() {
 		It("can put and get a resource there", func() {
-			blobstore := NewS3PureRedirectBlobstore(config.Bucket, config.AccessKeyID, config.SecretAccessKey)
+			blobstore := NewS3PureRedirectBlobstore(config.Bucket, config.AccessKeyID, config.SecretAccessKey, config.Region)
 
 			// Put:
 			redirectLocation, e := blobstore.Put(filepath, nil)

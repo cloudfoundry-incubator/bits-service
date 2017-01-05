@@ -3,20 +3,9 @@ package local_blobstore
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/petergtz/bitsgo/pathsigner"
 )
-
-type SignLocalUrlHandler struct {
-	Signer           *pathsigner.PathSigner
-	DelegateEndpoint string
-}
-
-func (handler *SignLocalUrlHandler) Sign(responseWriter http.ResponseWriter, request *http.Request) {
-	signPath := strings.Replace(request.URL.Path, "/sign", "", 1)
-	fmt.Fprintf(responseWriter, "%s%s", handler.DelegateEndpoint, handler.Signer.Sign(signPath))
-}
 
 type SignatureVerificationMiddleware struct {
 	Signer *pathsigner.PathSigner
@@ -32,4 +21,14 @@ func (middleware *SignatureVerificationMiddleware) ServeHTTP(responseWriter http
 		return
 	}
 	next(responseWriter, request)
+}
+
+type LocalResourceSigner struct {
+	Signer             *pathsigner.PathSigner
+	ResourcePathPrefix string
+	DelegateEndpoint   string
+}
+
+func (signer *LocalResourceSigner) Sign(resource string, method string) (signedURL string) {
+	return fmt.Sprintf("%s%s", signer.DelegateEndpoint, signer.Signer.Sign(signer.ResourcePathPrefix+resource))
 }

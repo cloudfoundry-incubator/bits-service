@@ -36,6 +36,7 @@ type S3BlobstoreConfig struct {
 	Bucket          string
 	AccessKeyID     string `yaml:"access_key_id"`
 	SecretAccessKey string `yaml:"secret_access_key"`
+	Region          string
 }
 
 type Credential struct {

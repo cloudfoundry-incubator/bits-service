@@ -8,20 +8,15 @@ import (
 	"github.com/urfave/negroni"
 )
 
-type SignURLHandler interface {
-	Sign(responseWriter http.ResponseWriter, request *http.Request)
-}
-
 func SetUpSignRoute(router *mux.Router, basicAuthMiddleware *basic_auth_middleware.BasicAuthMiddleware,
-	signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler SignURLHandler) {
-	router.PathPrefix("/sign/packages").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signPackageURLHandler))
-	router.PathPrefix("/sign/droplets").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signDropletURLHandler))
-	router.PathPrefix("/sign/buildpacks").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackURLHandler))
-	// TODO should this rather get its own handler instead of using the droplets' one?
-	router.PathPrefix("/sign/buildpack_cache").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signDropletURLHandler))
+	signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler *SignResourceHandler) {
+	router.Path("/sign/packages/{resource}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signPackageURLHandler))
+	router.Path("/sign/droplets/{resource:.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signDropletURLHandler))
+	router.Path("/sign/buildpacks/{resource}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackURLHandler))
+	router.Path("/sign/{resource:buildpack_cache/entries/.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackCacheURLHandler))
 }
 
-func wrapWith(basicAuthMiddleware *basic_auth_middleware.BasicAuthMiddleware, handler SignURLHandler) http.Handler {
+func wrapWith(basicAuthMiddleware *basic_auth_middleware.BasicAuthMiddleware, handler *SignResourceHandler) http.Handler {
 	return negroni.New(
 		basicAuthMiddleware,
 		negroni.Wrap(http.HandlerFunc(handler.Sign)),
