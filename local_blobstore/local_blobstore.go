@@ -43,6 +43,19 @@ func (blobstore *LocalBlobstore) Get(path string) (body io.ReadCloser, redirectL
 	return file, "", nil
 }
 
+func (blobstore *LocalBlobstore) Head(path string) (redirectLocation string, err error) {
+	log.Printf("%v", filepath.Join(blobstore.pathPrefix, path))
+	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
+
+	if os.IsNotExist(e) {
+		return "", routes.NewNotFoundError()
+	}
+	if e != nil {
+		return "", fmt.Errorf("Error while opening file %v. Caused by: %v", path, e)
+	}
+	return "", nil
+}
+
 func (blobstore *LocalBlobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	e := os.MkdirAll(filepath.Dir(filepath.Join(blobstore.pathPrefix, path)), os.ModeDir|0755)
 	if e != nil {

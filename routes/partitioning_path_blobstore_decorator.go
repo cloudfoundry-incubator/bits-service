@@ -2,12 +2,20 @@ package routes
 
 import "io"
 
+func DecorateWithPartitioningPathBlobstore(delegate Blobstore) *PartitioningPathBlobstoreDecorator {
+	return &PartitioningPathBlobstoreDecorator{delegate}
+}
+
 type PartitioningPathBlobstoreDecorator struct {
 	delegate Blobstore
 }
 
 func (decorator *PartitioningPathBlobstoreDecorator) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	return decorator.delegate.Get(pathFor(path))
+}
+
+func (decorator *PartitioningPathBlobstoreDecorator) Head(path string) (redirectLocation string, err error) {
+	return decorator.delegate.Head(pathFor(path))
 }
 
 func (decorator *PartitioningPathBlobstoreDecorator) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {

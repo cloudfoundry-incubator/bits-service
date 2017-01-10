@@ -43,7 +43,7 @@ var _ = Describe("routes", func() {
 
 	var (
 		blobstoreEntries map[string][]byte
-		blobstore        *inmemory_blobstore.InMemoryBlobstore
+		blobstore        Blobstore
 		router           *mux.Router
 		responseWriter   *httptest.ResponseRecorder
 	)
@@ -64,13 +64,31 @@ var _ = Describe("routes", func() {
 			})
 
 			It("returns StatusOK and fills body with contents from file located at the partitioned path", func() {
-				blobstoreEntries["/th/eg/theguid"] = []byte("thecontent")
+				blobstoreEntries["th/eg/theguid"] = []byte("thecontent")
 
 				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/"+routeName+"/theguid", nil))
 
 				Expect(*responseWriter).To(HaveStatusCodeAndBody(
 					Equal(http.StatusOK),
 					Equal("thecontent")))
+			})
+		})
+
+		Context("Method HEAD", func() {
+			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
+				router.ServeHTTP(responseWriter, httptest.NewRequest("HEAD", "/"+routeName+"/theguid", nil))
+
+				Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
+			})
+
+			It("returns StatusOK and leaves body empty", func() {
+				blobstoreEntries["th/eg/theguid"] = []byte("thecontent")
+
+				router.ServeHTTP(responseWriter, httptest.NewRequest("HEAD", "/"+routeName+"/theguid", nil))
+
+				Expect(*responseWriter).To(HaveStatusCodeAndBody(
+					Equal(http.StatusOK),
+					Equal("")))
 			})
 		})
 
@@ -90,24 +108,61 @@ var _ = Describe("routes", func() {
 					Equal(http.StatusCreated),
 					BeEmpty()))
 
-				Expect(blobstoreEntries).To(HaveKeyWithValue("/th/eg/theguid", []byte("My test string")))
+				Expect(blobstoreEntries).To(HaveKeyWithValue("th/eg/theguid", []byte("My test string")))
+			})
+		})
+
+		Context("Method DELETE", func() {
+			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
+				router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", "/"+routeName+"/theguid", nil))
+
+				Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
+			})
+
+			It("returns StatusOK", func() {
+				blobstoreEntries["th/eg/theguid"] = []byte("thecontent")
+
+				router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", "/"+routeName+"/theguid", nil))
+
+				Expect(responseWriter.Code).To(Equal(http.StatusNoContent))
 			})
 		})
 	}
 
 	Describe("/packages/{guid}", func() {
-		BeforeEach(func() { SetUpPackageRoutes(router, blobstore) })
+		BeforeEach(func() { SetUpPackageRoutes(router, DecorateWithPartitioningPathBlobstore(blobstore)) })
 		ItSupportsMethodsGetPutDeleteFor("packages", "package")
 	})
 
 	Describe("/droplets/{guid}", func() {
-		BeforeEach(func() { SetUpDropletRoutes(router, blobstore) })
+		BeforeEach(func() { SetUpDropletRoutes(router, DecorateWithPartitioningPathBlobstore(blobstore)) })
 		ItSupportsMethodsGetPutDeleteFor("droplets", "droplet")
 	})
 
 	Describe("/buildpacks/{guid}", func() {
-		BeforeEach(func() { SetUpBuildpackRoutes(router, blobstore) })
+		BeforeEach(func() { SetUpBuildpackRoutes(router, DecorateWithPartitioningPathBlobstore(blobstore)) })
 		ItSupportsMethodsGetPutDeleteFor("buildpacks", "buildpack")
+	})
+
+	Describe("/buildpack_cache/entries/{app_guid}/{stack_name}", func() {
+		BeforeEach(func() { SetUpBuildpackCacheRoutes(router, blobstore) })
+		Context("Method GET", func() {
+			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
+				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/buildpack_cache/entries/theguid/thestackname", nil))
+
+				Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
+			})
+
+			It("returns StatusOK and fills body with contents from file located at the partitioned path", func() {
+				blobstoreEntries["buildpack_cache/th/eg/theguid/thestackname"] = []byte("thecontent")
+
+				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/buildpack_cache/entries/theguid/thestackname", nil))
+
+				Expect(*responseWriter).To(HaveStatusCodeAndBody(
+					Equal(http.StatusOK),
+					Equal("thecontent")))
+			})
+		})
 	})
 
 	Describe("/app_stash", func() {

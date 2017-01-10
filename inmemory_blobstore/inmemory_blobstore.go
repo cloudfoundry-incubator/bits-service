@@ -28,6 +28,14 @@ func (blobstore *InMemoryBlobstore) Exists(path string) (bool, error) {
 	return hasKey, nil
 }
 
+func (blobstore *InMemoryBlobstore) Head(path string) (redirectLocation string, err error) {
+	_, hasKey := blobstore.Entries[path]
+	if !hasKey {
+		return "", routes.NewNotFoundError()
+	}
+	return "", nil
+}
+
 func (blobstore *InMemoryBlobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	entry, hasKey := blobstore.Entries[path]
 	if !hasKey {
