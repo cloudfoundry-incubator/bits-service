@@ -37,11 +37,11 @@ func (blobstore *S3LegacyBlobStore) Put(path string, src io.ReadSeeker) (redirec
 }
 
 func (blobstore *S3LegacyBlobStore) Exists(path string) (bool, error) {
-	return blobstore.Exists(path)
+	return blobstore.noRedirect.Exists(path)
 }
 
 func (blobstore *S3LegacyBlobStore) Delete(path string) error {
-	return blobstore.Delete(path)
+	return blobstore.noRedirect.Delete(path)
 }
 
 type S3PureRedirectBlobStore struct {

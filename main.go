@@ -53,7 +53,7 @@ func main() {
 	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, publicEndpoint.Host, config.Port, config.Secret, "packages")
 	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, publicEndpoint.Host, config.Port, config.Secret, "droplets")
 	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, publicEndpoint.Host, config.Port, config.Secret, "buildpacks")
-	signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, publicEndpoint.Host, config.Port, config.Secret, "droplets")
+	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, publicEndpoint.Host, config.Port, config.Secret, "droplets")
 
 	routes.SetUpSignRoute(internalRouter, &basic_auth_middleware.BasicAuthMiddleware{config.SigningUsers[0].Username, config.SigningUsers[0].Password},
 		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler)
@@ -62,7 +62,7 @@ func main() {
 	routes.SetUpPackageRoutes(internalRouter, packageBlobstore)
 	routes.SetUpBuildpackRoutes(internalRouter, buildpackBlobstore)
 	routes.SetUpDropletRoutes(internalRouter, dropletBlobstore)
-	routes.SetUpBuildpackCacheRoutes(internalRouter, dropletBlobstore)
+	routes.SetUpBuildpackCacheRoutes(internalRouter, buildpackCacheBlobstore)
 
 	if usesLocalBlobstore(config) {
 		publicRouter := mux.NewRouter()
@@ -78,7 +78,7 @@ func main() {
 		}
 		if config.Droplets.BlobstoreType == "local" {
 			routes.SetUpDropletRoutes(publicRouter, dropletBlobstore)
-			routes.SetUpBuildpackCacheRoutes(publicRouter, dropletBlobstore)
+			routes.SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheBlobstore)
 		}
 	}
 
@@ -109,37 +109,42 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 				},
 			)
 	case "s3", "S3", "AWS", "aws":
-		return s3_blobstore.NewS3LegacyBlobstore(*blobstoreConfig.S3Config),
-			routes.NewSignResourceHandler(routes.DecorateWithPartitioningPathResourceSigner(
-				s3_blobstore.NewS3ResourceSigner(*blobstoreConfig.S3Config)),
-			)
+		return routes.DecorateWithPartitioningPathBlobstore(
+				s3_blobstore.NewS3LegacyBlobstore(*blobstoreConfig.S3Config)),
+			routes.NewSignResourceHandler(
+				routes.DecorateWithPartitioningPathResourceSigner(
+					s3_blobstore.NewS3ResourceSigner(*blobstoreConfig.S3Config)))
 	default:
 		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
 		return nil, nil // satisfy compiler
 	}
 }
 
-func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) *routes.SignResourceHandler {
+func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (routes.Blobstore, *routes.SignResourceHandler) {
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
 		fmt.Println("Creating local blobstore", "path prefix:", blobstoreConfig.LocalConfig.PathPrefix)
-		return routes.NewSignResourceHandler(
-			&local_blobstore.LocalResourceSigner{
-				DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
-				Signer:             &pathsigner.PathSigner{secret},
-				ResourcePathPrefix: "/" + resourceType + "/",
-			},
-		)
+		return local_blobstore.NewLocalBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
+			routes.NewSignResourceHandler(
+				&local_blobstore.LocalResourceSigner{
+					DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
+					Signer:             &pathsigner.PathSigner{secret},
+					ResourcePathPrefix: "/" + resourceType + "/",
+				},
+			)
 	case "s3", "S3", "AWS", "aws":
-		return routes.NewSignResourceHandler(
-			routes.DecorateWithPartitioningPathResourceSigner(
-				routes.DecorateWithPrefixingPathResourceSigner(
-					s3_blobstore.NewS3ResourceSigner(*blobstoreConfig.S3Config),
-					"buildpack_cache")),
-		)
+		return routes.DecorateWithPartitioningPathBlobstore(
+				routes.DecorateWithPrefixingPathBlobstore(
+					s3_blobstore.NewS3LegacyBlobstore(*blobstoreConfig.S3Config), "buildpack_cache/")),
+			routes.NewSignResourceHandler(
+				routes.DecorateWithPartitioningPathResourceSigner(
+					routes.DecorateWithPrefixingPathResourceSigner(
+						s3_blobstore.NewS3ResourceSigner(*blobstoreConfig.S3Config),
+						"buildpack_cache")),
+			)
 	default:
 		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
-		return nil // satisfy compiler
+		return nil, nil // satisfy compiler
 	}
 }
 
