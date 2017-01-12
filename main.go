@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo/basic_auth_middleware"
+	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/local_blobstore"
 	"github.com/petergtz/bitsgo/pathsigner"
 	"github.com/petergtz/bitsgo/routes"
@@ -26,7 +27,7 @@ var (
 func main() {
 	kingpin.Parse()
 
-	config, e := LoadConfig(*configPath)
+	config, e := config.LoadConfig(*configPath)
 	if e != nil {
 		log.Fatalf("Could not load config. Caused by: %v", e)
 	}
@@ -95,7 +96,7 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-func createBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (routes.Blobstore, *routes.SignResourceHandler) {
+func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (routes.Blobstore, *routes.SignResourceHandler) {
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
 		fmt.Println("Creating local blobstore", "path prefix:", blobstoreConfig.LocalConfig.PathPrefix)
@@ -108,17 +109,9 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, publicHos
 				},
 			)
 	case "s3", "S3", "AWS", "aws":
-		return s3_blobstore.NewS3LegacyBlobstore(
-				blobstoreConfig.S3Config.Bucket,
-				blobstoreConfig.S3Config.AccessKeyID,
-				blobstoreConfig.S3Config.SecretAccessKey,
-				blobstoreConfig.S3Config.Region),
-			routes.NewSignResourceHandler(
-				s3_blobstore.NewS3ResourceSigner(
-					blobstoreConfig.S3Config.Bucket,
-					blobstoreConfig.S3Config.AccessKeyID,
-					blobstoreConfig.S3Config.SecretAccessKey,
-					blobstoreConfig.S3Config.Region),
+		return s3_blobstore.NewS3LegacyBlobstore(*blobstoreConfig.S3Config),
+			routes.NewSignResourceHandler(routes.DecorateWithPartitioningPathResourceSigner(
+				s3_blobstore.NewS3ResourceSigner(*blobstoreConfig.S3Config)),
 			)
 	default:
 		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
@@ -126,7 +119,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig BlobstoreConfig, publicHos
 	}
 }
 
-func createBuildpackCacheSignURLHandler(blobstoreConfig BlobstoreConfig, publicHost string, port int, secret string, resourceType string) *routes.SignResourceHandler {
+func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) *routes.SignResourceHandler {
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
 		fmt.Println("Creating local blobstore", "path prefix:", blobstoreConfig.LocalConfig.PathPrefix)
@@ -139,11 +132,10 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig BlobstoreConfig, publicH
 		)
 	case "s3", "S3", "AWS", "aws":
 		return routes.NewSignResourceHandler(
-			s3_blobstore.NewS3BuildpackCacheSigner(
-				blobstoreConfig.S3Config.Bucket,
-				blobstoreConfig.S3Config.AccessKeyID,
-				blobstoreConfig.S3Config.SecretAccessKey,
-				blobstoreConfig.S3Config.Region),
+			routes.DecorateWithPartitioningPathResourceSigner(
+				routes.DecorateWithPrefixingPathResourceSigner(
+					s3_blobstore.NewS3ResourceSigner(*blobstoreConfig.S3Config),
+					"buildpack_cache")),
 		)
 	default:
 		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
@@ -151,25 +143,21 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig BlobstoreConfig, publicH
 	}
 }
 
-func createAppStashBlobstore(blobstoreConfig BlobstoreConfig) routes.Blobstore {
+func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blobstore {
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
 		fmt.Println("Creating local blobstore", "path prefix:", blobstoreConfig.LocalConfig.PathPrefix)
 		return local_blobstore.NewLocalBlobstore(blobstoreConfig.LocalConfig.PathPrefix)
 
 	case "s3", "S3", "AWS", "aws":
-		return s3_blobstore.NewS3NoRedirectBlobStore(
-			blobstoreConfig.S3Config.Bucket,
-			blobstoreConfig.S3Config.AccessKeyID,
-			blobstoreConfig.S3Config.SecretAccessKey,
-			blobstoreConfig.S3Config.Region)
+		return s3_blobstore.NewS3NoRedirectBlobStore(*blobstoreConfig.S3Config)
 	default:
 		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
 		return nil // satisfy compiler
 	}
 }
 
-func usesLocalBlobstore(config Config) bool {
+func usesLocalBlobstore(config config.Config) bool {
 	return config.Packages.BlobstoreType == "local" ||
 		config.Buildpacks.BlobstoreType == "local" ||
 		config.Droplets.BlobstoreType == "local"

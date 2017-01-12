@@ -145,7 +145,9 @@ var _ = Describe("routes", func() {
 	})
 
 	Describe("/buildpack_cache/entries/{app_guid}/{stack_name}", func() {
-		BeforeEach(func() { SetUpBuildpackCacheRoutes(router, blobstore) })
+		BeforeEach(func() {
+			SetUpBuildpackCacheRoutes(router, DecorateWithPartitioningPathBlobstore(DecorateWithPrefixingPathBlobstore(blobstore, "buildpack_cache/")))
+		})
 		Context("Method GET", func() {
 			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
 				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/buildpack_cache/entries/theguid/thestackname", nil))

@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/routes"
 	"github.com/pkg/errors"
 )
@@ -16,10 +17,10 @@ type S3LegacyBlobStore struct {
 	noRedirect   *S3NoRedirectBlobStore
 }
 
-func NewS3LegacyBlobstore(bucket, accessKeyID, secretAccessKey, region string) *S3LegacyBlobStore {
+func NewS3LegacyBlobstore(config config.S3BlobstoreConfig) *S3LegacyBlobStore {
 	return &S3LegacyBlobStore{
-		pureRedirect: NewS3PureRedirectBlobstore(bucket, accessKeyID, secretAccessKey, region),
-		noRedirect:   NewS3NoRedirectBlobStore(bucket, accessKeyID, secretAccessKey, region),
+		pureRedirect: NewS3PureRedirectBlobstore(config),
+		noRedirect:   NewS3NoRedirectBlobStore(config),
 	}
 }
 
@@ -48,10 +49,10 @@ type S3PureRedirectBlobStore struct {
 	bucket   string
 }
 
-func NewS3PureRedirectBlobstore(bucket, accessKeyID, secretAccessKey, region string) *S3PureRedirectBlobStore {
+func NewS3PureRedirectBlobstore(config config.S3BlobstoreConfig) *S3PureRedirectBlobStore {
 	return &S3PureRedirectBlobStore{
-		s3Client: newS3Client(region, accessKeyID, secretAccessKey),
-		bucket:   bucket,
+		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey),
+		bucket:   config.Bucket,
 	}
 }
 
@@ -105,10 +106,10 @@ type S3NoRedirectBlobStore struct {
 	bucket   string
 }
 
-func NewS3NoRedirectBlobStore(bucket, accessKeyID, secretAccessKey, region string) *S3NoRedirectBlobStore {
+func NewS3NoRedirectBlobStore(config config.S3BlobstoreConfig) *S3NoRedirectBlobStore {
 	return &S3NoRedirectBlobStore{
-		s3Client: newS3Client(region, accessKeyID, secretAccessKey),
-		bucket:   bucket,
+		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey),
+		bucket:   config.Bucket,
 	}
 }
 

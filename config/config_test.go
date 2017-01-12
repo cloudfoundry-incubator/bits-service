@@ -1,16 +1,22 @@
-package main_test
+package config_test
 
 import (
 	"fmt"
 	"io/ioutil"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"os"
+	"testing"
 
-	. "github.com/petergtz/bitsgo"
+	"github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
+	. "github.com/petergtz/bitsgo/config"
 )
+
+func TestConfig(t *testing.T) {
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "Config")
+}
 
 var _ = Describe("config", func() {
 

@@ -17,16 +17,10 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
+	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/routes"
 	. "github.com/petergtz/bitsgo/s3_blobstore"
 )
-
-type S3BlobstoreConfig struct {
-	Bucket          string
-	AccessKeyID     string `yaml:"access_key_id"`
-	SecretAccessKey string `yaml:"secret_access_key"`
-	Region          string
-}
 
 func TestS3Blobstore(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
@@ -35,7 +29,7 @@ func TestS3Blobstore(t *testing.T) {
 
 var _ = Describe("S3 Blobstores", func() {
 	var (
-		config    S3BlobstoreConfig
+		s3Config  config.S3BlobstoreConfig
 		filepath  string
 		blobstore routes.Blobstore
 	)
@@ -51,19 +45,19 @@ var _ = Describe("S3 Blobstores", func() {
 		defer file.Close()
 		content, e := ioutil.ReadAll(file)
 		Expect(e).NotTo(HaveOccurred())
-		e = yaml.Unmarshal(content, &config)
+		e = yaml.Unmarshal(content, &s3Config)
 		Expect(e).NotTo(HaveOccurred())
-		Expect(config.Bucket).NotTo(BeEmpty())
-		Expect(config.AccessKeyID).NotTo(BeEmpty())
-		Expect(config.SecretAccessKey).NotTo(BeEmpty())
-		Expect(config.Region).NotTo(BeEmpty())
+		Expect(s3Config.Bucket).NotTo(BeEmpty())
+		Expect(s3Config.AccessKeyID).NotTo(BeEmpty())
+		Expect(s3Config.SecretAccessKey).NotTo(BeEmpty())
+		Expect(s3Config.Region).NotTo(BeEmpty())
 
 		filepath = fmt.Sprintf("testfile-%v", time.Now())
 	})
 
 	Describe("S3NoRedirectBlobStore", func() {
 		It("can put and get a resource there", func() {
-			blobstore = NewS3NoRedirectBlobStore(config.Bucket, config.AccessKeyID, config.SecretAccessKey, config.Region)
+			blobstore = NewS3NoRedirectBlobStore(s3Config)
 
 			redirectLocation, e := blobstore.Head(filepath)
 			Expect(e).To(BeAssignableToTypeOf(&routes.NotFoundError{}))
@@ -101,7 +95,7 @@ var _ = Describe("S3 Blobstores", func() {
 
 	Describe("S3PureRedirectBlobstore", func() {
 		It("can put and get a resource there", func() {
-			blobstore := NewS3PureRedirectBlobstore(config.Bucket, config.AccessKeyID, config.SecretAccessKey, config.Region)
+			blobstore := NewS3PureRedirectBlobstore(s3Config)
 
 			redirectLocation, e := blobstore.Head(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())

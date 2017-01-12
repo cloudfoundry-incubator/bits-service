@@ -15,30 +15,27 @@ func SetUpAppStashRoutes(router *mux.Router, blobstore Blobstore) {
 
 func SetUpPackageRoutes(router *mux.Router, blobstore Blobstore) {
 	setUpDefaultMethodRoutes(
-		router.Path("/packages/{guid}").Subrouter(),
+		router.Path("/packages/{identifier}").Subrouter(),
 		&ResourceHandler{blobstore: blobstore, resourceType: "package"})
 }
 
 func SetUpBuildpackRoutes(router *mux.Router, blobstore Blobstore) {
 	setUpDefaultMethodRoutes(
-		router.Path("/buildpacks/{guid}").Subrouter(),
+		router.Path("/buildpacks/{identifier}").Subrouter(),
 		&ResourceHandler{blobstore: blobstore, resourceType: "buildpack"})
 }
 
 func SetUpDropletRoutes(router *mux.Router, blobstore Blobstore) {
 	setUpDefaultMethodRoutes(
-		router.Path("/droplets/{guid:.*}").Subrouter(), // TODO we could probably be more specific in the regex
+		router.Path("/droplets/{identifier:.*}").Subrouter(), // TODO we could probably be more specific in the regex
 		&ResourceHandler{blobstore: blobstore, resourceType: "droplet"})
 }
 
 func SetUpBuildpackCacheRoutes(router *mux.Router, blobstore Blobstore) {
-	handler := &BuildpackCacheHandler{blobStore: blobstore}
-	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("PUT").HandlerFunc(handler.Put)
-	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("HEAD").HandlerFunc(handler.Head)
-	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("GET").HandlerFunc(handler.Get)
-	router.Path("/buildpack_cache/entries/{app_guid}/{stack_name}").Methods("DELETE").HandlerFunc(handler.Delete)
-	router.Path("/buildpack_cache/entries/{app_guid}").Methods("DELETE").HandlerFunc(handler.DeleteAppGuid)
-	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(handler.DeleteEntries)
+	handler := &ResourceHandler{blobstore: blobstore, resourceType: "buildpack_cache"}
+	setUpDefaultMethodRoutes(router.Path("/buildpack_cache/entries/{identifier:.*}").Subrouter(), handler)
+	router.Path("/buildpack_cache/entries/{identifier}").Methods("DELETE").HandlerFunc(handler.DeleteDir)
+	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(handler.DeleteDir)
 }
 
 func setUpDefaultMethodRoutes(router *mux.Router, handler *ResourceHandler) {
