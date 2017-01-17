@@ -56,9 +56,11 @@ var _ = Describe("S3 Blobstores", func() {
 	})
 
 	Describe("S3NoRedirectBlobStore", func() {
-		It("can put and get a resource there", func() {
+		BeforeEach(func() {
 			blobstore = NewS3NoRedirectBlobStore(s3Config)
+		})
 
+		It("can put and get a resource there", func() {
 			redirectLocation, e := blobstore.Head(filepath)
 			Expect(e).To(BeAssignableToTypeOf(&routes.NotFoundError{}))
 			Expect(redirectLocation).To(BeEmpty())
@@ -89,6 +91,44 @@ var _ = Describe("S3 Blobstores", func() {
 			Expect(e).To(BeAssignableToTypeOf(&routes.NotFoundError{}))
 			Expect(redirectLocation).To(BeEmpty())
 			Expect(body).To(BeNil())
+		})
+
+		It("Can delete a prefix", func() {
+			Expect(blobstore.Exists("one")).To(BeFalse())
+			Expect(blobstore.Exists("two")).To(BeFalse())
+
+			redirectLocation, e := blobstore.Put("one", strings.NewReader("the file content"))
+			Expect(redirectLocation, e).To(BeEmpty())
+			redirectLocation, e = blobstore.Put("two", strings.NewReader("the file content"))
+			Expect(redirectLocation, e).To(BeEmpty())
+
+			Expect(blobstore.Exists("one")).To(BeTrue())
+			Expect(blobstore.Exists("two")).To(BeTrue())
+
+			e = blobstore.DeletePrefix("")
+			Expect(e).NotTo(HaveOccurred())
+
+			Expect(blobstore.Exists("one")).To(BeFalse())
+			Expect(blobstore.Exists("two")).To(BeFalse())
+		})
+
+		It("Can delete a prefix like in a file tree", func() {
+			Expect(blobstore.Exists("dir/one")).To(BeFalse())
+			Expect(blobstore.Exists("dir/two")).To(BeFalse())
+
+			redirectLocation, e := blobstore.Put("dir/one", strings.NewReader("the file content"))
+			Expect(redirectLocation, e).To(BeEmpty())
+			redirectLocation, e = blobstore.Put("dir/two", strings.NewReader("the file content"))
+			Expect(redirectLocation, e).To(BeEmpty())
+
+			Expect(blobstore.Exists("dir/one")).To(BeTrue())
+			Expect(blobstore.Exists("dir/two")).To(BeTrue())
+
+			e = blobstore.DeletePrefix("dir")
+			Expect(e).NotTo(HaveOccurred())
+
+			Expect(blobstore.Exists("dir/one")).To(BeFalse())
+			Expect(blobstore.Exists("dir/two")).To(BeFalse())
 		})
 
 	})

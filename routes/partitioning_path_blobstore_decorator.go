@@ -33,6 +33,14 @@ func (decorator *PartitioningPathBlobstoreDecorator) Delete(path string) error {
 	return decorator.delegate.Delete(pathFor(path))
 }
 
+func (decorator *PartitioningPathBlobstoreDecorator) DeletePrefix(prefix string) error {
+	if prefix == "" {
+		return decorator.delegate.DeletePrefix(prefix)
+	} else {
+		return decorator.delegate.DeletePrefix(pathFor(prefix))
+	}
+}
+
 func pathFor(identifier string) string {
 	return fmt.Sprintf("%s/%s/%s", identifier[0:2], identifier[2:4], identifier)
 }

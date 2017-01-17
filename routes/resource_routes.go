@@ -33,9 +33,9 @@ func SetUpDropletRoutes(router *mux.Router, blobstore Blobstore) {
 
 func SetUpBuildpackCacheRoutes(router *mux.Router, blobstore Blobstore) {
 	handler := &ResourceHandler{blobstore: blobstore, resourceType: "buildpack_cache"}
-	setUpDefaultMethodRoutes(router.Path("/buildpack_cache/entries/{identifier:.*}").Subrouter(), handler)
-	router.Path("/buildpack_cache/entries/{identifier}").Methods("DELETE").HandlerFunc(handler.DeleteDir)
 	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(handler.DeleteDir)
+	router.Path("/buildpack_cache/entries/{identifier}").Methods("DELETE").HandlerFunc(handler.DeleteDir)
+	setUpDefaultMethodRoutes(router.Path("/buildpack_cache/entries/{identifier:.*}").Subrouter(), handler)
 }
 
 func setUpDefaultMethodRoutes(router *mux.Router, handler *ResourceHandler) {

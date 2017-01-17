@@ -31,6 +31,10 @@ func (decorator *PrefixingPathBlobstoreDecorator) Delete(path string) error {
 	return decorator.delegate.Delete(decorator.prefix + path)
 }
 
+func (decorator *PrefixingPathBlobstoreDecorator) DeletePrefix(prefix string) error {
+	return decorator.delegate.DeletePrefix(decorator.prefix + prefix)
+}
+
 func DecorateWithPrefixingPathResourceSigner(delegate ResourceSigner, prefix string) *PrefixingPathResourceSigner {
 	return &PrefixingPathResourceSigner{delegate, prefix}
 }

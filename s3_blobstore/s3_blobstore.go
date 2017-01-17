@@ -44,6 +44,10 @@ func (blobstore *S3LegacyBlobStore) Delete(path string) error {
 	return blobstore.noRedirect.Delete(path)
 }
 
+func (blobstore *S3LegacyBlobStore) DeletePrefix(prefix string) error {
+	return blobstore.noRedirect.DeletePrefix(prefix)
+}
+
 type S3PureRedirectBlobStore struct {
 	s3Client *s3.S3
 	bucket   string
@@ -119,10 +123,8 @@ func (blobstore *S3NoRedirectBlobStore) Get(path string) (body io.ReadCloser, re
 		Key:    &path,
 	})
 	if e != nil {
-		if ae, isAwsErr := e.(awserr.Error); isAwsErr {
-			if ae.Code() == "NoSuchBucket" || ae.Code() == "NoSuchKey" || ae.Code() == "NotFound" {
-				return nil, "", routes.NewNotFoundError()
-			}
+		if isS3NotFoundError(e) {
+			return nil, "", routes.NewNotFoundError()
 		}
 		return nil, "", errors.Wrapf(e, "Path %v", path)
 	}
@@ -135,10 +137,8 @@ func (blobstore *S3NoRedirectBlobStore) Head(path string) (redirectLocation stri
 		Key:    &path,
 	})
 	if e != nil {
-		if ae, isAwsErr := e.(awserr.Error); isAwsErr {
-			if ae.Code() == "NoSuchBucket" || ae.Code() == "NoSuchKey" || ae.Code() == "NotFound" {
-				return "", routes.NewNotFoundError()
-			}
+		if isS3NotFoundError(e) {
+			return "", routes.NewNotFoundError()
 		}
 		return "", errors.Wrapf(e, "Path %v", path)
 	}
@@ -163,11 +163,8 @@ func (blobstore *S3NoRedirectBlobStore) Exists(path string) (bool, error) {
 		Key:    &path,
 	})
 	if e != nil {
-		if ae, isAwsErr := e.(awserr.Error); isAwsErr {
-			ae.Code()
-			if ae.Code() == "NoSuchBucket" || ae.Code() == "NoSuchKey" || ae.Code() == "NotFound" {
-				return false, nil
-			}
+		if isS3NotFoundError(e) {
+			return false, nil
 		}
 		return false, errors.Wrapf(e, "Failed to check for %v/%v", blobstore.bucket, path)
 	}
@@ -180,7 +177,46 @@ func (blobstore *S3NoRedirectBlobStore) Delete(path string) error {
 		Key:    &path,
 	})
 	if e != nil {
+		if isS3NotFoundError(e) {
+			return routes.NewNotFoundError()
+		}
 		return errors.Wrapf(e, "Path %v", path)
 	}
 	return nil
+}
+
+func (blobstore *S3NoRedirectBlobStore) DeletePrefix(prefix string) error {
+	deletionErrs := []error{}
+	e := blobstore.s3Client.ListObjectsPages(
+		&s3.ListObjectsInput{
+			Bucket: &blobstore.bucket,
+			Prefix: &prefix,
+		},
+		func(p *s3.ListObjectsOutput, lastPage bool) (shouldContinue bool) {
+			for _, object := range p.Contents {
+				e := blobstore.Delete(*object.Key)
+				if e != nil {
+					if _, isNotFoundError := e.(*routes.NotFoundError); !isNotFoundError {
+						deletionErrs = append(deletionErrs, e)
+					}
+				}
+			}
+			return true
+		})
+	if e != nil {
+		return errors.Wrapf(e, "Prefix %v, errors from deleting: %v", prefix, deletionErrs)
+	}
+	if len(deletionErrs) != 0 {
+		return errors.Errorf("Prefix %v, errors from deleting: %v", prefix, deletionErrs)
+	}
+	return nil
+}
+
+func isS3NotFoundError(e error) bool {
+	if ae, isAwsErr := e.(awserr.Error); isAwsErr {
+		if ae.Code() == "NoSuchBucket" || ae.Code() == "NoSuchKey" || ae.Code() == "NotFound" {
+			return true
+		}
+	}
+	return false
 }

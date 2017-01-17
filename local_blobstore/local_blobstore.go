@@ -84,3 +84,7 @@ func (blobstore *LocalBlobstore) Delete(path string) error {
 	}
 	return nil
 }
+
+func (blobstore *LocalBlobstore) DeletePrefix(prefix string) error {
+	panic("TODO")
+}

@@ -25,4 +25,5 @@ type Blobstore interface {
 	Put(path string, src io.ReadSeeker) (redirectLocation string, err error)
 	Exists(path string) (bool, error)
 	Delete(path string) error
+	DeletePrefix(prefix string) error
 }
