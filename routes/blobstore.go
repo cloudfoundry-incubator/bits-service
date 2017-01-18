@@ -23,6 +23,7 @@ type Blobstore interface {
 	Head(path string) (redirectLocation string, err error)
 	Get(path string) (body io.ReadCloser, redirectLocation string, err error)
 	Put(path string, src io.ReadSeeker) (redirectLocation string, err error)
+	Copy(src, dest string) (redirectLocation string, err error)
 	Exists(path string) (bool, error)
 	Delete(path string) error
 	DeletePrefix(prefix string) error

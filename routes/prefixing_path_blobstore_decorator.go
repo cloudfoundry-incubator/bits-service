@@ -23,6 +23,10 @@ func (decorator *PrefixingPathBlobstoreDecorator) Put(path string, src io.ReadSe
 	return decorator.delegate.Put(decorator.prefix+path, src)
 }
 
+func (decorator *PrefixingPathBlobstoreDecorator) Copy(src, dest string) (redirectLocation string, err error) {
+	return decorator.delegate.Copy(decorator.prefix+src, decorator.prefix+dest)
+}
+
 func (decorator *PrefixingPathBlobstoreDecorator) Exists(path string) (bool, error) {
 	return decorator.delegate.Exists(decorator.prefix + path)
 }

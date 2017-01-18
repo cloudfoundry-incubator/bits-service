@@ -73,6 +73,10 @@ func (blobstore *LocalBlobstore) Put(path string, src io.ReadSeeker) (redirectLo
 	return "", nil
 }
 
+func (blobstore *LocalBlobstore) Copy(src, dest string) (redirectLocation string, err error) {
+	panic("Not implemented")
+}
+
 func (blobstore *LocalBlobstore) Delete(path string) error {
 	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
 	if os.IsNotExist(e) {

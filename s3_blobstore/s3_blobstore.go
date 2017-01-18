@@ -4,12 +4,14 @@ import (
 	"io"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/routes"
 	"github.com/pkg/errors"
+	"github.com/uber-go/zap"
 )
 
 type S3LegacyBlobStore struct {
@@ -34,6 +36,10 @@ func (blobstore *S3LegacyBlobStore) Head(path string) (redirectLocation string, 
 
 func (blobstore *S3LegacyBlobStore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	return blobstore.noRedirect.Put(path, src)
+}
+
+func (blobstore *S3LegacyBlobStore) Copy(src, dest string) (redirectLocation string, err error) {
+	return blobstore.noRedirect.Copy(src, dest)
 }
 
 func (blobstore *S3LegacyBlobStore) Exists(path string) (bool, error) {
@@ -85,6 +91,15 @@ func (blobstore *S3PureRedirectBlobStore) Put(path string, src io.Reader) (redir
 	return signedURLFrom(request, blobstore.bucket, path)
 }
 
+func (blobstore *S3PureRedirectBlobStore) Copy(src, dest string) (redirectLocation string, err error) {
+	request, _ := blobstore.s3Client.CopyObjectRequest(&s3.CopyObjectInput{
+		Key:        &dest,
+		CopySource: &src,
+		Bucket:     &blobstore.bucket,
+	})
+	return signedURLFrom(request, blobstore.bucket, dest)
+}
+
 func signedURLFrom(req *request.Request, bucket, path string) (string, error) {
 	signedURL, e := req.Presign(time.Hour)
 	if e != nil {
@@ -117,7 +132,12 @@ func NewS3NoRedirectBlobStore(config config.S3BlobstoreConfig) *S3NoRedirectBlob
 	}
 }
 
+var (
+	logger = zap.New(zap.NewTextEncoder(), zap.DebugLevel)
+)
+
 func (blobstore *S3NoRedirectBlobStore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+	logger.Debug("Get from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
 	output, e := blobstore.s3Client.GetObject(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -132,6 +152,7 @@ func (blobstore *S3NoRedirectBlobStore) Get(path string) (body io.ReadCloser, re
 }
 
 func (blobstore *S3NoRedirectBlobStore) Head(path string) (redirectLocation string, err error) {
+	logger.Debug("Head from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
 	_, e := blobstore.s3Client.HeadObject(&s3.HeadObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -146,6 +167,7 @@ func (blobstore *S3NoRedirectBlobStore) Head(path string) (redirectLocation stri
 }
 
 func (blobstore *S3NoRedirectBlobStore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+	logger.Debug("Put to S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
 	_, e := blobstore.s3Client.PutObject(&s3.PutObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -153,6 +175,22 @@ func (blobstore *S3NoRedirectBlobStore) Put(path string, src io.ReadSeeker) (red
 	})
 	if e != nil {
 		return "", errors.Wrapf(e, "Path %v", path)
+	}
+	return "", nil
+}
+
+func (blobstore *S3NoRedirectBlobStore) Copy(src, dest string) (redirectLocation string, err error) {
+	logger.Debug("Copy in S3", zap.String("bucket", blobstore.bucket), zap.String("src", src), zap.String("dest", dest))
+	_, e := blobstore.s3Client.CopyObject(&s3.CopyObjectInput{
+		Key:        &dest,
+		CopySource: aws.String(blobstore.bucket + "/" + src),
+		Bucket:     &blobstore.bucket,
+	})
+	if e != nil {
+		if isS3NotFoundError(e) {
+			return "", routes.NewNotFoundError()
+		}
+		return "", errors.Wrapf(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.bucket)
 	}
 	return "", nil
 }

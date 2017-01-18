@@ -53,6 +53,10 @@ func (blobstore *InMemoryBlobstore) Put(path string, src io.ReadSeeker) (redirec
 	return "", nil
 }
 
+func (blobstore *InMemoryBlobstore) Copy(src, dest string) (redirectLocation string, err error) {
+	panic("Not implemented")
+}
+
 func (blobstore *InMemoryBlobstore) Delete(path string) error {
 	_, hasKey := blobstore.Entries[path]
 	if !hasKey {
@@ -60,4 +64,8 @@ func (blobstore *InMemoryBlobstore) Delete(path string) error {
 	}
 	delete(blobstore.Entries, path)
 	return nil
+}
+
+func (blobstore *InMemoryBlobstore) DeletePrefix(prefix string) error {
+	panic("Not implemented")
 }

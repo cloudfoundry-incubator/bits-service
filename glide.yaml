@@ -13,18 +13,11 @@ import:
   subpackages:
   - gstruct
   - types
-- package: github.com/petergtz/bitsgo
-  subpackages:
-  - basic_auth_middleware
-  - config
-  - local_blobstore
-  - pathsigner
-  - routes
-  - s3_blobstore
 - package: github.com/pkg/errors
 - package: github.com/urfave/negroni
 - package: gopkg.in/alecthomas/kingpin.v2
 - package: gopkg.in/yaml.v2
+- package: github.com/uber-go/zap
 testImport:
 - package: github.com/onsi/ginkgo
 - package: github.com/petergtz/pegomock

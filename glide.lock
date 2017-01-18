@@ -1,5 +1,5 @@
-hash: 349ded139ede2265bd7bd0d15724eb1483c62ea1913ae342339cc15a88f91d4d
-updated: 2017-01-15T23:43:48.719500061+01:00
+hash: 8b745a50ea956dd5e29b4537b912774032b55b22daf7dfb392cc2a65539e03a0
+updated: 2017-01-19T23:54:19.605863196+01:00
 imports:
 - name: github.com/alecthomas/template
   version: a0175ee3bccc567396460bf5acd36800cb10c49c
@@ -63,6 +63,10 @@ imports:
   - types
 - name: github.com/pkg/errors
   version: 248dadf4e9068a0b3e79f02ed0a610d935de5302
+- name: github.com/uber-go/atomic
+  version: 3b8db5e93c4c02efbc313e17b2e796b0914a01fb
+- name: github.com/uber-go/zap
+  version: a5783ee4b216a927da8f839c45cfbf9d694e1467
 - name: github.com/urfave/negroni
   version: 46eece4d3b43dd330e141b20adf0ce9b2b35ba53
 - name: gopkg.in/alecthomas/kingpin.v2

@@ -1,13 +1,16 @@
 package routes
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
+	"github.com/uber-go/zap"
 )
 
 type ResourceHandler struct {
@@ -15,17 +18,35 @@ type ResourceHandler struct {
 	resourceType string
 }
 
+var (
+	logger = zap.New(zap.NewTextEncoder(), zap.DebugLevel, zap.AddCaller())
+)
+
 func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
-	file, _, e := request.FormFile(handler.resourceType)
-	if e != nil {
-		badRequest(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
-		return
+	var (
+		redirectLocation string
+		e                error
+	)
+	if strings.Contains(request.Header.Get("Content-Type"), "multipart/form-data") {
+		logger.Info("Multipart upload")
+		file, _, e := request.FormFile(handler.resourceType)
+		if e != nil {
+			badRequest(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
+			return
+		}
+		defer file.Close()
+
+		redirectLocation, e = handler.blobstore.Put(mux.Vars(request)["identifier"], file)
+	} else {
+		logger.Info("Copy source guid")
+		redirectLocation, e = handler.copySourceGuid(request.Body, mux.Vars(request)["identifier"], responseWriter)
 	}
-	defer file.Close()
 
-	redirectLocation, e := handler.blobstore.Put(mux.Vars(request)["identifier"], file)
-
-	if e != nil {
+	switch e.(type) {
+	case *NotFoundError:
+		responseWriter.WriteHeader(http.StatusNotFound)
+		return
+	case error:
 		internalServerError(responseWriter, e)
 		return
 	}
@@ -36,6 +57,28 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 	}
 
 	responseWriter.WriteHeader(http.StatusCreated)
+}
+
+func (handler *ResourceHandler) copySourceGuid(body io.ReadCloser, targetGuid string, responseWriter http.ResponseWriter) (redirectLocation string, err error) {
+	if body == nil {
+		badRequest(responseWriter, "Body must contain source_guid when request is not multipart/form-data")
+		return
+	}
+	defer body.Close()
+	content, e := ioutil.ReadAll(body)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	var payload struct {
+		SourceGuid string `json:"source_guid"`
+	}
+	e = json.Unmarshal(content, &payload)
+	if e != nil {
+		badRequest(responseWriter, "Body must be valid JSON when request is not multipart/form-data", e)
+		return
+	}
+	return handler.blobstore.Copy(payload.SourceGuid, targetGuid)
 }
 
 func (handler *ResourceHandler) Head(responseWriter http.ResponseWriter, request *http.Request) {
@@ -123,7 +166,7 @@ func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
 }
 
 func internalServerError(responseWriter http.ResponseWriter, e error) {
-	log.Printf("Internal Server Error. Caused by: %+v", errors.WithStack(e))
+	log.Printf("Internal Server Error. Caused by: %+v", e)
 	responseWriter.WriteHeader(http.StatusInternalServerError)
 }
 

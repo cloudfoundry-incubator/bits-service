@@ -25,6 +25,10 @@ func (decorator *PartitioningPathBlobstoreDecorator) Put(path string, src io.Rea
 	return decorator.delegate.Put(pathFor(path), src)
 }
 
+func (decorator *PartitioningPathBlobstoreDecorator) Copy(src, dest string) (redirectLocation string, err error) {
+	return decorator.delegate.Copy(pathFor(src), pathFor(dest))
+}
+
 func (decorator *PartitioningPathBlobstoreDecorator) Exists(path string) (bool, error) {
 	return decorator.delegate.Exists(pathFor(path))
 }
