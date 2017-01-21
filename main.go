@@ -87,7 +87,7 @@ func main() {
 	}
 	httpHandler.UseHandler(rootRouter)
 
-	srv := &http.Server{
+	httpServer := &http.Server{
 		Handler: httpHandler,
 		Addr:    fmt.Sprintf("0.0.0.0:%v", config.Port),
 		// TODO possibly remove timeouts completely?
@@ -95,7 +95,7 @@ func main() {
 		ReadTimeout:  5 * time.Minute,
 	}
 
-	log.Fatal(srv.ListenAndServe())
+	log.Fatal(httpServer.ListenAndServe())
 }
 
 func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (routes.Blobstore, *routes.SignResourceHandler) {
