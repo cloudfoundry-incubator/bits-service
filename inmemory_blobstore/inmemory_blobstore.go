@@ -3,6 +3,7 @@ package inmemory_blobstore
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"bytes"
 
@@ -54,7 +55,8 @@ func (blobstore *InMemoryBlobstore) Put(path string, src io.ReadSeeker) (redirec
 }
 
 func (blobstore *InMemoryBlobstore) Copy(src, dest string) (redirectLocation string, err error) {
-	panic("Not implemented")
+	blobstore.Entries[dest] = blobstore.Entries[src]
+	return
 }
 
 func (blobstore *InMemoryBlobstore) Delete(path string) error {
@@ -67,5 +69,11 @@ func (blobstore *InMemoryBlobstore) Delete(path string) error {
 }
 
 func (blobstore *InMemoryBlobstore) DeletePrefix(prefix string) error {
-	panic("Not implemented")
+	for key := range blobstore.Entries {
+		if strings.HasPrefix(key, prefix) {
+			delete(blobstore.Entries, key)
+		}
+
+	}
+	return nil
 }
