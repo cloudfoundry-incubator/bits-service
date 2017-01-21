@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"net/url"
@@ -13,10 +11,12 @@ import (
 	"github.com/petergtz/bitsgo/basic_auth_middleware"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/local_blobstore"
+	log "github.com/petergtz/bitsgo/logger"
 	"github.com/petergtz/bitsgo/middlewares"
 	"github.com/petergtz/bitsgo/pathsigner"
 	"github.com/petergtz/bitsgo/routes"
 	"github.com/petergtz/bitsgo/s3_blobstore"
+	"github.com/uber-go/zap"
 	"github.com/urfave/negroni"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -30,7 +30,7 @@ func main() {
 
 	config, e := config.LoadConfig(*configPath)
 	if e != nil {
-		log.Fatalf("Could not load config. Caused by: %v", e)
+		log.Log.Fatal("Could not load config.", zap.Error(e))
 	}
 
 	rootRouter := mux.NewRouter()
@@ -42,13 +42,13 @@ func main() {
 
 	privateEndpoint, e := url.Parse(config.PrivateEndpoint)
 	if e != nil {
-		log.Fatalf("Private endpoint invalid: %v", e)
+		log.Log.Fatal("Private endpoint invalid", zap.Error(e))
 	}
 	rootRouter.Host(privateEndpoint.Host).Handler(internalRouter)
 
 	publicEndpoint, e := url.Parse(config.PublicEndpoint)
 	if e != nil {
-		log.Fatalf("Public endpoint invalid: %v", e)
+		log.Log.Fatal("Public endpoint invalid", zap.Error(e))
 	}
 	appStashBlobstore := createAppStashBlobstore(config.AppStash)
 	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, publicEndpoint.Host, config.Port, config.Secret, "packages")
@@ -81,7 +81,7 @@ func main() {
 		routes.SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheBlobstore)
 	}
 
-	httpHandler := negroni.New(newLogger())
+	httpHandler := negroni.New(middlewares.NewZapLoggerMiddleware(log.Log))
 	if config.MaxBodySizeBytes() != 0 {
 		httpHandler.Use(middlewares.NewBodySizeLimitMiddleware(config.MaxBodySizeBytes()))
 	}
@@ -95,7 +95,8 @@ func main() {
 		ReadTimeout:  5 * time.Minute,
 	}
 
-	log.Fatal(httpServer.ListenAndServe())
+	e = httpServer.ListenAndServe()
+	log.Log.Fatal("http server crashed", zap.Error(e))
 }
 
 func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (routes.Blobstore, *routes.SignResourceHandler) {
@@ -117,7 +118,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 				routes.DecorateWithPartitioningPathResourceSigner(
 					s3_blobstore.NewS3ResourceSigner(*blobstoreConfig.S3Config)))
 	default:
-		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
+		log.Log.Fatal("blobstoreConfig is invalid. BlobstoreType missing.")
 		return nil, nil // satisfy compiler
 	}
 }
@@ -145,7 +146,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 						"buildpack_cache")),
 			)
 	default:
-		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
+		log.Log.Fatal("blobstoreConfig is invalid. BlobstoreType missing.")
 		return nil, nil // satisfy compiler
 	}
 }
@@ -159,7 +160,7 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blob
 	case "s3", "S3", "AWS", "aws":
 		return s3_blobstore.NewS3NoRedirectBlobStore(*blobstoreConfig.S3Config)
 	default:
-		log.Fatalf("blobstoreConfig is invalid. BlobstoreType missing.")
+		log.Log.Fatal("blobstoreConfig is invalid. BlobstoreType missing.")
 		return nil // satisfy compiler
 	}
 }
@@ -168,11 +169,4 @@ func usesLocalBlobstore(config config.Config) bool {
 	return config.Packages.BlobstoreType == "local" ||
 		config.Buildpacks.BlobstoreType == "local" ||
 		config.Droplets.BlobstoreType == "local"
-}
-
-func newLogger() *negroni.Logger {
-	logger := &negroni.Logger{ALogger: log.New(os.Stdout, "[bitsgo] ", log.LstdFlags|log.Lshortfile|log.LUTC)}
-	logger.SetFormat(negroni.LoggerDefaultFormat)
-	logger.SetDateFormat(negroni.LoggerDefaultDateFormat)
-	return logger
 }
