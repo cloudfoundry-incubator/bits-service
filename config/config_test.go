@@ -86,4 +86,23 @@ port: 8000
 		))
 	})
 
+	It("correctly converts max_body_size", func() {
+		Expect((&Config{MaxBodySize: `13M`}).MaxBodySizeBytes()).To(Equal(uint64(13631488)))
+	})
+
+	It("returns an error when max_body_size is invalid", func() {
+		fmt.Fprintf(configFile, "%s", `max_body_size: 13 mb`)
+
+		_, e := LoadConfig(configFile.Name())
+
+		Expect(e).To(HaveOccurred())
+		Expect(e.Error()).To(
+			ContainSubstring("max_body_size is invalid"),
+		)
+	})
+
+	It("returns 0 when max_body_size is not defined", func() {
+		Expect((&Config{}).MaxBodySizeBytes()).To(Equal(uint64(0)))
+	})
+
 })

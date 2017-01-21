@@ -1,6 +1,8 @@
-hash: 8b745a50ea956dd5e29b4537b912774032b55b22daf7dfb392cc2a65539e03a0
-updated: 2017-01-19T23:54:19.605863196+01:00
+hash: 08684f11832ec8855c820c8cc90fbb295b86c1a0ec45b9eceba74910e8e0e4c3
+updated: 2017-01-20T22:03:50.659001499+01:00
 imports:
+- name: code.cloudfoundry.org/bytefmt
+  version: b12c1522f4cbb5f35861bd5dd2c39a4fa996441a
 - name: github.com/alecthomas/template
   version: a0175ee3bccc567396460bf5acd36800cb10c49c
   subpackages:

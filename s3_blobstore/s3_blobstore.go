@@ -133,7 +133,7 @@ func NewS3NoRedirectBlobStore(config config.S3BlobstoreConfig) *S3NoRedirectBlob
 }
 
 var (
-	logger = zap.New(zap.NewTextEncoder(), zap.DebugLevel)
+	logger = zap.New(zap.NewTextEncoder(), zap.DebugLevel, zap.AddCaller())
 )
 
 func (blobstore *S3NoRedirectBlobStore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {

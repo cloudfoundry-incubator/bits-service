@@ -13,6 +13,7 @@ import (
 	"github.com/petergtz/bitsgo/basic_auth_middleware"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/local_blobstore"
+	"github.com/petergtz/bitsgo/middlewares"
 	"github.com/petergtz/bitsgo/pathsigner"
 	"github.com/petergtz/bitsgo/routes"
 	"github.com/petergtz/bitsgo/s3_blobstore"
@@ -80,12 +81,15 @@ func main() {
 		routes.SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheBlobstore)
 	}
 
+	httpHandler := negroni.New(newLogger())
+	if config.MaxBodySizeBytes() != 0 {
+		httpHandler.Use(middlewares.NewBodySizeLimitMiddleware(config.MaxBodySizeBytes()))
+	}
+	httpHandler.UseHandler(rootRouter)
+
 	srv := &http.Server{
-		Handler: negroni.New(
-			newLogger(),
-			negroni.Wrap(rootRouter),
-		),
-		Addr: fmt.Sprintf("0.0.0.0:%v", config.Port),
+		Handler: httpHandler,
+		Addr:    fmt.Sprintf("0.0.0.0:%v", config.Port),
 		// TODO possibly remove timeouts completely?
 		WriteTimeout: 5 * time.Minute,
 		ReadTimeout:  5 * time.Minute,

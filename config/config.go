@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"code.cloudfoundry.org/bytefmt"
+
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -20,6 +22,18 @@ type Config struct {
 	Secret          string
 	Port            int
 	SigningUsers    []Credential `yaml:"signing_users"`
+	MaxBodySize     string       `yaml:"max_body_size"`
+}
+
+func (config *Config) MaxBodySizeBytes() uint64 {
+	if config.MaxBodySize == "" {
+		return 0
+	}
+	bytes, e := bytefmt.ToBytes(config.MaxBodySize)
+	if e != nil {
+		panic("Unexpected error: " + e.Error())
+	}
+	return bytes
 }
 
 type BlobstoreConfig struct {
@@ -73,6 +87,12 @@ func LoadConfig(filename string) (config Config, err error) {
 	}
 	if config.PrivateEndpoint == "" {
 		errs = append(errs, "private_endpoint must not be empty")
+	}
+	if config.MaxBodySize != "" {
+		_, e = bytefmt.ToBytes(config.MaxBodySize)
+		if e != nil {
+			errs = append(errs, "max_body_size is invalid. Caused by: "+e.Error())
+		}
 	}
 	if len(errs) > 0 {
 		return Config{}, errors.New("error in config values: " + strings.Join(errs, "; "))

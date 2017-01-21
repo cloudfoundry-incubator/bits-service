@@ -18,6 +18,7 @@ import:
 - package: gopkg.in/alecthomas/kingpin.v2
 - package: gopkg.in/yaml.v2
 - package: github.com/uber-go/zap
+- package: code.cloudfoundry.org/bytefmt
 testImport:
 - package: github.com/onsi/ginkgo
 - package: github.com/petergtz/pegomock

@@ -46,7 +46,16 @@ func (decorator *PartitioningPathBlobstoreDecorator) DeletePrefix(prefix string)
 }
 
 func pathFor(identifier string) string {
-	return fmt.Sprintf("%s/%s/%s", identifier[0:2], identifier[2:4], identifier)
+	if len(identifier) >= 4 {
+		return fmt.Sprintf("%s/%s/%s", identifier[0:2], identifier[2:4], identifier)
+	} else if len(identifier) == 3 {
+		return fmt.Sprintf("%s/%s/%s", identifier[0:2], identifier[2:3], identifier)
+	} else if len(identifier) == 2 {
+		return fmt.Sprintf("%s/%s", identifier[0:2], identifier)
+	} else if len(identifier) == 1 {
+		return fmt.Sprintf("%s/%s", identifier[0:1], identifier)
+	}
+	return ""
 }
 
 func DecorateWithPartitioningPathResourceSigner(delegate ResourceSigner) *PartitioningPathResourceSigner {

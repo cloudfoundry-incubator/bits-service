@@ -59,24 +59,24 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 	responseWriter.WriteHeader(http.StatusCreated)
 }
 
-func (handler *ResourceHandler) copySourceGuid(body io.ReadCloser, targetGuid string, responseWriter http.ResponseWriter) (redirectLocation string, err error) {
+func (handler *ResourceHandler) copySourceGuid(body io.ReadCloser, targetGuid string, responseWriter http.ResponseWriter) (string, error) {
 	if body == nil {
 		badRequest(responseWriter, "Body must contain source_guid when request is not multipart/form-data")
-		return
+		return "", nil
 	}
 	defer body.Close()
 	content, e := ioutil.ReadAll(body)
 	if e != nil {
 		internalServerError(responseWriter, e)
-		return
+		return "", nil
 	}
 	var payload struct {
 		SourceGuid string `json:"source_guid"`
 	}
 	e = json.Unmarshal(content, &payload)
 	if e != nil {
-		badRequest(responseWriter, "Body must be valid JSON when request is not multipart/form-data", e)
-		return
+		badRequest(responseWriter, "Body must be valid JSON when request is not multipart/form-data. %+v", e)
+		return "", nil
 	}
 	return handler.blobstore.Copy(payload.SourceGuid, targetGuid)
 }
