@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/petergtz/bitsgo/config"
+	"github.com/petergtz/bitsgo/logger"
 	"github.com/petergtz/bitsgo/routes"
 	"github.com/pkg/errors"
 	"github.com/uber-go/zap"
@@ -132,12 +133,8 @@ func NewS3NoRedirectBlobStore(config config.S3BlobstoreConfig) *S3NoRedirectBlob
 	}
 }
 
-var (
-	logger = zap.New(zap.NewTextEncoder(), zap.DebugLevel, zap.AddCaller())
-)
-
 func (blobstore *S3NoRedirectBlobStore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
-	logger.Debug("Get from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
+	logger.Log.Debug("Get from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
 	output, e := blobstore.s3Client.GetObject(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -152,7 +149,7 @@ func (blobstore *S3NoRedirectBlobStore) Get(path string) (body io.ReadCloser, re
 }
 
 func (blobstore *S3NoRedirectBlobStore) Head(path string) (redirectLocation string, err error) {
-	logger.Debug("Head from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
+	logger.Log.Debug("Head from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
 	_, e := blobstore.s3Client.HeadObject(&s3.HeadObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -167,7 +164,7 @@ func (blobstore *S3NoRedirectBlobStore) Head(path string) (redirectLocation stri
 }
 
 func (blobstore *S3NoRedirectBlobStore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
-	logger.Debug("Put to S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
+	logger.Log.Debug("Put to S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
 	_, e := blobstore.s3Client.PutObject(&s3.PutObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -180,7 +177,7 @@ func (blobstore *S3NoRedirectBlobStore) Put(path string, src io.ReadSeeker) (red
 }
 
 func (blobstore *S3NoRedirectBlobStore) Copy(src, dest string) (redirectLocation string, err error) {
-	logger.Debug("Copy in S3", zap.String("bucket", blobstore.bucket), zap.String("src", src), zap.String("dest", dest))
+	logger.Log.Debug("Copy in S3", zap.String("bucket", blobstore.bucket), zap.String("src", src), zap.String("dest", dest))
 	_, e := blobstore.s3Client.CopyObject(&s3.CopyObjectInput{
 		Key:        &dest,
 		CopySource: aws.String(blobstore.bucket + "/" + src),

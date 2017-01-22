@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/petergtz/bitsgo/logger"
 	"github.com/uber-go/zap"
 )
 
@@ -18,17 +18,13 @@ type ResourceHandler struct {
 	resourceType string
 }
 
-var (
-	logger = zap.New(zap.NewTextEncoder(), zap.DebugLevel, zap.AddCaller())
-)
-
 func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
 	var (
 		redirectLocation string
 		e                error
 	)
 	if strings.Contains(request.Header.Get("Content-Type"), "multipart/form-data") {
-		logger.Info("Multipart upload")
+		logger.Log.Info("Multipart upload")
 		file, _, e := request.FormFile(handler.resourceType)
 		if e != nil {
 			badRequest(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
@@ -38,7 +34,7 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 
 		redirectLocation, e = handler.blobstore.Put(mux.Vars(request)["identifier"], file)
 	} else {
-		logger.Info("Copy source guid")
+		logger.Log.Info("Copy source guid")
 		redirectLocation, e = handler.copySourceGuid(request.Body, mux.Vars(request)["identifier"], responseWriter)
 	}
 
@@ -159,14 +155,12 @@ func writeResponseBasedOnError(responseWriter http.ResponseWriter, e error) {
 }
 
 func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
-	// TODO this should actually be logged as part of the middleware, so that it is easier to map it to a specific request
-	log.Printf("Location: %v", redirectLocation)
 	responseWriter.Header().Set("Location", redirectLocation)
 	responseWriter.WriteHeader(http.StatusFound)
 }
 
 func internalServerError(responseWriter http.ResponseWriter, e error) {
-	log.Printf("Internal Server Error. Caused by: %+v", e)
+	logger.Log.Error("Internal Server Error.", zap.String("error", fmt.Sprintf("%+v", e)))
 	responseWriter.WriteHeader(http.StatusInternalServerError)
 }
 

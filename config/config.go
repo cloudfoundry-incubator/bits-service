@@ -59,9 +59,7 @@ type Credential struct {
 }
 
 type LoggingConfig struct {
-	File   string
-	Syslog string
-	Level  string
+	Level string
 }
 
 func LoadConfig(filename string) (config Config, err error) {

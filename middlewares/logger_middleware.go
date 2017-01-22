@@ -37,8 +37,7 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 
 	next(responseWriter, request)
 
-	middleware.logger.Info(
-		"HTTP Request completed",
+	fields := []zap.Field{
 		zap.String("host", request.Host),
 		zap.String("method", request.Method),
 		zap.String("path", request.URL.Path),
@@ -46,5 +45,9 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 		zap.Int("status-code", negroniResponseWriter.Status()),
 		zap.Int("body-size", negroniResponseWriter.Size()),
 		zap.Duration("duration", time.Since(startTime)),
-	)
+	}
+	if negroniResponseWriter.Status() >= 300 && negroniResponseWriter.Status() < 400 {
+		fields = append(fields, zap.String("Location", negroniResponseWriter.Header().Get("Location")))
+	}
+	middleware.logger.Info("HTTP Request completed", fields...)
 }

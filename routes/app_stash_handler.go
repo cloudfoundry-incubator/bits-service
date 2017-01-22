@@ -13,7 +13,9 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/petergtz/bitsgo/logger"
 	"github.com/pkg/errors"
+	"github.com/uber-go/zap"
 )
 
 type AppStashHandler struct {
@@ -32,14 +34,13 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	}
 	e = json.Unmarshal(body, &sha1s)
 	if e != nil {
-		log.Printf("Invalid body %s\n\n%v", body, e)
+		logger.Log.Debug("Invalid body", zap.String("body", string(body)), zap.Error(e))
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 		fmt.Fprintf(responseWriter, "Invalid body %s", body)
 		return
 	}
 	if len(sha1s) == 0 {
-		// TODO improve messages
-		log.Printf("Empty list %s\n\n%v", body, e)
+		logger.Log.Debug("Empty list", zap.String("body", string(body)), zap.Error(e))
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 		fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: must be a non-empty array.")
 		return
@@ -102,7 +103,9 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 			internalServerError(responseWriter, e)
 			return
 		}
-		fmt.Println(zipFileEntry.FileInfo().Mode().String())
+		logger.Log.Debug("Filemode in zip File Entry",
+			zap.String("filemode", zipFileEntry.FileInfo().Mode().String()),
+		)
 		if e != nil {
 			internalServerError(responseWriter, e)
 			return

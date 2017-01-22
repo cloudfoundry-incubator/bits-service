@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"log"
-
+	"github.com/petergtz/bitsgo/logger"
 	"github.com/petergtz/bitsgo/routes"
+	"github.com/uber-go/zap"
 )
 
 type LocalBlobstore struct {
@@ -31,7 +31,7 @@ func (blobstore *LocalBlobstore) Exists(path string) (bool, error) {
 }
 
 func (blobstore *LocalBlobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
-	log.Printf("%v", filepath.Join(blobstore.pathPrefix, path))
+	logger.Log.Debug("Get", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
 	file, e := os.Open(filepath.Join(blobstore.pathPrefix, path))
 
 	if os.IsNotExist(e) {
@@ -44,7 +44,7 @@ func (blobstore *LocalBlobstore) Get(path string) (body io.ReadCloser, redirectL
 }
 
 func (blobstore *LocalBlobstore) Head(path string) (redirectLocation string, err error) {
-	log.Printf("%v", filepath.Join(blobstore.pathPrefix, path))
+	logger.Log.Debug("Head", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
 	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
 
 	if os.IsNotExist(e) {

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"github.com/petergtz/bitsgo/basic_auth_middleware"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/local_blobstore"
+	"github.com/petergtz/bitsgo/logger"
 	log "github.com/petergtz/bitsgo/logger"
 	"github.com/petergtz/bitsgo/middlewares"
 	"github.com/petergtz/bitsgo/pathsigner"
@@ -32,6 +34,9 @@ func main() {
 	if e != nil {
 		log.Log.Fatal("Could not load config.", zap.Error(e))
 	}
+	logger.Log.Info("Logging level", zap.String("log-level", config.Logging.Level))
+
+	logger.SetLogger(zap.New(zap.NewTextEncoder(), zapLogLevelFrom(config.Logging.Level), zap.AddCaller()))
 
 	rootRouter := mux.NewRouter()
 	rootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +104,24 @@ func main() {
 	log.Log.Fatal("http server crashed", zap.Error(e))
 }
 
+func zapLogLevelFrom(configLogLevel string) zap.Level {
+	switch strings.ToLower(configLogLevel) {
+	case "", "debug":
+		return zap.DebugLevel
+	case "info":
+		return zap.InfoLevel
+	case "warn":
+		return zap.WarnLevel
+	case "error":
+		return zap.ErrorLevel
+	case "fatal":
+		return zap.FatalLevel
+	default:
+		logger.Log.Fatal("Invalid log level in config", zap.String("log-level", configLogLevel))
+		return -1
+	}
+}
+
 func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAuthCredentials []basic_auth_middleware.Credential) {
 	basicAuthCredentials = make([]basic_auth_middleware.Credential, len(configCredententials))
 	for i := range configCredententials {
@@ -111,7 +134,7 @@ func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAu
 func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (routes.Blobstore, *routes.SignResourceHandler) {
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
-		fmt.Println("Creating local blobstore", "path prefix:", blobstoreConfig.LocalConfig.PathPrefix)
+		logger.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
 		return local_blobstore.NewLocalBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
 			routes.NewSignResourceHandler(
 				&local_blobstore.LocalResourceSigner{
@@ -135,7 +158,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (routes.Blobstore, *routes.SignResourceHandler) {
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
-		fmt.Println("Creating local blobstore", "path prefix:", blobstoreConfig.LocalConfig.PathPrefix)
+		logger.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
 		return local_blobstore.NewLocalBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
 			routes.NewSignResourceHandler(
 				&local_blobstore.LocalResourceSigner{
@@ -163,7 +186,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blobstore {
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
-		fmt.Println("Creating local blobstore", "path prefix:", blobstoreConfig.LocalConfig.PathPrefix)
+		logger.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
 		return local_blobstore.NewLocalBlobstore(blobstoreConfig.LocalConfig.PathPrefix)
 
 	case "s3", "S3", "AWS", "aws":
