@@ -164,9 +164,3 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blob
 		return nil // satisfy compiler
 	}
 }
-
-func usesLocalBlobstore(config config.Config) bool {
-	return config.Packages.BlobstoreType == "local" ||
-		config.Buildpacks.BlobstoreType == "local" ||
-		config.Droplets.BlobstoreType == "local"
-}
