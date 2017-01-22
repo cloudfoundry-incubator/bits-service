@@ -64,22 +64,20 @@ func main() {
 	routes.SetUpDropletRoutes(internalRouter, dropletBlobstore)
 	routes.SetUpBuildpackCacheRoutes(internalRouter, buildpackCacheBlobstore)
 
-	if usesLocalBlobstore(config) {
-		publicRouter := mux.NewRouter()
-		rootRouter.Host(publicEndpoint.Host).Handler(negroni.New(
-			&local_blobstore.SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret}},
-			negroni.Wrap(publicRouter),
-		))
-		if config.Packages.BlobstoreType == "local" {
-			routes.SetUpPackageRoutes(publicRouter, packageBlobstore)
-		}
-		if config.Buildpacks.BlobstoreType == "local" {
-			routes.SetUpBuildpackRoutes(publicRouter, buildpackBlobstore)
-		}
-		if config.Droplets.BlobstoreType == "local" {
-			routes.SetUpDropletRoutes(publicRouter, dropletBlobstore)
-			routes.SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheBlobstore)
-		}
+	publicRouter := mux.NewRouter()
+	rootRouter.Host(publicEndpoint.Host).Handler(negroni.New(
+		&local_blobstore.SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret}},
+		negroni.Wrap(publicRouter),
+	))
+	if config.Packages.BlobstoreType == "local" {
+		routes.SetUpPackageRoutes(publicRouter, packageBlobstore)
+	}
+	if config.Buildpacks.BlobstoreType == "local" {
+		routes.SetUpBuildpackRoutes(publicRouter, buildpackBlobstore)
+	}
+	if config.Droplets.BlobstoreType == "local" {
+		routes.SetUpDropletRoutes(publicRouter, dropletBlobstore)
+		routes.SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheBlobstore)
 	}
 
 	srv := &http.Server{
