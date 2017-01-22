@@ -56,7 +56,7 @@ func main() {
 	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, publicEndpoint.Host, config.Port, config.Secret, "buildpacks")
 	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, publicEndpoint.Host, config.Port, config.Secret, "droplets")
 
-	routes.SetUpSignRoute(internalRouter, &basic_auth_middleware.BasicAuthMiddleware{config.SigningUsers[0].Username, config.SigningUsers[0].Password},
+	routes.SetUpSignRoute(internalRouter, basic_auth_middleware.NewBasicAuthMiddleWare(basicAuthCredentialsFrom(config.SigningUsers)...),
 		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler)
 
 	routes.SetUpAppStashRoutes(internalRouter, appStashBlobstore)
@@ -97,6 +97,15 @@ func main() {
 
 	e = httpServer.ListenAndServe()
 	log.Log.Fatal("http server crashed", zap.Error(e))
+}
+
+func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAuthCredentials []basic_auth_middleware.Credential) {
+	basicAuthCredentials = make([]basic_auth_middleware.Credential, len(configCredententials))
+	for i := range configCredententials {
+		basicAuthCredentials[i].Username = configCredententials[i].Username
+		basicAuthCredentials[i].Password = configCredententials[i].Password
+	}
+	return
 }
 
 func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (routes.Blobstore, *routes.SignResourceHandler) {

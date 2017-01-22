@@ -2,21 +2,56 @@ package basic_auth_middleware
 
 import "net/http"
 
-type BasicAuthMiddleware struct {
+type Credential struct {
 	Username, Password string
 }
 
-// TODO this middleware should be configurable with a custom ForbiddenHandler
+type BasicAuthMiddleware struct {
+	credentials                   []Credential
+	basicAuthHeaderMissingHandler http.Handler
+	unauthorizedHandler           http.Handler
+}
+
+func NewBasicAuthMiddleWare(credentials ...Credential) *BasicAuthMiddleware {
+	return &BasicAuthMiddleware{credentials: credentials}
+}
+
+func (middleware *BasicAuthMiddleware) WithBasicAuthHeaderMissingHandler(handler http.Handler) *BasicAuthMiddleware {
+	middleware.basicAuthHeaderMissingHandler = handler
+	return middleware
+}
+
+func (middleware *BasicAuthMiddleware) WithUnauthorizedHandler(handler http.Handler) *BasicAuthMiddleware {
+	middleware.unauthorizedHandler = handler
+	return middleware
+}
 
 func (middleware *BasicAuthMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
 	username, password, ok := request.BasicAuth()
 	if !ok {
-		responseWriter.WriteHeader(http.StatusUnauthorized)
+		if middleware.basicAuthHeaderMissingHandler == nil {
+			responseWriter.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		middleware.basicAuthHeaderMissingHandler.ServeHTTP(responseWriter, request)
 		return
 	}
-	if username != middleware.Username || password != middleware.Password {
-		responseWriter.WriteHeader(http.StatusUnauthorized)
-		return
+
+	if !middleware.authorized(username, password) {
+		if middleware.unauthorizedHandler == nil {
+			responseWriter.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		middleware.unauthorizedHandler.ServeHTTP(responseWriter, request)
 	}
 	next(responseWriter, request)
+}
+
+func (middleware *BasicAuthMiddleware) authorized(username, password string) bool {
+	for _, credential := range middleware.credentials {
+		if username == credential.Username && password == credential.Password {
+			return true
+		}
+	}
+	return false
 }
