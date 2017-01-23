@@ -6,7 +6,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/gorilla/context"
+	"context"
+
 	"github.com/uber-go/zap"
 	"github.com/urfave/negroni"
 )
@@ -23,7 +24,6 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 	startTime := time.Now()
 
 	requestLogger := middleware.logger.With(zap.Int64("request-id", rand.Int63()))
-	context.Set(request, "logger", requestLogger)
 
 	requestLogger.Info(
 		"HTTP Request started",
@@ -37,7 +37,7 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 		negroniResponseWriter = negroni.NewResponseWriter(responseWriter)
 	}
 
-	next(responseWriter, request)
+	next(responseWriter, request.WithContext(context.WithValue(nil, "logger", requestLogger)))
 
 	fields := []zap.Field{
 		zap.String("host", request.Host),
@@ -51,6 +51,4 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 		fields = append(fields, zap.String("Location", negroniResponseWriter.Header().Get("Location")))
 	}
 	requestLogger.Info("HTTP Request completed", fields...)
-
-	context.Clear(request)
 }

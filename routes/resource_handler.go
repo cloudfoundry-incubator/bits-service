@@ -24,7 +24,7 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 		e                error
 	)
 	if strings.Contains(request.Header.Get("Content-Type"), "multipart/form-data") {
-		logger.Log.Info("Multipart upload")
+		logger.From(request).Info("Multipart upload")
 		file, _, e := request.FormFile(handler.resourceType)
 		if e != nil {
 			badRequest(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
@@ -34,7 +34,7 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 
 		redirectLocation, e = handler.blobstore.Put(mux.Vars(request)["identifier"], file)
 	} else {
-		logger.Log.Info("Copy source guid")
+		logger.From(request).Info("Copy source guid")
 		redirectLocation, e = handler.copySourceGuid(request.Body, mux.Vars(request)["identifier"], responseWriter)
 	}
 
