@@ -1,4 +1,4 @@
-package local_blobstore
+package local
 
 import (
 	"fmt"

@@ -12,24 +12,24 @@ import (
 	"github.com/petergtz/bitsgo/routes"
 )
 
-type InMemoryBlobstore struct {
+type Blobstore struct {
 	Entries map[string][]byte
 }
 
-func NewInMemoryBlobstore() *InMemoryBlobstore {
-	return &InMemoryBlobstore{Entries: make(map[string][]byte)}
+func NewBlobstore() *Blobstore {
+	return &Blobstore{Entries: make(map[string][]byte)}
 }
 
-func NewInMemoryBlobstoreWithEntries(entries map[string][]byte) *InMemoryBlobstore {
-	return &InMemoryBlobstore{Entries: entries}
+func NewBlobstoreWithEntries(entries map[string][]byte) *Blobstore {
+	return &Blobstore{Entries: entries}
 }
 
-func (blobstore *InMemoryBlobstore) Exists(path string) (bool, error) {
+func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	_, hasKey := blobstore.Entries[path]
 	return hasKey, nil
 }
 
-func (blobstore *InMemoryBlobstore) Head(path string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) Head(path string) (redirectLocation string, err error) {
 	_, hasKey := blobstore.Entries[path]
 	if !hasKey {
 		return "", routes.NewNotFoundError()
@@ -37,7 +37,7 @@ func (blobstore *InMemoryBlobstore) Head(path string) (redirectLocation string, 
 	return "", nil
 }
 
-func (blobstore *InMemoryBlobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	entry, hasKey := blobstore.Entries[path]
 	if !hasKey {
 		return nil, "", routes.NewNotFoundError()
@@ -45,7 +45,7 @@ func (blobstore *InMemoryBlobstore) Get(path string) (body io.ReadCloser, redire
 	return ioutil.NopCloser(bytes.NewBuffer(entry)), "", nil
 }
 
-func (blobstore *InMemoryBlobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	b, e := ioutil.ReadAll(src)
 	if e != nil {
 		return "", fmt.Errorf("Error while reading from src %v. Caused by: %v", path, e)
@@ -54,12 +54,12 @@ func (blobstore *InMemoryBlobstore) Put(path string, src io.ReadSeeker) (redirec
 	return "", nil
 }
 
-func (blobstore *InMemoryBlobstore) Copy(src, dest string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err error) {
 	blobstore.Entries[dest] = blobstore.Entries[src]
 	return
 }
 
-func (blobstore *InMemoryBlobstore) Delete(path string) error {
+func (blobstore *Blobstore) Delete(path string) error {
 	_, hasKey := blobstore.Entries[path]
 	if !hasKey {
 		return routes.NewNotFoundError()
@@ -68,7 +68,7 @@ func (blobstore *InMemoryBlobstore) Delete(path string) error {
 	return nil
 }
 
-func (blobstore *InMemoryBlobstore) DeletePrefix(prefix string) error {
+func (blobstore *Blobstore) DeletePrefix(prefix string) error {
 	for key := range blobstore.Entries {
 		if strings.HasPrefix(key, prefix) {
 			delete(blobstore.Entries, key)

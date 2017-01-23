@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/onsi/ginkgo"
-	. "github.com/petergtz/bitsgo/inmemory_blobstore"
+	. "github.com/petergtz/bitsgo/blobstores/inmemory"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -22,7 +22,7 @@ func TestInMemoryBlobstore(t *testing.T) {
 
 var _ = Describe("Blobstore", func() {
 	It("can be modified by its methods", func() {
-		blobstore := NewInMemoryBlobstore()
+		blobstore := NewBlobstore()
 		Expect(blobstore.Exists("/some/path")).To(BeFalse())
 
 		redirectLocation, e := blobstore.Head("/some/path")

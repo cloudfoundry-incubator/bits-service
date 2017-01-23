@@ -17,9 +17,9 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
+	. "github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/routes"
-	. "github.com/petergtz/bitsgo/s3_blobstore"
 )
 
 func TestS3Blobstore(t *testing.T) {
@@ -57,7 +57,7 @@ var _ = Describe("S3 Blobstores", func() {
 
 	Describe("S3NoRedirectBlobStore", func() {
 		BeforeEach(func() {
-			blobstore = NewS3NoRedirectBlobStore(s3Config)
+			blobstore = NewNoRedirectBlobStore(s3Config)
 		})
 
 		It("can put and get a resource there", func() {
@@ -135,7 +135,7 @@ var _ = Describe("S3 Blobstores", func() {
 
 	Describe("S3PureRedirectBlobstore", func() {
 		It("can put and get a resource there", func() {
-			blobstore := NewS3PureRedirectBlobstore(s3Config)
+			blobstore := NewPureRedirectBlobstore(s3Config)
 
 			redirectLocation, e := blobstore.Head(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())

@@ -1,4 +1,4 @@
-package s3_blobstore
+package s3
 
 import (
 	"io"
@@ -15,59 +15,59 @@ import (
 	"github.com/uber-go/zap"
 )
 
-type S3LegacyBlobStore struct {
-	pureRedirect *S3PureRedirectBlobStore
-	noRedirect   *S3NoRedirectBlobStore
+type LegacyBlobStore struct {
+	pureRedirect *PureRedirectBlobStore
+	noRedirect   *NoRedirectBlobStore
 }
 
-func NewS3LegacyBlobstore(config config.S3BlobstoreConfig) *S3LegacyBlobStore {
-	return &S3LegacyBlobStore{
-		pureRedirect: NewS3PureRedirectBlobstore(config),
-		noRedirect:   NewS3NoRedirectBlobStore(config),
+func NewLegacyBlobstore(config config.S3BlobstoreConfig) *LegacyBlobStore {
+	return &LegacyBlobStore{
+		pureRedirect: NewPureRedirectBlobstore(config),
+		noRedirect:   NewNoRedirectBlobStore(config),
 	}
 }
 
-func (blobstore *S3LegacyBlobStore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+func (blobstore *LegacyBlobStore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	return blobstore.pureRedirect.Get(path)
 }
 
-func (blobstore *S3LegacyBlobStore) Head(path string) (redirectLocation string, err error) {
+func (blobstore *LegacyBlobStore) Head(path string) (redirectLocation string, err error) {
 	return blobstore.pureRedirect.Head(path)
 }
 
-func (blobstore *S3LegacyBlobStore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+func (blobstore *LegacyBlobStore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	return blobstore.noRedirect.Put(path, src)
 }
 
-func (blobstore *S3LegacyBlobStore) Copy(src, dest string) (redirectLocation string, err error) {
+func (blobstore *LegacyBlobStore) Copy(src, dest string) (redirectLocation string, err error) {
 	return blobstore.noRedirect.Copy(src, dest)
 }
 
-func (blobstore *S3LegacyBlobStore) Exists(path string) (bool, error) {
+func (blobstore *LegacyBlobStore) Exists(path string) (bool, error) {
 	return blobstore.noRedirect.Exists(path)
 }
 
-func (blobstore *S3LegacyBlobStore) Delete(path string) error {
+func (blobstore *LegacyBlobStore) Delete(path string) error {
 	return blobstore.noRedirect.Delete(path)
 }
 
-func (blobstore *S3LegacyBlobStore) DeletePrefix(prefix string) error {
+func (blobstore *LegacyBlobStore) DeletePrefix(prefix string) error {
 	return blobstore.noRedirect.DeletePrefix(prefix)
 }
 
-type S3PureRedirectBlobStore struct {
+type PureRedirectBlobStore struct {
 	s3Client *s3.S3
 	bucket   string
 }
 
-func NewS3PureRedirectBlobstore(config config.S3BlobstoreConfig) *S3PureRedirectBlobStore {
-	return &S3PureRedirectBlobStore{
+func NewPureRedirectBlobstore(config config.S3BlobstoreConfig) *PureRedirectBlobStore {
+	return &PureRedirectBlobStore{
 		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey),
 		bucket:   config.Bucket,
 	}
 }
 
-func (blobstore *S3PureRedirectBlobStore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+func (blobstore *PureRedirectBlobStore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -76,7 +76,7 @@ func (blobstore *S3PureRedirectBlobStore) Get(path string) (body io.ReadCloser, 
 	return nil, signedUrl, e
 }
 
-func (blobstore *S3PureRedirectBlobStore) Head(path string) (redirectLocation string, err error) {
+func (blobstore *PureRedirectBlobStore) Head(path string) (redirectLocation string, err error) {
 	request, _ := blobstore.s3Client.HeadObjectRequest(&s3.HeadObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -84,7 +84,7 @@ func (blobstore *S3PureRedirectBlobStore) Head(path string) (redirectLocation st
 	return signedURLFrom(request, blobstore.bucket, path)
 }
 
-func (blobstore *S3PureRedirectBlobStore) Put(path string, src io.Reader) (redirectLocation string, err error) {
+func (blobstore *PureRedirectBlobStore) Put(path string, src io.Reader) (redirectLocation string, err error) {
 	request, _ := blobstore.s3Client.PutObjectRequest(&s3.PutObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -92,7 +92,7 @@ func (blobstore *S3PureRedirectBlobStore) Put(path string, src io.Reader) (redir
 	return signedURLFrom(request, blobstore.bucket, path)
 }
 
-func (blobstore *S3PureRedirectBlobStore) Copy(src, dest string) (redirectLocation string, err error) {
+func (blobstore *PureRedirectBlobStore) Copy(src, dest string) (redirectLocation string, err error) {
 	request, _ := blobstore.s3Client.CopyObjectRequest(&s3.CopyObjectInput{
 		Key:        &dest,
 		CopySource: &src,
@@ -110,7 +110,7 @@ func signedURLFrom(req *request.Request, bucket, path string) (string, error) {
 
 }
 
-func (blobstore *S3PureRedirectBlobStore) Delete(path string) error {
+func (blobstore *PureRedirectBlobStore) Delete(path string) error {
 	_, e := blobstore.s3Client.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -121,19 +121,19 @@ func (blobstore *S3PureRedirectBlobStore) Delete(path string) error {
 	return nil
 }
 
-type S3NoRedirectBlobStore struct {
+type NoRedirectBlobStore struct {
 	s3Client *s3.S3
 	bucket   string
 }
 
-func NewS3NoRedirectBlobStore(config config.S3BlobstoreConfig) *S3NoRedirectBlobStore {
-	return &S3NoRedirectBlobStore{
+func NewNoRedirectBlobStore(config config.S3BlobstoreConfig) *NoRedirectBlobStore {
+	return &NoRedirectBlobStore{
 		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey),
 		bucket:   config.Bucket,
 	}
 }
 
-func (blobstore *S3NoRedirectBlobStore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+func (blobstore *NoRedirectBlobStore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	logger.Log.Debug("Get from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
 	output, e := blobstore.s3Client.GetObject(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
@@ -148,7 +148,7 @@ func (blobstore *S3NoRedirectBlobStore) Get(path string) (body io.ReadCloser, re
 	return output.Body, "", nil
 }
 
-func (blobstore *S3NoRedirectBlobStore) Head(path string) (redirectLocation string, err error) {
+func (blobstore *NoRedirectBlobStore) Head(path string) (redirectLocation string, err error) {
 	logger.Log.Debug("Head from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
 	_, e := blobstore.s3Client.HeadObject(&s3.HeadObjectInput{
 		Bucket: &blobstore.bucket,
@@ -163,7 +163,7 @@ func (blobstore *S3NoRedirectBlobStore) Head(path string) (redirectLocation stri
 	return "", nil
 }
 
-func (blobstore *S3NoRedirectBlobStore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+func (blobstore *NoRedirectBlobStore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	logger.Log.Debug("Put to S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
 	_, e := blobstore.s3Client.PutObject(&s3.PutObjectInput{
 		Bucket: &blobstore.bucket,
@@ -176,7 +176,7 @@ func (blobstore *S3NoRedirectBlobStore) Put(path string, src io.ReadSeeker) (red
 	return "", nil
 }
 
-func (blobstore *S3NoRedirectBlobStore) Copy(src, dest string) (redirectLocation string, err error) {
+func (blobstore *NoRedirectBlobStore) Copy(src, dest string) (redirectLocation string, err error) {
 	logger.Log.Debug("Copy in S3", zap.String("bucket", blobstore.bucket), zap.String("src", src), zap.String("dest", dest))
 	_, e := blobstore.s3Client.CopyObject(&s3.CopyObjectInput{
 		Key:        &dest,
@@ -192,7 +192,7 @@ func (blobstore *S3NoRedirectBlobStore) Copy(src, dest string) (redirectLocation
 	return "", nil
 }
 
-func (blobstore *S3NoRedirectBlobStore) Exists(path string) (bool, error) {
+func (blobstore *NoRedirectBlobStore) Exists(path string) (bool, error) {
 	_, e := blobstore.s3Client.HeadObject(&s3.HeadObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -206,7 +206,7 @@ func (blobstore *S3NoRedirectBlobStore) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-func (blobstore *S3NoRedirectBlobStore) Delete(path string) error {
+func (blobstore *NoRedirectBlobStore) Delete(path string) error {
 	_, e := blobstore.s3Client.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -220,7 +220,7 @@ func (blobstore *S3NoRedirectBlobStore) Delete(path string) error {
 	return nil
 }
 
-func (blobstore *S3NoRedirectBlobStore) DeletePrefix(prefix string) error {
+func (blobstore *NoRedirectBlobStore) DeletePrefix(prefix string) error {
 	deletionErrs := []error{}
 	e := blobstore.s3Client.ListObjectsPages(
 		&s3.ListObjectsInput{

@@ -1,4 +1,4 @@
-package s3_blobstore_test
+package s3_test
 
 import (
 	"testing"
@@ -7,9 +7,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
+	. "github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/routes"
-	. "github.com/petergtz/bitsgo/s3_blobstore"
 )
 
 func TestS3Blobstore(t *testing.T) {

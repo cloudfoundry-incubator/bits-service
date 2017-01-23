@@ -10,14 +10,14 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo/basic_auth_middleware"
+	"github.com/petergtz/bitsgo/blobstores/local"
+	"github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
-	"github.com/petergtz/bitsgo/local_blobstore"
 	"github.com/petergtz/bitsgo/logger"
 	log "github.com/petergtz/bitsgo/logger"
 	"github.com/petergtz/bitsgo/middlewares"
 	"github.com/petergtz/bitsgo/pathsigner"
 	"github.com/petergtz/bitsgo/routes"
-	"github.com/petergtz/bitsgo/s3_blobstore"
 	"github.com/uber-go/zap"
 	"github.com/urfave/negroni"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -72,7 +72,7 @@ func main() {
 
 	publicRouter := mux.NewRouter()
 	rootRouter.Host(publicEndpoint.Host).Handler(negroni.New(
-		&local_blobstore.SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret}},
+		&local.SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret}},
 		negroni.Wrap(publicRouter),
 	))
 	if config.Packages.BlobstoreType == "local" {
@@ -135,9 +135,9 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
 		logger.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
-		return local_blobstore.NewLocalBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
+		return local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
 			routes.NewSignResourceHandler(
-				&local_blobstore.LocalResourceSigner{
+				&local.LocalResourceSigner{
 					DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
 					Signer:             &pathsigner.PathSigner{secret},
 					ResourcePathPrefix: "/" + resourceType + "/",
@@ -145,10 +145,10 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 			)
 	case "s3", "S3", "AWS", "aws":
 		return routes.DecorateWithPartitioningPathBlobstore(
-				s3_blobstore.NewS3LegacyBlobstore(*blobstoreConfig.S3Config)),
+				s3.NewLegacyBlobstore(*blobstoreConfig.S3Config)),
 			routes.NewSignResourceHandler(
 				routes.DecorateWithPartitioningPathResourceSigner(
-					s3_blobstore.NewS3ResourceSigner(*blobstoreConfig.S3Config)))
+					s3.NewS3ResourceSigner(*blobstoreConfig.S3Config)))
 	default:
 		log.Log.Fatal("blobstoreConfig is invalid. BlobstoreType missing.")
 		return nil, nil // satisfy compiler
@@ -159,9 +159,9 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
 		logger.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
-		return local_blobstore.NewLocalBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
+		return local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
 			routes.NewSignResourceHandler(
-				&local_blobstore.LocalResourceSigner{
+				&local.LocalResourceSigner{
 					DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
 					Signer:             &pathsigner.PathSigner{secret},
 					ResourcePathPrefix: "/" + resourceType + "/",
@@ -170,11 +170,11 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 	case "s3", "S3", "AWS", "aws":
 		return routes.DecorateWithPartitioningPathBlobstore(
 				routes.DecorateWithPrefixingPathBlobstore(
-					s3_blobstore.NewS3LegacyBlobstore(*blobstoreConfig.S3Config), "buildpack_cache/")),
+					s3.NewLegacyBlobstore(*blobstoreConfig.S3Config), "buildpack_cache/")),
 			routes.NewSignResourceHandler(
 				routes.DecorateWithPartitioningPathResourceSigner(
 					routes.DecorateWithPrefixingPathResourceSigner(
-						s3_blobstore.NewS3ResourceSigner(*blobstoreConfig.S3Config),
+						s3.NewS3ResourceSigner(*blobstoreConfig.S3Config),
 						"buildpack_cache")),
 			)
 	default:
@@ -187,10 +187,10 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blob
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
 		logger.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
-		return local_blobstore.NewLocalBlobstore(blobstoreConfig.LocalConfig.PathPrefix)
+		return local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix)
 
 	case "s3", "S3", "AWS", "aws":
-		return s3_blobstore.NewS3NoRedirectBlobStore(*blobstoreConfig.S3Config)
+		return s3.NewNoRedirectBlobStore(*blobstoreConfig.S3Config)
 	default:
 		log.Log.Fatal("blobstoreConfig is invalid. BlobstoreType missing.")
 		return nil // satisfy compiler

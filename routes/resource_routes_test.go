@@ -20,8 +20,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
+	"github.com/petergtz/bitsgo/blobstores/inmemory"
 	"github.com/petergtz/bitsgo/httputil"
-	"github.com/petergtz/bitsgo/inmemory_blobstore"
 	. "github.com/petergtz/bitsgo/routes"
 	. "github.com/petergtz/bitsgo/testutil"
 	"github.com/petergtz/pegomock"
@@ -50,7 +50,7 @@ var _ = Describe("routes", func() {
 
 	BeforeEach(func() {
 		blobstoreEntries = make(map[string][]byte)
-		blobstore = inmemory_blobstore.NewInMemoryBlobstoreWithEntries(blobstoreEntries)
+		blobstore = inmemory_blobstore.NewBlobstoreWithEntries(blobstoreEntries)
 		router = mux.NewRouter()
 		responseWriter = httptest.NewRecorder()
 	})

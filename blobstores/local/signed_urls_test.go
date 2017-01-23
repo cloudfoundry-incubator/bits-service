@@ -1,4 +1,4 @@
-package local_blobstore_test
+package local_test
 
 import (
 	"net/http"
@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	. "github.com/petergtz/bitsgo/local_blobstore"
+	. "github.com/petergtz/bitsgo/blobstores/local"
 )
 
 func TestLocalBlobstore(t *testing.T) {

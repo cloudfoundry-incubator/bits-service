@@ -1,4 +1,4 @@
-package s3_blobstore
+package s3
 
 import (
 	"log"

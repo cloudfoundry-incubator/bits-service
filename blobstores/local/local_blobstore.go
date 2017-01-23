@@ -1,4 +1,4 @@
-package local_blobstore
+package local
 
 import (
 	"fmt"
@@ -11,15 +11,15 @@ import (
 	"github.com/uber-go/zap"
 )
 
-type LocalBlobstore struct {
+type Blobstore struct {
 	pathPrefix string
 }
 
-func NewLocalBlobstore(pathPrefix string) *LocalBlobstore {
-	return &LocalBlobstore{pathPrefix: pathPrefix}
+func NewBlobstore(pathPrefix string) *Blobstore {
+	return &Blobstore{pathPrefix: pathPrefix}
 }
 
-func (blobstore *LocalBlobstore) Exists(path string) (bool, error) {
+func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	_, err := os.Stat(filepath.Join(blobstore.pathPrefix, path))
 	if os.IsNotExist(err) {
 		return false, nil
@@ -30,7 +30,7 @@ func (blobstore *LocalBlobstore) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-func (blobstore *LocalBlobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	logger.Log.Debug("Get", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
 	file, e := os.Open(filepath.Join(blobstore.pathPrefix, path))
 
@@ -43,7 +43,7 @@ func (blobstore *LocalBlobstore) Get(path string) (body io.ReadCloser, redirectL
 	return file, "", nil
 }
 
-func (blobstore *LocalBlobstore) Head(path string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) Head(path string) (redirectLocation string, err error) {
 	logger.Log.Debug("Head", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
 	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
 
@@ -56,7 +56,7 @@ func (blobstore *LocalBlobstore) Head(path string) (redirectLocation string, err
 	return "", nil
 }
 
-func (blobstore *LocalBlobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	e := os.MkdirAll(filepath.Dir(filepath.Join(blobstore.pathPrefix, path)), os.ModeDir|0755)
 	if e != nil {
 		return "", fmt.Errorf("Error while creating directories for %v. Caused by: %v", path, e)
@@ -73,11 +73,11 @@ func (blobstore *LocalBlobstore) Put(path string, src io.ReadSeeker) (redirectLo
 	return "", nil
 }
 
-func (blobstore *LocalBlobstore) Copy(src, dest string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err error) {
 	panic("Not implemented")
 }
 
-func (blobstore *LocalBlobstore) Delete(path string) error {
+func (blobstore *Blobstore) Delete(path string) error {
 	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
 	if os.IsNotExist(e) {
 		return routes.NewNotFoundError()
@@ -89,6 +89,6 @@ func (blobstore *LocalBlobstore) Delete(path string) error {
 	return nil
 }
 
-func (blobstore *LocalBlobstore) DeletePrefix(prefix string) error {
+func (blobstore *Blobstore) DeletePrefix(prefix string) error {
 	panic("TODO")
 }
