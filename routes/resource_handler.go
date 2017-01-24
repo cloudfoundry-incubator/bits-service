@@ -19,30 +19,64 @@ type ResourceHandler struct {
 }
 
 func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
-	var (
-		redirectLocation string
-		e                error
-	)
 	if strings.Contains(request.Header.Get("Content-Type"), "multipart/form-data") {
-		logger.From(request).Info("Multipart upload")
-		file, _, e := request.FormFile(handler.resourceType)
-		if e != nil {
-			badRequest(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
-			return
-		}
-		defer file.Close()
-
-		redirectLocation, e = handler.blobstore.Put(mux.Vars(request)["identifier"], file)
+		logger.From(request).Debug("Multipart upload")
+		handler.uploadMultipart(responseWriter, request)
 	} else {
-		logger.From(request).Info("Copy source guid")
-		redirectLocation, e = handler.copySourceGuid(request.Body, mux.Vars(request)["identifier"], responseWriter)
+		logger.From(request).Debug("Copy source guid")
+		handler.copySourceGuid(responseWriter, request)
 	}
+}
 
-	switch e.(type) {
-	case *NotFoundError:
+func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWriter, request *http.Request) {
+	file, _, e := request.FormFile(handler.resourceType)
+	if e != nil {
+		badRequest(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
+		return
+	}
+	defer file.Close()
+
+	redirectLocation, e := handler.blobstore.Put(mux.Vars(request)["identifier"], file)
+	handleBlobstoreResult(redirectLocation, e, responseWriter)
+}
+
+func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWriter, request *http.Request) {
+	if request.Body == nil {
+		badRequest(responseWriter, "Body must contain source_guid when request is not multipart/form-data")
+		return
+	}
+	sourceGuid := sourceGuidFrom(request.Body, responseWriter)
+	if sourceGuid == "" {
+		return // response is already handled in sourceGuidFrom
+	}
+	redirectLocation, e := handler.blobstore.Copy(sourceGuid, mux.Vars(request)["identifier"])
+	if _, isNotFoundError := e.(*NotFoundError); isNotFoundError {
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
-	case error:
+	}
+	handleBlobstoreResult(redirectLocation, e, responseWriter)
+}
+
+func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) string {
+	defer body.Close()
+	content, e := ioutil.ReadAll(body)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return ""
+	}
+	var payload struct {
+		SourceGuid string `json:"source_guid"`
+	}
+	e = json.Unmarshal(content, &payload)
+	if e != nil {
+		badRequest(responseWriter, "Body must be valid JSON when request is not multipart/form-data. %+v", e)
+		return ""
+	}
+	return payload.SourceGuid
+}
+
+func handleBlobstoreResult(redirectLocation string, e error, responseWriter http.ResponseWriter) {
+	if e != nil {
 		internalServerError(responseWriter, e)
 		return
 	}
@@ -55,30 +89,8 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 	responseWriter.WriteHeader(http.StatusCreated)
 }
 
-func (handler *ResourceHandler) copySourceGuid(body io.ReadCloser, targetGuid string, responseWriter http.ResponseWriter) (string, error) {
-	if body == nil {
-		badRequest(responseWriter, "Body must contain source_guid when request is not multipart/form-data")
-		return "", nil
-	}
-	defer body.Close()
-	content, e := ioutil.ReadAll(body)
-	if e != nil {
-		internalServerError(responseWriter, e)
-		return "", nil
-	}
-	var payload struct {
-		SourceGuid string `json:"source_guid"`
-	}
-	e = json.Unmarshal(content, &payload)
-	if e != nil {
-		badRequest(responseWriter, "Body must be valid JSON when request is not multipart/form-data. %+v", e)
-		return "", nil
-	}
-	return handler.blobstore.Copy(payload.SourceGuid, targetGuid)
-}
-
 func (handler *ResourceHandler) Head(responseWriter http.ResponseWriter, request *http.Request) {
-	body, redirectLocation, e := handler.blobstore.Get(mux.Vars(request)["identifier"])
+	redirectLocation, e := handler.blobstore.Head(mux.Vars(request)["identifier"])
 	switch e.(type) {
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
@@ -91,7 +103,6 @@ func (handler *ResourceHandler) Head(responseWriter http.ResponseWriter, request
 		redirect(responseWriter, redirectLocation)
 		return
 	}
-	defer body.Close()
 	responseWriter.WriteHeader(http.StatusOK)
 }
 
