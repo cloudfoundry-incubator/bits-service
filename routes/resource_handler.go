@@ -133,6 +133,8 @@ func internalServerError(responseWriter http.ResponseWriter, e error) {
 }
 
 func badRequest(responseWriter http.ResponseWriter, message string, args ...interface{}) {
+	responseBody := fmt.Sprintf(message, args...)
+	logger.Log.Debug("Bad rquest", zap.String("body", responseBody))
 	responseWriter.WriteHeader(http.StatusBadRequest)
-	fmt.Fprintf(responseWriter, message, args...)
+	fmt.Fprintf(responseWriter, responseBody)
 }
