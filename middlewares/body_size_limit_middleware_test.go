@@ -37,13 +37,29 @@ var _ = Describe("BodySizeLimitMiddleWare", func() {
 	})
 
 	Context("Body is smaller than limit", func() {
-		It("Fails when body is bigger than limit", func() {
+		It("succeeds", func() {
 			responseWriter := httptest.NewRecorder()
 			downstreamHandlerResponse := http.StatusOK
 
 			middlewares.NewBodySizeLimitMiddleware(10000).ServeHTTP(
 				responseWriter,
 				httptest.NewRequest("PUT", "/some/path", strings.NewReader("This is shorter than the limit")),
+				func(responseWriter http.ResponseWriter, request *http.Request) {
+					responseWriter.WriteHeader(downstreamHandlerResponse)
+				})
+
+			Expect(responseWriter.Code).To(Equal(downstreamHandlerResponse), responseWriter.Body.String())
+		})
+	})
+
+	Context("Limit is 0", func() {
+		It("succeeds, even though body is technically larger than limi", func() {
+			responseWriter := httptest.NewRecorder()
+			downstreamHandlerResponse := http.StatusOK
+
+			middlewares.NewBodySizeLimitMiddleware(0).ServeHTTP(
+				responseWriter,
+				httptest.NewRequest("PUT", "/some/path", strings.NewReader("This is longer than the limit")),
 				func(responseWriter http.ResponseWriter, request *http.Request) {
 					responseWriter.WriteHeader(downstreamHandlerResponse)
 				})
