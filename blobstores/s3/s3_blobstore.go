@@ -77,7 +77,8 @@ func (blobstore *PureRedirectBlobStore) Get(path string) (body io.ReadCloser, re
 }
 
 func (blobstore *PureRedirectBlobStore) Head(path string) (redirectLocation string, err error) {
-	request, _ := blobstore.s3Client.HeadObjectRequest(&s3.HeadObjectInput{
+	// TODO: this is actually wrong, but the client requires this contract right now it seems.
+	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
 	})
