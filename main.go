@@ -96,8 +96,8 @@ func main() {
 		Handler: httpHandler,
 		Addr:    fmt.Sprintf("0.0.0.0:%v", config.Port),
 		// TODO possibly remove timeouts completely?
-		WriteTimeout: 5 * time.Minute,
-		ReadTimeout:  5 * time.Minute,
+		WriteTimeout: 60 * time.Minute,
+		ReadTimeout:  60 * time.Minute,
 	}
 
 	e = httpServer.ListenAndServe()
