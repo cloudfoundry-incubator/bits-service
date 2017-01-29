@@ -8,6 +8,7 @@ import (
 
 	"net/url"
 
+	"github.com/benbjohnson/clock"
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo/basic_auth_middleware"
 	"github.com/petergtz/bitsgo/blobstores/local"
@@ -72,7 +73,7 @@ func main() {
 
 	publicRouter := mux.NewRouter()
 	rootRouter.Host(publicEndpoint.Host).Handler(negroni.New(
-		&local.SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret}},
+		&local.SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret, clock.New()}},
 		negroni.Wrap(publicRouter),
 	))
 	if config.Packages.BlobstoreType == "local" {
@@ -139,7 +140,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 			routes.NewSignResourceHandler(
 				&local.LocalResourceSigner{
 					DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
-					Signer:             &pathsigner.PathSigner{secret},
+					Signer:             &pathsigner.PathSigner{secret, clock.New()},
 					ResourcePathPrefix: "/" + resourceType + "/",
 				},
 			)
@@ -163,7 +164,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 			routes.NewSignResourceHandler(
 				&local.LocalResourceSigner{
 					DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
-					Signer:             &pathsigner.PathSigner{secret},
+					Signer:             &pathsigner.PathSigner{secret, clock.New()},
 					ResourcePathPrefix: "/" + resourceType + "/",
 				},
 			)

@@ -2,7 +2,9 @@ package pathsigner_test
 
 import (
 	"testing"
+	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -18,9 +20,11 @@ func TestPathSigner(t *testing.T) {
 
 var _ = Describe("PathSigner", func() {
 	It("Can sign a path and validate its signature", func() {
-		signer := &PathSigner{"thesecret"}
+		clock := clock.NewMock()
 
-		signedPath := signer.Sign("/some/path")
+		signer := &PathSigner{"thesecret", clock}
+
+		signedPath := signer.Sign("/some/path", time.Unix(200, 0))
 
 		Expect(signer.SignatureValid(httputil.MustParse(signedPath))).To(BeTrue())
 	})

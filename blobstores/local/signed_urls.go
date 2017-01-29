@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"time"
+
+	"github.com/benbjohnson/clock"
 	"github.com/petergtz/bitsgo/pathsigner"
 )
 
@@ -27,8 +30,9 @@ type LocalResourceSigner struct {
 	Signer             *pathsigner.PathSigner
 	ResourcePathPrefix string
 	DelegateEndpoint   string
+	Clock              clock.Clock
 }
 
 func (signer *LocalResourceSigner) Sign(resource string, method string) (signedURL string) {
-	return fmt.Sprintf("%s%s", signer.DelegateEndpoint, signer.Signer.Sign(signer.ResourcePathPrefix+resource))
+	return fmt.Sprintf("%s%s", signer.DelegateEndpoint, signer.Signer.Sign(signer.ResourcePathPrefix+resource, signer.Clock.Now().Add(time.Hour)))
 }

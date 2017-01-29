@@ -1,5 +1,5 @@
-hash: 08684f11832ec8855c820c8cc90fbb295b86c1a0ec45b9eceba74910e8e0e4c3
-updated: 2017-01-20T22:03:50.659001499+01:00
+hash: 7661a444c7f6ed037c544674efa799210ab0c1eb36a230a07484742965c5f0ef
+updated: 2017-01-29T23:52:43.597662276+01:00
 imports:
 - name: code.cloudfoundry.org/bytefmt
   version: b12c1522f4cbb5f35861bd5dd2c39a4fa996441a
@@ -37,6 +37,8 @@ imports:
   - private/waiter
   - service/s3
   - service/sts
+- name: github.com/benbjohnson/clock
+  version: 7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19
 - name: github.com/go-ini/ini
   version: 6f66b0e091edb3c7b380f7c4f0f884274d550b67
 - name: github.com/gorilla/context
