@@ -8,6 +8,7 @@ import (
 
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/petergtz/bitsgo/routes"
+	"github.com/pkg/errors"
 	"github.com/uber-go/zap"
 )
 
@@ -74,7 +75,32 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocatio
 }
 
 func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err error) {
-	panic("Not implemented")
+	srcFull := filepath.Join(blobstore.pathPrefix, src)
+	destFull := filepath.Join(blobstore.pathPrefix, dest)
+
+	srcFile, e := os.Open(srcFull)
+	if e != nil {
+		return "", errors.Wrapf(e, "Opening src failed. (src=%v, dest=%v)", srcFull, destFull)
+	}
+	defer srcFile.Close()
+
+	e = os.MkdirAll(filepath.Dir(destFull), 0755)
+	if e != nil {
+		return "", errors.Wrapf(e, "Make dir failed. (src=%v, dest=%v)", srcFull, destFull)
+	}
+
+	destFile, e := os.Create(destFull)
+	if e != nil {
+		return "", errors.Wrapf(e, "Creating dest failed. (src=%v, dest=%v)", srcFull, destFull)
+	}
+	defer destFile.Close()
+
+	_, e = io.Copy(destFile, srcFile)
+	if e != nil {
+		return "", errors.Wrapf(e, "Copying failed. (src=%v, dest=%v)", srcFull, destFull)
+	}
+
+	return "", nil
 }
 
 func (blobstore *Blobstore) Delete(path string) error {
@@ -90,5 +116,10 @@ func (blobstore *Blobstore) Delete(path string) error {
 }
 
 func (blobstore *Blobstore) DeletePrefix(prefix string) error {
-	panic("TODO")
+	// TODO this not strictly deleting a prefix. It assumes the prefix to be a directory.
+	e := os.RemoveAll(filepath.Join(blobstore.pathPrefix, prefix))
+	if e != nil {
+		return errors.Wrapf(e, "Failed to delete path %v", filepath.Join(blobstore.pathPrefix, prefix))
+	}
+	return nil
 }
