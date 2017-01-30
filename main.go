@@ -136,7 +136,8 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
 		logger.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
-		return local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
+		return routes.DecorateWithPartitioningPathBlobstore(
+				local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix)),
 			routes.NewSignResourceHandler(
 				&local.LocalResourceSigner{
 					DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
@@ -161,7 +162,9 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
 		logger.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
-		return local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
+		return routes.DecorateWithPartitioningPathBlobstore(
+				routes.DecorateWithPrefixingPathBlobstore(
+					local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix), "buildpack_cache/")),
 			routes.NewSignResourceHandler(
 				&local.LocalResourceSigner{
 					DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
@@ -190,10 +193,12 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blob
 	switch blobstoreConfig.BlobstoreType {
 	case "local", "LOCAL":
 		logger.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
-		return local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix)
+		return routes.DecorateWithPartitioningPathBlobstore(
+			local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix))
 
 	case "s3", "S3", "AWS", "aws":
-		return s3.NewNoRedirectBlobStore(*blobstoreConfig.S3Config)
+		return routes.DecorateWithPartitioningPathBlobstore(
+			s3.NewNoRedirectBlobStore(*blobstoreConfig.S3Config))
 	default:
 		log.Log.Fatal("blobstoreConfig is invalid. BlobstoreType missing.")
 		return nil // satisfy compiler
