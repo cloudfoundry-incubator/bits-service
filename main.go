@@ -142,6 +142,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 					DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
 					Signer:             &pathsigner.PathSigner{secret, clock.New()},
 					ResourcePathPrefix: "/" + resourceType + "/",
+					Clock:              clock.New(),
 				},
 			)
 	case "s3", "S3", "AWS", "aws":
@@ -166,6 +167,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
 					Signer:             &pathsigner.PathSigner{secret, clock.New()},
 					ResourcePathPrefix: "/" + resourceType + "/",
+					Clock:              clock.New(),
 				},
 			)
 	case "s3", "S3", "AWS", "aws":

@@ -80,6 +80,9 @@ func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err
 
 	srcFile, e := os.Open(srcFull)
 	if e != nil {
+		if os.IsNotExist(e) {
+			return "", routes.NewNotFoundError()
+		}
 		return "", errors.Wrapf(e, "Opening src failed. (src=%v, dest=%v)", srcFull, destFull)
 	}
 	defer srcFile.Close()
