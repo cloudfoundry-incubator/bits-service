@@ -42,10 +42,6 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 }
 
 func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWriter, request *http.Request) {
-	if request.Body == nil {
-		badRequest(responseWriter, "Body must contain source_guid when request is not multipart/form-data")
-		return
-	}
 	sourceGuid := sourceGuidFrom(request.Body, responseWriter)
 	if sourceGuid == "" {
 		return // response is already handled in sourceGuidFrom
@@ -55,7 +51,6 @@ func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWrite
 }
 
 func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) string {
-	defer body.Close()
 	content, e := ioutil.ReadAll(body)
 	if e != nil {
 		internalServerError(responseWriter, e)
