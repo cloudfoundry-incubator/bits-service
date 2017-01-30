@@ -45,8 +45,8 @@ logging:
   file: /tmp/bits-service.log
   syslog: vcap.bits-service
   level: debug
-public_endpoint: public.127.0.0.1.xip.io
-private_endpoint: internal.127.0.0.1.xip.io
+public_endpoint: http://public.127.0.0.1.xip.io
+private_endpoint: http://internal.127.0.0.1.xip.io
 secret: geheim
 port: 8000
 `)

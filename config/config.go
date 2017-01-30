@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"strings"
 
@@ -23,6 +24,22 @@ type Config struct {
 	Port            int
 	SigningUsers    []Credential `yaml:"signing_users"`
 	MaxBodySize     string       `yaml:"max_body_size"`
+}
+
+func (config *Config) PublicEndpointUrl() *url.URL {
+	u, e := url.Parse(config.PublicEndpoint)
+	if e != nil {
+		panic("Unexpected error: " + e.Error())
+	}
+	return u
+}
+
+func (config *Config) PrivateEndpointUrl() *url.URL {
+	u, e := url.Parse(config.PrivateEndpoint)
+	if e != nil {
+		panic("Unexpected error: " + e.Error())
+	}
+	return u
 }
 
 func (config *Config) MaxBodySizeBytes() uint64 {
@@ -82,9 +99,23 @@ func LoadConfig(filename string) (config Config, err error) {
 	}
 	if config.PublicEndpoint == "" {
 		errs = append(errs, "public_endpoint must not be empty")
+	} else {
+		publicEndpoint, e := url.Parse(config.PublicEndpoint)
+		if e != nil {
+			errs = append(errs, "public_endpoint is invalid. Caused by:"+e.Error())
+		} else if publicEndpoint.Host == "" {
+			errs = append(errs, "public_endpoint host must not be empty")
+		}
 	}
 	if config.PrivateEndpoint == "" {
 		errs = append(errs, "private_endpoint must not be empty")
+	} else {
+		privateEndpoint, e := url.Parse(config.PrivateEndpoint)
+		if e != nil {
+			errs = append(errs, "private_endpoint is invalid. Caused by:"+e.Error())
+		} else if privateEndpoint.Host == "" {
+			errs = append(errs, "private_endpoint host must not be empty")
+		}
 	}
 	if config.MaxBodySize != "" {
 		_, e = bytefmt.ToBytes(config.MaxBodySize)

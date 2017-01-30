@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"net/url"
-
 	"github.com/benbjohnson/clock"
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo/basic_auth_middleware"
@@ -46,21 +44,13 @@ func main() {
 
 	internalRouter := mux.NewRouter()
 
-	privateEndpoint, e := url.Parse(config.PrivateEndpoint)
-	if e != nil {
-		log.Log.Fatal("Private endpoint invalid", zap.Error(e))
-	}
-	rootRouter.Host(privateEndpoint.Host).Handler(internalRouter)
+	rootRouter.Host(config.PrivateEndpointUrl().Host).Handler(internalRouter)
 
-	publicEndpoint, e := url.Parse(config.PublicEndpoint)
-	if e != nil {
-		log.Log.Fatal("Public endpoint invalid", zap.Error(e))
-	}
 	appStashBlobstore := createAppStashBlobstore(config.AppStash)
-	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, publicEndpoint.Host, config.Port, config.Secret, "packages")
-	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, publicEndpoint.Host, config.Port, config.Secret, "droplets")
-	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, publicEndpoint.Host, config.Port, config.Secret, "buildpacks")
-	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, publicEndpoint.Host, config.Port, config.Secret, "droplets")
+	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpointUrl().Host, config.Port, config.Secret, "packages")
+	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpointUrl().Host, config.Port, config.Secret, "droplets")
+	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpointUrl().Host, config.Port, config.Secret, "buildpacks")
+	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl().Host, config.Port, config.Secret, "droplets")
 
 	routes.SetUpSignRoute(internalRouter, basic_auth_middleware.NewBasicAuthMiddleWare(basicAuthCredentialsFrom(config.SigningUsers)...),
 		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler)
@@ -72,7 +62,7 @@ func main() {
 	routes.SetUpBuildpackCacheRoutes(internalRouter, buildpackCacheBlobstore)
 
 	publicRouter := mux.NewRouter()
-	rootRouter.Host(publicEndpoint.Host).Handler(negroni.New(
+	rootRouter.Host(config.PublicEndpointUrl().Host).Handler(negroni.New(
 		&local.SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret, clock.New()}},
 		negroni.Wrap(publicRouter),
 	))
