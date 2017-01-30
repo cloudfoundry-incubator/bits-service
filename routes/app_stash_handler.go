@@ -161,9 +161,8 @@ func copyTo(blobstore Blobstore, zipFileEntry *zip.File) (sha string, err error)
 
 func copyCalculatingSha(writer io.Writer, reader io.Reader) (sha string, e error) {
 	checkSum := sha1.New()
-	multiWriter := io.MultiWriter(writer, checkSum)
 
-	_, e = io.Copy(multiWriter, reader)
+	_, e = io.Copy(io.MultiWriter(writer, checkSum), reader)
 	if e != nil {
 		return "", fmt.Errorf("error copying. Caused by: %v", e)
 	}
