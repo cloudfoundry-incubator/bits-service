@@ -129,13 +129,14 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 				local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix)),
 			createLocalSignResourceHandler(publicHost, port, secret, resourceType)
 	case "s3", "aws":
+		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
 		return routes.DecorateWithPartitioningPathBlobstore(
 				s3.NewLegacyBlobstore(*blobstoreConfig.S3Config)),
 			routes.NewSignResourceHandler(
 				routes.DecorateWithPartitioningPathResourceSigner(
 					s3.NewS3ResourceSigner(*blobstoreConfig.S3Config)))
 	default:
-		log.Log.Fatal("blobstoreConfig is invalid. BlobstoreType missing.")
+		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))
 		return nil, nil // satisfy compiler
 	}
 }
@@ -150,6 +151,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					"buildpack_cache/")),
 			createLocalSignResourceHandler(publicHost, port, secret, resourceType)
 	case "s3", "aws":
+		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
 		return routes.DecorateWithPartitioningPathBlobstore(
 				routes.DecorateWithPrefixingPathBlobstore(
 					s3.NewLegacyBlobstore(*blobstoreConfig.S3Config),
@@ -160,7 +162,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 						s3.NewS3ResourceSigner(*blobstoreConfig.S3Config),
 						"buildpack_cache")))
 	default:
-		log.Log.Fatal("blobstoreConfig is invalid. BlobstoreType missing.")
+		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))
 		return nil, nil // satisfy compiler
 	}
 }
@@ -182,10 +184,11 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blob
 			local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix))
 
 	case "s3", "aws":
+		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
 		return routes.DecorateWithPartitioningPathBlobstore(
 			s3.NewNoRedirectBlobStore(*blobstoreConfig.S3Config))
 	default:
-		log.Log.Fatal("blobstoreConfig is invalid. BlobstoreType missing.")
+		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))
 		return nil // satisfy compiler
 	}
 }
