@@ -122,20 +122,13 @@ func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAu
 }
 
 func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (routes.Blobstore, *routes.SignResourceHandler) {
-	switch blobstoreConfig.BlobstoreType {
-	case "local", "LOCAL":
+	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
+	case "local":
 		log.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
 		return routes.DecorateWithPartitioningPathBlobstore(
 				local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix)),
-			routes.NewSignResourceHandler(
-				&local.LocalResourceSigner{
-					DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
-					Signer:             &pathsigner.PathSigner{secret, clock.New()},
-					ResourcePathPrefix: "/" + resourceType + "/",
-					Clock:              clock.New(),
-				},
-			)
-	case "s3", "S3", "AWS", "aws":
+			createLocalSignResourceHandler(publicHost, port, secret, resourceType)
+	case "s3", "aws":
 		return routes.DecorateWithPartitioningPathBlobstore(
 				s3.NewLegacyBlobstore(*blobstoreConfig.S3Config)),
 			routes.NewSignResourceHandler(
@@ -148,44 +141,47 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 }
 
 func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (routes.Blobstore, *routes.SignResourceHandler) {
-	switch blobstoreConfig.BlobstoreType {
-	case "local", "LOCAL":
+	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
+	case "local":
 		log.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
 		return routes.DecorateWithPartitioningPathBlobstore(
 				routes.DecorateWithPrefixingPathBlobstore(
-					local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix), "buildpack_cache/")),
-			routes.NewSignResourceHandler(
-				&local.LocalResourceSigner{
-					DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
-					Signer:             &pathsigner.PathSigner{secret, clock.New()},
-					ResourcePathPrefix: "/" + resourceType + "/",
-					Clock:              clock.New(),
-				},
-			)
-	case "s3", "S3", "AWS", "aws":
+					local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
+					"buildpack_cache/")),
+			createLocalSignResourceHandler(publicHost, port, secret, resourceType)
+	case "s3", "aws":
 		return routes.DecorateWithPartitioningPathBlobstore(
 				routes.DecorateWithPrefixingPathBlobstore(
-					s3.NewLegacyBlobstore(*blobstoreConfig.S3Config), "buildpack_cache/")),
+					s3.NewLegacyBlobstore(*blobstoreConfig.S3Config),
+					"buildpack_cache/")),
 			routes.NewSignResourceHandler(
 				routes.DecorateWithPartitioningPathResourceSigner(
 					routes.DecorateWithPrefixingPathResourceSigner(
 						s3.NewS3ResourceSigner(*blobstoreConfig.S3Config),
-						"buildpack_cache")),
-			)
+						"buildpack_cache")))
 	default:
 		log.Log.Fatal("blobstoreConfig is invalid. BlobstoreType missing.")
 		return nil, nil // satisfy compiler
 	}
 }
 
+func createLocalSignResourceHandler(publicHost string, port int, secret string, resourceType string) *routes.SignResourceHandler {
+	return routes.NewSignResourceHandler(&local.LocalResourceSigner{
+		DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
+		Signer:             &pathsigner.PathSigner{secret, clock.New()},
+		ResourcePathPrefix: "/" + resourceType + "/",
+		Clock:              clock.New(),
+	})
+}
+
 func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blobstore {
-	switch blobstoreConfig.BlobstoreType {
-	case "local", "LOCAL":
+	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
+	case "local":
 		log.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
 		return routes.DecorateWithPartitioningPathBlobstore(
 			local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix))
 
-	case "s3", "S3", "AWS", "aws":
+	case "s3", "aws":
 		return routes.DecorateWithPartitioningPathBlobstore(
 			s3.NewNoRedirectBlobStore(*blobstoreConfig.S3Config))
 	default:
