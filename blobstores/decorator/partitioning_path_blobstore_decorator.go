@@ -1,16 +1,18 @@
-package routes
+package decorator
 
 import (
 	"fmt"
 	"io"
+
+	"github.com/petergtz/bitsgo/routes"
 )
 
-func DecorateWithPartitioningPathBlobstore(delegate Blobstore) *PartitioningPathBlobstoreDecorator {
+func ForBlobstoreWithPathPartitioning(delegate routes.Blobstore) *PartitioningPathBlobstoreDecorator {
 	return &PartitioningPathBlobstoreDecorator{delegate}
 }
 
 type PartitioningPathBlobstoreDecorator struct {
-	delegate Blobstore
+	delegate routes.Blobstore
 }
 
 func (decorator *PartitioningPathBlobstoreDecorator) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
@@ -58,12 +60,12 @@ func pathFor(identifier string) string {
 	return ""
 }
 
-func DecorateWithPartitioningPathResourceSigner(delegate ResourceSigner) *PartitioningPathResourceSigner {
+func ForResourceSignerWithPathPartitioning(delegate routes.ResourceSigner) *PartitioningPathResourceSigner {
 	return &PartitioningPathResourceSigner{delegate}
 }
 
 type PartitioningPathResourceSigner struct {
-	delegate ResourceSigner
+	delegate routes.ResourceSigner
 }
 
 func (signer *PartitioningPathResourceSigner) Sign(resource string, method string) (signedURL string) {

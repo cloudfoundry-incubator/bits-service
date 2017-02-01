@@ -1,13 +1,17 @@
-package routes
+package decorator
 
-import "io"
+import (
+	"io"
 
-func DecorateWithPrefixingPathBlobstore(delegate Blobstore, prefix string) *PrefixingPathBlobstoreDecorator {
+	"github.com/petergtz/bitsgo/routes"
+)
+
+func ForBlobstoreWithPathPrefixing(delegate routes.Blobstore, prefix string) *PrefixingPathBlobstoreDecorator {
 	return &PrefixingPathBlobstoreDecorator{delegate, prefix}
 }
 
 type PrefixingPathBlobstoreDecorator struct {
-	delegate Blobstore
+	delegate routes.Blobstore
 	prefix   string
 }
 
@@ -39,12 +43,12 @@ func (decorator *PrefixingPathBlobstoreDecorator) DeletePrefix(prefix string) er
 	return decorator.delegate.DeletePrefix(decorator.prefix + prefix)
 }
 
-func DecorateWithPrefixingPathResourceSigner(delegate ResourceSigner, prefix string) *PrefixingPathResourceSigner {
+func DecorateWithPrefixingPathResourceSigner(delegate routes.ResourceSigner, prefix string) *PrefixingPathResourceSigner {
 	return &PrefixingPathResourceSigner{delegate, prefix}
 }
 
 type PrefixingPathResourceSigner struct {
-	delegate ResourceSigner
+	delegate routes.ResourceSigner
 	prefix   string
 }
 

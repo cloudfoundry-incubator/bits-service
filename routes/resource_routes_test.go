@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
+	"github.com/petergtz/bitsgo/blobstores/decorator"
 	"github.com/petergtz/bitsgo/blobstores/inmemory"
 	"github.com/petergtz/bitsgo/httputil"
 	. "github.com/petergtz/bitsgo/routes"
@@ -130,23 +131,24 @@ var _ = Describe("routes", func() {
 	}
 
 	Describe("/packages/{guid}", func() {
-		BeforeEach(func() { SetUpPackageRoutes(router, DecorateWithPartitioningPathBlobstore(blobstore)) })
+		BeforeEach(func() { SetUpPackageRoutes(router, decorator.ForBlobstoreWithPathPartitioning(blobstore)) })
 		ItSupportsMethodsGetPutDeleteFor("packages", "package")
 	})
 
 	Describe("/droplets/{guid}", func() {
-		BeforeEach(func() { SetUpDropletRoutes(router, DecorateWithPartitioningPathBlobstore(blobstore)) })
+		BeforeEach(func() { SetUpDropletRoutes(router, decorator.ForBlobstoreWithPathPartitioning(blobstore)) })
 		ItSupportsMethodsGetPutDeleteFor("droplets", "droplet")
 	})
 
 	Describe("/buildpacks/{guid}", func() {
-		BeforeEach(func() { SetUpBuildpackRoutes(router, DecorateWithPartitioningPathBlobstore(blobstore)) })
+		BeforeEach(func() { SetUpBuildpackRoutes(router, decorator.ForBlobstoreWithPathPartitioning(blobstore)) })
 		ItSupportsMethodsGetPutDeleteFor("buildpacks", "buildpack")
 	})
 
 	Describe("/buildpack_cache/entries/{app_guid}/{stack_name}", func() {
 		BeforeEach(func() {
-			SetUpBuildpackCacheRoutes(router, DecorateWithPartitioningPathBlobstore(DecorateWithPrefixingPathBlobstore(blobstore, "buildpack_cache/")))
+			SetUpBuildpackCacheRoutes(router, decorator.ForBlobstoreWithPathPartitioning(
+				decorator.ForBlobstoreWithPathPrefixing(blobstore, "buildpack_cache/")))
 		})
 		Context("Method GET", func() {
 			It("returns StatusNotFound when blobstore returns NotFoundError", func() {

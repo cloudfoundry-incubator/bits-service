@@ -9,6 +9,7 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo/basic_auth_middleware"
+	"github.com/petergtz/bitsgo/blobstores/decorator"
 	"github.com/petergtz/bitsgo/blobstores/local"
 	"github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
@@ -125,15 +126,15 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
 	case "local":
 		log.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
-		return routes.DecorateWithPartitioningPathBlobstore(
+		return decorator.ForBlobstoreWithPathPartitioning(
 				local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix)),
 			createLocalSignResourceHandler(publicHost, port, secret, resourceType)
 	case "s3", "aws":
 		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
-		return routes.DecorateWithPartitioningPathBlobstore(
+		return decorator.ForBlobstoreWithPathPartitioning(
 				s3.NewLegacyBlobstore(*blobstoreConfig.S3Config)),
 			routes.NewSignResourceHandler(
-				routes.DecorateWithPartitioningPathResourceSigner(
+				decorator.ForResourceSignerWithPathPartitioning(
 					s3.NewS3ResourceSigner(*blobstoreConfig.S3Config)))
 	default:
 		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))
@@ -145,20 +146,20 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
 	case "local":
 		log.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
-		return routes.DecorateWithPartitioningPathBlobstore(
-				routes.DecorateWithPrefixingPathBlobstore(
+		return decorator.ForBlobstoreWithPathPartitioning(
+				decorator.ForBlobstoreWithPathPrefixing(
 					local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
 					"buildpack_cache/")),
 			createLocalSignResourceHandler(publicHost, port, secret, resourceType)
 	case "s3", "aws":
 		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
-		return routes.DecorateWithPartitioningPathBlobstore(
-				routes.DecorateWithPrefixingPathBlobstore(
+		return decorator.ForBlobstoreWithPathPartitioning(
+				decorator.ForBlobstoreWithPathPrefixing(
 					s3.NewLegacyBlobstore(*blobstoreConfig.S3Config),
 					"buildpack_cache/")),
 			routes.NewSignResourceHandler(
-				routes.DecorateWithPartitioningPathResourceSigner(
-					routes.DecorateWithPrefixingPathResourceSigner(
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.DecorateWithPrefixingPathResourceSigner(
 						s3.NewS3ResourceSigner(*blobstoreConfig.S3Config),
 						"buildpack_cache")))
 	default:
@@ -180,12 +181,12 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blob
 	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
 	case "local":
 		log.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
-		return routes.DecorateWithPartitioningPathBlobstore(
+		return decorator.ForBlobstoreWithPathPartitioning(
 			local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix))
 
 	case "s3", "aws":
 		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
-		return routes.DecorateWithPartitioningPathBlobstore(
+		return decorator.ForBlobstoreWithPathPartitioning(
 			s3.NewNoRedirectBlobStore(*blobstoreConfig.S3Config))
 	default:
 		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))
