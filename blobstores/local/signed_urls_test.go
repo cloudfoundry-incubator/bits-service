@@ -31,16 +31,16 @@ const (
 
 var _ = Describe("Signing URLs", func() {
 	var (
-		mockClock *clock.Mock
-		signer    *pathsigner.PathSignerValidator
-		handler   *LocalResourceSigner
+		mockClock           *clock.Mock
+		pathSignerValidator *pathsigner.PathSignerValidator
+		handler             *LocalResourceSigner
 	)
 
 	BeforeEach(func() {
 		mockClock = clock.NewMock()
-		signer = &pathsigner.PathSignerValidator{"geheim", mockClock}
+		pathSignerValidator = &pathsigner.PathSignerValidator{"geheim", mockClock}
 		handler = &LocalResourceSigner{
-			Signer:             signer,
+			Signer:             pathSignerValidator,
 			DelegateEndpoint:   "http://example.com",
 			ResourcePathPrefix: "/my/",
 			Clock:              mockClock,
@@ -60,7 +60,7 @@ var _ = Describe("Signing URLs", func() {
 
 		r := mux.NewRouter()
 		r.Path("/my/path").Methods("GET").Handler(negroni.New(
-			&SignatureVerificationMiddleware{signer},
+			&SignatureVerificationMiddleware{pathSignerValidator},
 			negroni.Wrap(delegateHandler),
 		))
 		r.ServeHTTP(responseWriter, httptest.NewRequest("GET", responseBody, nil))
@@ -83,7 +83,7 @@ var _ = Describe("Signing URLs", func() {
 
 		r := mux.NewRouter()
 		r.Path("/my/path").Methods("GET").Handler(negroni.New(
-			&SignatureVerificationMiddleware{signer},
+			&SignatureVerificationMiddleware{pathSignerValidator},
 			negroni.Wrap(delegateHandler),
 		))
 		r.ServeHTTP(responseWriter, httptest.NewRequest("GET", responseBody, nil))

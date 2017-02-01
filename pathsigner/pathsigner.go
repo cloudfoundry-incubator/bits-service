@@ -10,6 +10,14 @@ import (
 	"github.com/benbjohnson/clock"
 )
 
+type PathSigner interface {
+	Sign(path string, expires time.Time) string
+}
+
+type PathSignatureValidator interface {
+	SignatureValid(u *url.URL) bool
+}
+
 type PathSignerValidator struct {
 	Secret string
 	Clock  clock.Clock
