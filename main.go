@@ -63,7 +63,7 @@ func main() {
 
 	publicRouter := mux.NewRouter()
 	rootRouter.Host(config.PublicEndpointUrl().Host).Handler(negroni.New(
-		&local.SignatureVerificationMiddleware{&pathsigner.PathSigner{config.Secret, clock.New()}},
+		&local.SignatureVerificationMiddleware{&pathsigner.PathSignerValidator{config.Secret, clock.New()}},
 		negroni.Wrap(publicRouter),
 	))
 	if config.Packages.BlobstoreType == "local" {
@@ -171,7 +171,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 func createLocalSignResourceHandler(publicHost string, port int, secret string, resourceType string) *routes.SignResourceHandler {
 	return routes.NewSignResourceHandler(&local.LocalResourceSigner{
 		DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
-		Signer:             &pathsigner.PathSigner{secret, clock.New()},
+		Signer:             &pathsigner.PathSignerValidator{secret, clock.New()},
 		ResourcePathPrefix: "/" + resourceType + "/",
 		Clock:              clock.New(),
 	})

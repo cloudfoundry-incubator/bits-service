@@ -11,7 +11,7 @@ import (
 )
 
 type SignatureVerificationMiddleware struct {
-	Signer *pathsigner.PathSigner
+	Signer *pathsigner.PathSignerValidator
 }
 
 func (middleware *SignatureVerificationMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
@@ -27,7 +27,7 @@ func (middleware *SignatureVerificationMiddleware) ServeHTTP(responseWriter http
 }
 
 type LocalResourceSigner struct {
-	Signer             *pathsigner.PathSigner
+	Signer             *pathsigner.PathSignerValidator
 	ResourcePathPrefix string
 	DelegateEndpoint   string
 	Clock              clock.Clock

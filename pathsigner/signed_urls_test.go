@@ -22,7 +22,7 @@ var _ = Describe("PathSigner", func() {
 	It("Can sign a path and validate its signature", func() {
 		clock := clock.NewMock()
 
-		signer := &PathSigner{"thesecret", clock}
+		signer := &PathSignerValidator{"thesecret", clock}
 
 		signedPath := signer.Sign("/some/path", time.Unix(200, 0))
 

@@ -32,13 +32,13 @@ const (
 var _ = Describe("Signing URLs", func() {
 	var (
 		mockClock *clock.Mock
-		signer    *pathsigner.PathSigner
+		signer    *pathsigner.PathSignerValidator
 		handler   *LocalResourceSigner
 	)
 
 	BeforeEach(func() {
 		mockClock = clock.NewMock()
-		signer = &pathsigner.PathSigner{"geheim", mockClock}
+		signer = &pathsigner.PathSignerValidator{"geheim", mockClock}
 		handler = &LocalResourceSigner{
 			Signer:             signer,
 			DelegateEndpoint:   "http://example.com",

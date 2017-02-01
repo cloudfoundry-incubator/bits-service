@@ -10,16 +10,16 @@ import (
 	"github.com/benbjohnson/clock"
 )
 
-type PathSigner struct {
+type PathSignerValidator struct {
 	Secret string
 	Clock  clock.Clock
 }
 
-func (signer *PathSigner) Sign(path string, expires time.Time) string {
+func (signer *PathSignerValidator) Sign(path string, expires time.Time) string {
 	return fmt.Sprintf("%s?md5=%x&expires=%v", path, md5.Sum([]byte(path+signer.Secret)), expires.Unix())
 }
 
-func (signer *PathSigner) SignatureValid(u *url.URL) bool {
+func (signer *PathSignerValidator) SignatureValid(u *url.URL) bool {
 	expires, e := strconv.ParseInt(u.Query().Get("expires"), 10, 64)
 	if e != nil {
 		return false
