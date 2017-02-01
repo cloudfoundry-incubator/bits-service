@@ -63,10 +63,10 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocatio
 		return "", fmt.Errorf("Error while creating directories for %v. Caused by: %v", path, e)
 	}
 	file, e := os.Create(filepath.Join(blobstore.pathPrefix, path))
-	defer file.Close()
 	if e != nil {
 		return "", fmt.Errorf("Error while creating file %v. Caused by: %v", path, e)
 	}
+	defer file.Close()
 	_, e = io.Copy(file, src)
 	if e != nil {
 		return "", fmt.Errorf("Error while writing file %v. Caused by: %v", path, e)
