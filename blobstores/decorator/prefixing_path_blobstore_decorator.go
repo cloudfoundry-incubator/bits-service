@@ -43,7 +43,7 @@ func (decorator *PrefixingPathBlobstoreDecorator) DeletePrefix(prefix string) er
 	return decorator.delegate.DeletePrefix(decorator.prefix + prefix)
 }
 
-func DecorateWithPrefixingPathResourceSigner(delegate routes.ResourceSigner, prefix string) *PrefixingPathResourceSigner {
+func ForResourceSignerWithPathPrefixing(delegate routes.ResourceSigner, prefix string) *PrefixingPathResourceSigner {
 	return &PrefixingPathResourceSigner{delegate, prefix}
 }
 

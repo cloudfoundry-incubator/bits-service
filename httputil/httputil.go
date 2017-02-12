@@ -1,12 +1,32 @@
 package httputil
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
+
+	"github.com/pkg/errors"
 )
+
+func NewPutRequest(url string, formFiles map[string]map[string]io.Reader) (*http.Request, error) {
+	if len(formFiles) > 1 {
+		panic("More than one formFile is not supported yet")
+	}
+	bodyBuf := &bytes.Buffer{}
+	request, e := http.NewRequest("PUT", url, bodyBuf)
+	if e != nil {
+		return nil, errors.Wrapf(e, "url=%v", url)
+	}
+	header, e := AddFormFileTo(bodyBuf, formFiles)
+	if e != nil {
+		return nil, errors.Wrapf(e, "url=%v", url)
+	}
+	AddHeaderTo(request, header)
+	return request, nil
+}
 
 func AddFormFileTo(body io.Writer, formFiles map[string]map[string]io.Reader) (header http.Header, err error) {
 	header = make(map[string][]string)

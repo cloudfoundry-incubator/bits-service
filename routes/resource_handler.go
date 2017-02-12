@@ -94,6 +94,11 @@ func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, reque
 
 func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, request *http.Request) {
 	e := handler.blobstore.DeletePrefix(mux.Vars(request)["identifier"])
+	switch e.(type) {
+	case *NotFoundError:
+		responseWriter.WriteHeader(http.StatusNoContent)
+		return
+	}
 	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, emptyReader)
 }
 

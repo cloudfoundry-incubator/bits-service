@@ -54,9 +54,10 @@ func (config *Config) MaxBodySizeBytes() uint64 {
 }
 
 type BlobstoreConfig struct {
-	BlobstoreType string                `yaml:"blobstore_type"`
-	LocalConfig   *LocalBlobstoreConfig `yaml:"local_config"`
-	S3Config      *S3BlobstoreConfig    `yaml:"s3_config"`
+	BlobstoreType string                 `yaml:"blobstore_type"`
+	LocalConfig   *LocalBlobstoreConfig  `yaml:"local_config"`
+	S3Config      *S3BlobstoreConfig     `yaml:"s3_config"`
+	WebdavConfig  *WebdavBlobstoreConfig `yaml:"webdav_config"`
 }
 
 type LocalBlobstoreConfig struct {
@@ -68,6 +69,23 @@ type S3BlobstoreConfig struct {
 	AccessKeyID     string `yaml:"access_key_id"`
 	SecretAccessKey string `yaml:"secret_access_key"`
 	Region          string
+}
+
+type WebdavBlobstoreConfig struct {
+	PrivateEndpoint string `yaml:"private_endpoint"`
+	PublicEndpoint  string `yaml:"public_endpoint"`
+	CACertPath      string `yaml:"ca_cert_path"`
+	SkipCertVerify  bool   `yaml:"skip_cert_verify"`
+	Username        string
+	Password        string
+}
+
+func (config WebdavBlobstoreConfig) CACert() string {
+	caCert, e := ioutil.ReadFile(config.CACertPath)
+	if e != nil {
+		panic(e)
+	}
+	return string(caCert)
 }
 
 type Credential struct {
@@ -123,6 +141,7 @@ func LoadConfig(filename string) (config Config, err error) {
 			errs = append(errs, "max_body_size is invalid. Caused by: "+e.Error())
 		}
 	}
+	// TODO validate CACertsPaths
 	if len(errs) > 0 {
 		return Config{}, errors.New("error in config values: " + strings.Join(errs, "; "))
 	}

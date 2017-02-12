@@ -12,6 +12,7 @@ import (
 	"github.com/petergtz/bitsgo/blobstores/decorator"
 	"github.com/petergtz/bitsgo/blobstores/local"
 	"github.com/petergtz/bitsgo/blobstores/s3"
+	"github.com/petergtz/bitsgo/blobstores/webdav"
 	"github.com/petergtz/bitsgo/config"
 	log "github.com/petergtz/bitsgo/logger"
 	"github.com/petergtz/bitsgo/middlewares"
@@ -30,6 +31,7 @@ func main() {
 	kingpin.Parse()
 
 	config, e := config.LoadConfig(*configPath)
+
 	if e != nil {
 		log.Log.Fatal("Could not load config.", zap.Error(e))
 	}
@@ -116,8 +118,7 @@ func zapLogLevelFrom(configLogLevel string) zap.Level {
 func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAuthCredentials []basic_auth_middleware.Credential) {
 	basicAuthCredentials = make([]basic_auth_middleware.Credential, len(configCredententials))
 	for i := range configCredententials {
-		basicAuthCredentials[i].Username = configCredententials[i].Username
-		basicAuthCredentials[i].Password = configCredententials[i].Password
+		basicAuthCredentials[i] = basic_auth_middleware.Credential(configCredententials[i])
 	}
 	return
 }
@@ -136,6 +137,19 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 			routes.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					s3.NewS3ResourceSigner(*blobstoreConfig.S3Config)))
+	case "webdav":
+		log.Log.Info("Creating Webdav blobstore",
+			zap.String("public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint),
+			zap.String("private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint))
+		return decorator.ForBlobstoreWithPathPartitioning(
+				decorator.ForBlobstoreWithPathPrefixing(
+					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
+					resourceType+"/")),
+			routes.NewSignResourceHandler(
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.ForResourceSignerWithPathPrefixing(
+						webdav.NewWebdavResourceSigner(*blobstoreConfig.WebdavConfig), resourceType+"/")))
+
 	default:
 		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))
 		return nil, nil // satisfy compiler
@@ -159,8 +173,21 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					"buildpack_cache/")),
 			routes.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
-					decorator.DecorateWithPrefixingPathResourceSigner(
+					decorator.ForResourceSignerWithPathPrefixing(
 						s3.NewS3ResourceSigner(*blobstoreConfig.S3Config),
+						"buildpack_cache")))
+	case "webdav":
+		log.Log.Info("Creating Webdav blobstore",
+			zap.String("public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint),
+			zap.String("private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint))
+		return decorator.ForBlobstoreWithPathPartitioning(
+				decorator.ForBlobstoreWithPathPrefixing(
+					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
+					resourceType+"/buildpack_cache/")),
+			routes.NewSignResourceHandler(
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.ForResourceSignerWithPathPrefixing(
+						webdav.NewWebdavResourceSigner(*blobstoreConfig.WebdavConfig),
 						"buildpack_cache")))
 	default:
 		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))
@@ -188,6 +215,14 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blob
 		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
 		return decorator.ForBlobstoreWithPathPartitioning(
 			s3.NewNoRedirectBlobStore(*blobstoreConfig.S3Config))
+	case "webdav":
+		log.Log.Info("Creating Webdav blobstore",
+			zap.String("public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint),
+			zap.String("private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint))
+		return decorator.ForBlobstoreWithPathPartitioning(
+			decorator.ForBlobstoreWithPathPrefixing(
+				webdav.NewNoRedirectBlobstore(*blobstoreConfig.WebdavConfig),
+				"app_stash/"))
 	default:
 		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))
 		return nil // satisfy compiler

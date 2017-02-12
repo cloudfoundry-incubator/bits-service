@@ -1,7 +1,6 @@
 package main_test
 
 import (
-	"bytes"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -52,9 +51,10 @@ var _ = Describe("Accessing the bits-service", func() {
 		})
 
 		It("return http.StatusOK for a package that does exist", func() {
-			request := NewPutRequest("http://internal.127.0.0.1.xip.io:8000/packages/myguid", map[string]map[string]io.Reader{
+			request, e := httputil.NewPutRequest("http://internal.127.0.0.1.xip.io:8000/packages/myguid", map[string]map[string]io.Reader{
 				"package": map[string]io.Reader{"somefilename": strings.NewReader("My test string")},
 			})
+			Expect(e).NotTo(HaveOccurred())
 
 			Expect(http.DefaultClient.Do(request)).To(WithTransform(GetStatusCode, Equal(201)))
 
@@ -71,9 +71,11 @@ var _ = Describe("Accessing the bits-service", func() {
 
 		Context("After retrieving a signed URL", func() {
 			It("returns http.StatusOK when accessing package through public host with md5", func() {
-				request := NewPutRequest("http://internal.127.0.0.1.xip.io:8000/packages/myguid", map[string]map[string]io.Reader{
+				request, e := httputil.NewPutRequest("http://internal.127.0.0.1.xip.io:8000/packages/myguid", map[string]map[string]io.Reader{
 					"package": map[string]io.Reader{"somefilename": strings.NewReader("lalala\n\n")},
 				})
+				Expect(e).NotTo(HaveOccurred())
+
 				Expect(http.DefaultClient.Do(request)).To(WithTransform(GetStatusCode, Equal(201)))
 
 				response, e := http.DefaultClient.Do(
@@ -97,19 +99,6 @@ func newGetRequest(url string, username string, password string) *http.Request {
 	request, e := http.NewRequest("GET", url, nil)
 	Expect(e).NotTo(HaveOccurred())
 	request.SetBasicAuth(username, password)
-	return request
-}
-
-func NewPutRequest(url string, formFiles map[string]map[string]io.Reader) *http.Request {
-	if len(formFiles) > 1 {
-		panic("More than one formFile is not supported yet")
-	}
-	bodyBuf := &bytes.Buffer{}
-	request, e := http.NewRequest("PUT", url, bodyBuf)
-	Ω(e).ShouldNot(HaveOccurred())
-	header, e := httputil.AddFormFileTo(bodyBuf, formFiles)
-	Ω(e).ShouldNot(HaveOccurred())
-	httputil.AddHeaderTo(request, header)
 	return request
 }
 
