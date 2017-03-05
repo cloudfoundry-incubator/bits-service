@@ -51,8 +51,8 @@ func (blobstore *LegacyBlobStore) Delete(path string) error {
 	return blobstore.noRedirect.Delete(path)
 }
 
-func (blobstore *LegacyBlobStore) DeletePrefix(prefix string) error {
-	return blobstore.noRedirect.DeletePrefix(prefix)
+func (blobstore *LegacyBlobStore) DeleteDir(prefix string) error {
+	return blobstore.noRedirect.DeleteDir(prefix)
 }
 
 type PureRedirectBlobStore struct {
@@ -221,7 +221,7 @@ func (blobstore *NoRedirectBlobStore) Delete(path string) error {
 	return nil
 }
 
-func (blobstore *NoRedirectBlobStore) DeletePrefix(prefix string) error {
+func (blobstore *NoRedirectBlobStore) DeleteDir(prefix string) error {
 	deletionErrs := []error{}
 	e := blobstore.s3Client.ListObjectsPages(
 		&s3.ListObjectsInput{

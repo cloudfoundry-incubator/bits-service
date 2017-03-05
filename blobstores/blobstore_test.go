@@ -63,12 +63,12 @@ var _ = Describe("Blobstore", func() {
 			Expect(redirectLocation).To(BeEmpty())
 			Expect(e).To(BeAssignableToTypeOf(routes.NewNotFoundError()))
 
-			Expect(blobstore.DeletePrefix("/some")).To(Succeed())
+			Expect(blobstore.DeleteDir("/some")).To(Succeed())
 			Expect(blobstore.Exists("/some/other/path")).To(BeFalse())
 			Expect(blobstore.Exists("/some/yet/other/path")).To(BeFalse())
 			Expect(blobstore.Exists("/yet/some/other/path")).To(BeTrue())
 
-			Expect(blobstore.DeletePrefix("")).To(Succeed())
+			Expect(blobstore.DeleteDir("")).To(Succeed())
 			Expect(blobstore.Exists("/yet/some/other/path")).To(BeFalse())
 		})
 	}

@@ -105,7 +105,7 @@ var _ = Describe("S3 Blobstores", func() {
 			Expect(blobstore.Exists("one")).To(BeTrue())
 			Expect(blobstore.Exists("two")).To(BeTrue())
 
-			e = blobstore.DeletePrefix("")
+			e = blobstore.DeleteDir("")
 			Expect(e).NotTo(HaveOccurred())
 
 			Expect(blobstore.Exists("one")).To(BeFalse())
@@ -124,7 +124,7 @@ var _ = Describe("S3 Blobstores", func() {
 			Expect(blobstore.Exists("dir/one")).To(BeTrue())
 			Expect(blobstore.Exists("dir/two")).To(BeTrue())
 
-			e = blobstore.DeletePrefix("dir")
+			e = blobstore.DeleteDir("dir")
 			Expect(e).NotTo(HaveOccurred())
 
 			Expect(blobstore.Exists("dir/one")).To(BeFalse())

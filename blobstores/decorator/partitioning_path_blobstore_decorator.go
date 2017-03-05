@@ -39,11 +39,11 @@ func (decorator *PartitioningPathBlobstoreDecorator) Delete(path string) error {
 	return decorator.delegate.Delete(pathFor(path))
 }
 
-func (decorator *PartitioningPathBlobstoreDecorator) DeletePrefix(prefix string) error {
+func (decorator *PartitioningPathBlobstoreDecorator) DeleteDir(prefix string) error {
 	if prefix == "" {
-		return decorator.delegate.DeletePrefix(prefix)
+		return decorator.delegate.DeleteDir(prefix)
 	} else {
-		return decorator.delegate.DeletePrefix(pathFor(prefix))
+		return decorator.delegate.DeleteDir(pathFor(prefix))
 	}
 }
 

@@ -26,5 +26,5 @@ type Blobstore interface {
 	Copy(src, dest string) (redirectLocation string, err error)
 	Exists(path string) (bool, error)
 	Delete(path string) error
-	DeletePrefix(prefix string) error
+	DeleteDir(prefix string) error
 }

@@ -123,7 +123,7 @@ func (blobstore *Blobstore) Delete(path string) error {
 	return nil
 }
 
-func (blobstore *Blobstore) DeletePrefix(prefix string) error {
+func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	if prefix != "" {
 		prefix += "/"
 	}
@@ -244,6 +244,6 @@ func (blobstore *NoRedirectBlobstore) Delete(path string) error {
 	panic("Not implemented")
 }
 
-func (blobstore *NoRedirectBlobstore) DeletePrefix(prefix string) error {
+func (blobstore *NoRedirectBlobstore) DeleteDir(prefix string) error {
 	panic("Not implemented")
 }

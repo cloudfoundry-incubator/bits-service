@@ -118,7 +118,7 @@ func (blobstore *Blobstore) Delete(path string) error {
 	return nil
 }
 
-func (blobstore *Blobstore) DeletePrefix(prefix string) error {
+func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	// TODO this not strictly deleting a prefix. It assumes the prefix to be a directory.
 	e := os.RemoveAll(filepath.Join(blobstore.pathPrefix, prefix))
 	if e != nil {

@@ -68,7 +68,7 @@ func (blobstore *Blobstore) Delete(path string) error {
 	return nil
 }
 
-func (blobstore *Blobstore) DeletePrefix(prefix string) error {
+func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	for key := range blobstore.Entries {
 		if strings.HasPrefix(key, prefix) {
 			delete(blobstore.Entries, key)
