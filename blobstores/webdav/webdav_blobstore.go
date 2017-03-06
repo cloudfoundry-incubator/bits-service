@@ -136,64 +136,28 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	return nil
 }
 
-type NoRedirectBlobstore struct {
-	httpClient            *http.Client
-	webdavPrivateEndpoint string
-	signer                *WebdavResourceSigner
-	webdavUsername        string
-	webdavPassword        string
-}
-
-func NewNoRedirectBlobstore(c config.WebdavBlobstoreConfig) *NoRedirectBlobstore {
-	return &NoRedirectBlobstore{
-		webdavPrivateEndpoint: c.PrivateEndpoint,
-		httpClient:            NewHttpClient(c.CACert(), c.SkipCertVerify),
-		signer:                NewWebdavResourceSigner(c),
-		webdavUsername:        c.Username,
-		webdavPassword:        c.Password,
-	}
-}
-
-func (blobstore *NoRedirectBlobstore) Exists(path string) (bool, error) {
-	url := blobstore.webdavPrivateEndpoint + "/" + path
-	logger.Log.Debug("Exists", zap.String("path", path), zap.String("url", url))
-	response, e := blobstore.httpClient.Head(url)
-	if e != nil {
-		return false, errors.Wrapf(e, "Error in Exists, path=%v", path)
-	}
-	if response.StatusCode == http.StatusOK {
-		return true, nil
-	}
-	return false, nil
-}
-
-func (blobstore *NoRedirectBlobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+func (blobstore *Blobstore) GetNoRedirect(path string) (body io.ReadCloser, err error) {
 	exists, e := blobstore.Exists(path)
 	if e != nil {
-		return nil, "", e
+		return nil, e
 	}
 	if !exists {
-		return nil, "", routes.NewNotFoundError()
+		return nil, routes.NewNotFoundError()
 	}
 
 	response, e := blobstore.httpClient.Get(blobstore.webdavPrivateEndpoint + "/" + path)
 
 	if e != nil {
-		return nil, "", errors.Wrapf(e, "path=%v")
+		return nil, errors.Wrapf(e, "path=%v")
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, "", errors.Errorf("Unexpected status code %v. Expected status OK", response.Status)
+		return nil, errors.Errorf("Unexpected status code %v. Expected status OK", response.Status)
 	}
 
-	return response.Body, "", nil
+	return response.Body, nil
 }
 
-func (blobstore *NoRedirectBlobstore) Head(path string) (redirectLocation string, err error) {
-	_, redirectLocation, e := blobstore.Get(path)
-	return redirectLocation, e
-}
-
-func (blobstore *NoRedirectBlobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+func (blobstore *Blobstore) PutNoRedirect(path string, src io.ReadSeeker) error {
 	request, e := http.NewRequest("PUT", blobstore.webdavPrivateEndpoint+"/admin/"+path, src)
 	if e != nil {
 		panic(e)
@@ -202,37 +166,10 @@ func (blobstore *NoRedirectBlobstore) Put(path string, src io.ReadSeeker) (redir
 	request.SetBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword)
 	response, e := blobstore.httpClient.Do(request)
 	if e != nil {
-		return "", errors.Wrapf(e, "Request failed. path=%v", path)
+		return errors.Wrapf(e, "Request failed. path=%v", path)
 	}
 	if response.StatusCode < 200 || response.StatusCode > 204 {
-		return "", errors.Errorf("Expected StatusCreated, but got status code: " + response.Status)
+		return errors.Errorf("Expected StatusCreated, but got status code: " + response.Status)
 	}
-	return "", nil
-}
-
-func (blobstore *NoRedirectBlobstore) Copy(src, dest string) (redirectLocation string, err error) {
-	request, e := http.NewRequest("COPY", blobstore.webdavPrivateEndpoint+"/admin/"+src, nil)
-	if e != nil {
-		panic(e)
-	}
-	request.Header.Add("Destination", "/"+dest)
-
-	request.SetBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword)
-	response, e := blobstore.httpClient.Do(request)
-	if e != nil {
-		return "", errors.Wrapf(e, "Request failed. src=%v, dest=%v", src, dest)
-	}
-
-	if response.StatusCode < 200 || response.StatusCode > 204 {
-		return "", errors.Errorf("Expected StatusCreated, but got status code: " + response.Status)
-	}
-	return "", nil
-}
-
-func (blobstore *NoRedirectBlobstore) Delete(path string) error {
-	panic("Not implemented")
-}
-
-func (blobstore *NoRedirectBlobstore) DeleteDir(prefix string) error {
-	panic("Not implemented")
+	return nil
 }

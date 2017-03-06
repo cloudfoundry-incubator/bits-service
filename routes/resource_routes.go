@@ -6,7 +6,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func SetUpAppStashRoutes(router *mux.Router, blobstore Blobstore) {
+func SetUpAppStashRoutes(router *mux.Router, blobstore NoRedirectBlobstore) {
 	handler := &AppStashHandler{blobstore: blobstore}
 	router.Path("/app_stash/entries").Methods("POST").HandlerFunc(handler.PostEntries)
 	router.Path("/app_stash/matches").Methods("POST").HandlerFunc(handler.PostMatches)

@@ -19,7 +19,7 @@ import (
 )
 
 type AppStashHandler struct {
-	blobstore Blobstore
+	blobstore NoRedirectBlobstore
 }
 
 func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, request *http.Request) {
@@ -125,7 +125,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 	responseWriter.Write(receipt)
 }
 
-func copyTo(blobstore Blobstore, zipFileEntry *zip.File) (sha string, err error) {
+func copyTo(blobstore NoRedirectBlobstore, zipFileEntry *zip.File) (sha string, err error) {
 	unzippedReader, e := zipFileEntry.Open()
 	if e != nil {
 		return "", errors.WithStack(e)
@@ -150,8 +150,7 @@ func copyTo(blobstore Blobstore, zipFileEntry *zip.File) (sha string, err error)
 	}
 	defer entryFileRead.Close()
 
-	// TODO: this assumes no redirect on PUTs. Is that always true?
-	_, e = blobstore.Put(sha, entryFileRead)
+	e = blobstore.PutNoRedirect(sha, entryFileRead)
 	if e != nil {
 		return "", errors.WithStack(e)
 	}
@@ -253,8 +252,7 @@ func (handler *AppStashHandler) createTempZipFileFrom(bundlesPayload []BundlesPa
 			return "", e
 		}
 
-		// TODO this assumes no redirects. Probably app_stash should have its own interface for blobstore that expresses no redirects
-		b, _, e := handler.blobstore.Get(entry.Sha1)
+		b, e := handler.blobstore.GetNoRedirect(entry.Sha1)
 		if e != nil {
 			if _, ok := e.(*NotFoundError); ok {
 				return "", NewNotFoundErrorWithMessage(entry.Sha1)

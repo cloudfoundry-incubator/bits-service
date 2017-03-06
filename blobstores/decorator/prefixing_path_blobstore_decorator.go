@@ -6,17 +6,21 @@ import (
 	"github.com/petergtz/bitsgo/routes"
 )
 
-func ForBlobstoreWithPathPrefixing(delegate routes.Blobstore, prefix string) *PrefixingPathBlobstoreDecorator {
+func ForBlobstoreWithPathPrefixing(delegate Blobstore, prefix string) *PrefixingPathBlobstoreDecorator {
 	return &PrefixingPathBlobstoreDecorator{delegate, prefix}
 }
 
 type PrefixingPathBlobstoreDecorator struct {
-	delegate routes.Blobstore
+	delegate Blobstore
 	prefix   string
 }
 
 func (decorator *PrefixingPathBlobstoreDecorator) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	return decorator.delegate.Get(decorator.prefix + path)
+}
+
+func (decorator *PrefixingPathBlobstoreDecorator) GetNoRedirect(path string) (body io.ReadCloser, err error) {
+	return decorator.delegate.GetNoRedirect(decorator.prefix + path)
 }
 
 func (decorator *PrefixingPathBlobstoreDecorator) Head(path string) (redirectLocation string, err error) {
@@ -25,6 +29,10 @@ func (decorator *PrefixingPathBlobstoreDecorator) Head(path string) (redirectLoc
 
 func (decorator *PrefixingPathBlobstoreDecorator) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	return decorator.delegate.Put(decorator.prefix+path, src)
+}
+
+func (decorator *PrefixingPathBlobstoreDecorator) PutNoRedirect(path string, src io.ReadSeeker) error {
+	return decorator.delegate.PutNoRedirect(decorator.prefix+path, src)
 }
 
 func (decorator *PrefixingPathBlobstoreDecorator) Copy(src, dest string) (redirectLocation string, err error) {

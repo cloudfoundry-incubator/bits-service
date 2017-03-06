@@ -204,7 +204,7 @@ func createLocalSignResourceHandler(publicHost string, port int, secret string, 
 	})
 }
 
-func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blobstore {
+func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.NoRedirectBlobstore {
 	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
 	case "local":
 		log.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
@@ -214,14 +214,14 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.Blob
 	case "s3", "aws":
 		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
 		return decorator.ForBlobstoreWithPathPartitioning(
-			s3.NewNoRedirectBlobStore(*blobstoreConfig.S3Config))
+			s3.NewLegacyBlobstore(*blobstoreConfig.S3Config))
 	case "webdav":
 		log.Log.Info("Creating Webdav blobstore",
 			zap.String("public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint),
 			zap.String("private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint))
 		return decorator.ForBlobstoreWithPathPartitioning(
 			decorator.ForBlobstoreWithPathPrefixing(
-				webdav.NewNoRedirectBlobstore(*blobstoreConfig.WebdavConfig),
+				webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
 				"app_stash/"))
 	default:
 		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))

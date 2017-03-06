@@ -7,16 +7,31 @@ import (
 	"github.com/petergtz/bitsgo/routes"
 )
 
-func ForBlobstoreWithPathPartitioning(delegate routes.Blobstore) *PartitioningPathBlobstoreDecorator {
+type Blobstore interface {
+	// Can't do the following until it is added in Go: (See also https://github.com/golang/go/issues/6977)
+	// routes.Blobstore
+	// routes.NoRedirectBlobstore
+
+	// Instead doing:
+	routes.Blobstore
+	GetNoRedirect(path string) (body io.ReadCloser, err error)
+	PutNoRedirect(path string, src io.ReadSeeker) (err error)
+}
+
+func ForBlobstoreWithPathPartitioning(delegate Blobstore) *PartitioningPathBlobstoreDecorator {
 	return &PartitioningPathBlobstoreDecorator{delegate}
 }
 
 type PartitioningPathBlobstoreDecorator struct {
-	delegate routes.Blobstore
+	delegate Blobstore
 }
 
 func (decorator *PartitioningPathBlobstoreDecorator) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	return decorator.delegate.Get(pathFor(path))
+}
+
+func (decorator *PartitioningPathBlobstoreDecorator) GetNoRedirect(path string) (body io.ReadCloser, err error) {
+	return decorator.delegate.GetNoRedirect(pathFor(path))
 }
 
 func (decorator *PartitioningPathBlobstoreDecorator) Head(path string) (redirectLocation string, err error) {
@@ -25,6 +40,10 @@ func (decorator *PartitioningPathBlobstoreDecorator) Head(path string) (redirect
 
 func (decorator *PartitioningPathBlobstoreDecorator) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	return decorator.delegate.Put(pathFor(path), src)
+}
+
+func (decorator *PartitioningPathBlobstoreDecorator) PutNoRedirect(path string, src io.ReadSeeker) error {
+	return decorator.delegate.PutNoRedirect(pathFor(path), src)
 }
 
 func (decorator *PartitioningPathBlobstoreDecorator) Copy(src, dest string) (redirectLocation string, err error) {

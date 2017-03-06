@@ -32,16 +32,21 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 }
 
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
-	logger.Log.Debug("Get", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
+	body, e := blobstore.GetNoRedirect(path)
+	return body, "", e
+}
+
+func (blobstore *Blobstore) GetNoRedirect(path string) (body io.ReadCloser, err error) {
+	logger.Log.Debug("GetNoRedirect", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
 	file, e := os.Open(filepath.Join(blobstore.pathPrefix, path))
 
 	if os.IsNotExist(e) {
-		return nil, "", routes.NewNotFoundError()
+		return nil, routes.NewNotFoundError()
 	}
 	if e != nil {
-		return nil, "", fmt.Errorf("Error while opening file %v. Caused by: %v", path, e)
+		return nil, fmt.Errorf("Error while opening file %v. Caused by: %v", path, e)
 	}
-	return file, "", nil
+	return file, nil
 }
 
 func (blobstore *Blobstore) Head(path string) (redirectLocation string, err error) {
@@ -58,20 +63,24 @@ func (blobstore *Blobstore) Head(path string) (redirectLocation string, err erro
 }
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+	return "", blobstore.PutNoRedirect(path, src)
+}
+
+func (blobstore *Blobstore) PutNoRedirect(path string, src io.ReadSeeker) error {
 	e := os.MkdirAll(filepath.Dir(filepath.Join(blobstore.pathPrefix, path)), os.ModeDir|0755)
 	if e != nil {
-		return "", fmt.Errorf("Error while creating directories for %v. Caused by: %v", path, e)
+		return fmt.Errorf("Error while creating directories for %v. Caused by: %v", path, e)
 	}
 	file, e := os.Create(filepath.Join(blobstore.pathPrefix, path))
 	if e != nil {
-		return "", fmt.Errorf("Error while creating file %v. Caused by: %v", path, e)
+		return fmt.Errorf("Error while creating file %v. Caused by: %v", path, e)
 	}
 	defer file.Close()
 	_, e = io.Copy(file, src)
 	if e != nil {
-		return "", fmt.Errorf("Error while writing file %v. Caused by: %v", path, e)
+		return fmt.Errorf("Error while writing file %v. Caused by: %v", path, e)
 	}
-	return "", nil
+	return nil
 }
 
 func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err error) {
