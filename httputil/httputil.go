@@ -11,6 +11,32 @@ import (
 	"github.com/pkg/errors"
 )
 
+type Request struct {
+	http.Request
+}
+
+func (request Request) Build() *http.Request {
+	return &request.Request
+}
+
+func NewRequest(method, urlStr string, body io.Reader) *Request {
+	request, e := http.NewRequest(method, urlStr, body)
+	if e != nil {
+		panic(e)
+	}
+	return &Request{*request}
+}
+
+func (request *Request) WithBasicAuth(username, password string) *Request {
+	request.SetBasicAuth(username, password)
+	return request
+}
+
+func (request *Request) WithHeader(key, value string) *Request {
+	request.Header.Add(key, value)
+	return request
+}
+
 func NewPutRequest(url string, formFiles map[string]map[string]io.Reader) (*http.Request, error) {
 	if len(formFiles) > 1 {
 		panic("More than one formFile is not supported yet")

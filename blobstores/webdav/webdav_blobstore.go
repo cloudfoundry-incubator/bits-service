@@ -7,6 +7,7 @@ import (
 	"bytes"
 
 	"github.com/petergtz/bitsgo/config"
+	"github.com/petergtz/bitsgo/httputil"
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/petergtz/bitsgo/routes"
 	"github.com/pkg/errors"
@@ -34,9 +35,7 @@ func NewBlobstore(c config.WebdavBlobstoreConfig) *Blobstore {
 func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	url := blobstore.webdavPrivateEndpoint + "/" + path
 	logger.Log.Debug("Exists", zap.String("path", path), zap.String("url", url))
-	request, _ := http.NewRequest("HEAD", url, nil)
-	request.SetBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword)
-	response, e := blobstore.httpClient.Do(request)
+	response, e := blobstore.httpClient.Do(blobstore.NewRequest("HEAD", url, nil))
 	if e != nil {
 		return false, errors.Wrapf(e, "Error in Exists, path=%v", path)
 	}
@@ -46,6 +45,12 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	}
 	logger.Log.Debug("Exists", zap.Bool("result", false))
 	return false, nil
+}
+
+func (blobstore *Blobstore) NewRequest(method string, urlStr string, body io.Reader) *http.Request {
+	return httputil.NewRequest(method, urlStr, body).
+		WithBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword).
+		Build()
 }
 
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
@@ -66,13 +71,8 @@ func (blobstore *Blobstore) Head(path string) (redirectLocation string, err erro
 }
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
-	request, e := http.NewRequest("PUT", blobstore.webdavPrivateEndpoint+"/admin/"+path, src)
-	if e != nil {
-		return "", e
-	}
-
-	request.SetBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword)
-	response, e := blobstore.httpClient.Do(request)
+	response, e := blobstore.httpClient.Do(
+		blobstore.NewRequest("PUT", blobstore.webdavPrivateEndpoint+"/admin/"+path, src))
 	if e != nil {
 		return "", errors.Wrapf(e, "Request failed. path=%v", path)
 	}
@@ -87,14 +87,11 @@ func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err
 	if e != nil {
 		return "", e
 	}
-	request, e := http.NewRequest("COPY", blobstore.webdavPrivateEndpoint+"/admin/"+src, nil)
-	if e != nil {
-		panic(e)
-	}
-	request.Header.Add("Destination", blobstore.webdavPrivateEndpoint+"/admin/"+dest)
-
-	request.SetBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword)
-	response, e := blobstore.httpClient.Do(request)
+	response, e := blobstore.httpClient.Do(
+		httputil.NewRequest("COPY", blobstore.webdavPrivateEndpoint+"/admin/"+src, nil).
+			WithHeader("Destination", blobstore.webdavPrivateEndpoint+"/admin/"+dest).
+			WithBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword).
+			Build())
 	if e != nil {
 		return "", errors.Wrapf(e, "Request failed. src=%v, dest=%v", src, dest)
 	}
@@ -108,12 +105,8 @@ func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err
 }
 
 func (blobstore *Blobstore) Delete(path string) error {
-	request, e := http.NewRequest("DELETE", blobstore.webdavPrivateEndpoint+"/admin/"+path, nil)
-	if e != nil {
-		panic(e)
-	}
-	request.SetBasicAuth("blobstore", "blobstore")
-	response, e := blobstore.httpClient.Do(request)
+	response, e := blobstore.httpClient.Do(
+		blobstore.NewRequest("DELETE", blobstore.webdavPrivateEndpoint+"/admin/"+path, nil))
 	if e != nil {
 		return errors.Wrapf(e, "Request failed. path=%v", path)
 	}
@@ -127,12 +120,8 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	if prefix != "" {
 		prefix += "/"
 	}
-	request, e := http.NewRequest("DELETE", blobstore.webdavPrivateEndpoint+"/admin/"+prefix, nil)
-	if e != nil {
-		panic(e)
-	}
-	request.SetBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword)
-	response, e := blobstore.httpClient.Do(request)
+	response, e := blobstore.httpClient.Do(
+		blobstore.NewRequest("DELETE", blobstore.webdavPrivateEndpoint+"/admin/"+prefix, nil))
 	if e != nil {
 		return errors.Wrapf(e, "Request failed. prefix=%v", prefix)
 	}
