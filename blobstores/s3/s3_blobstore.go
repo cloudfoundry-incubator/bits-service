@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/petergtz/bitsgo/config"
@@ -219,13 +218,4 @@ func (blobstore *NoRedirectBlobStore) DeleteDir(prefix string) error {
 		return errors.Errorf("Prefix %v, errors from deleting: %v", prefix, deletionErrs)
 	}
 	return nil
-}
-
-func isS3NotFoundError(e error) bool {
-	if ae, isAwsErr := e.(awserr.Error); isAwsErr {
-		if ae.Code() == "NoSuchBucket" || ae.Code() == "NoSuchKey" || ae.Code() == "NotFound" {
-			return true
-		}
-	}
-	return false
 }

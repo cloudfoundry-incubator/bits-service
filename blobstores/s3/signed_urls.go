@@ -6,37 +6,24 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/petergtz/bitsgo/config"
 )
 
-func newS3Client(region string, accessKeyID string, secretAccessKey string) *s3.S3 {
-	session, e := session.NewSession(&aws.Config{
-		Region:      aws.String(region),
-		Credentials: credentials.NewStaticCredentials(accessKeyID, secretAccessKey, ""),
-	})
-	if e != nil {
-		panic(e)
-	}
-	return s3.New(session)
-}
-
-func NewS3ResourceSigner(config config.S3BlobstoreConfig) *S3ResourceSigner {
-	return &S3ResourceSigner{
+func NewResourceSigner(config config.S3BlobstoreConfig) *ResourceSigner {
+	return &ResourceSigner{
 		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey),
 		bucket:   config.Bucket,
 	}
 }
 
-type S3ResourceSigner struct {
+type ResourceSigner struct {
 	s3Client *s3.S3
 	bucket   string
 }
 
-func (signer *S3ResourceSigner) Sign(resource string, method string) (signedURL string) {
+func (signer *ResourceSigner) Sign(resource string, method string) (signedURL string) {
 	var request *request.Request
 	switch strings.ToLower(method) {
 	case "put":

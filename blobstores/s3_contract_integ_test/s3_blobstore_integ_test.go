@@ -31,7 +31,7 @@ var _ = Describe("S3 Blobstores", func() {
 	var (
 		s3Config  config.S3BlobstoreConfig
 		filepath  string
-		blobstore routes.Blobstore
+		blobstore *LegacyBlobStore
 	)
 
 	BeforeEach(func() {
@@ -57,39 +57,38 @@ var _ = Describe("S3 Blobstores", func() {
 
 	Describe("S3NoRedirectBlobStore", func() {
 		BeforeEach(func() {
-			blobstore = NewNoRedirectBlobStore(s3Config)
+			blobstore = NewLegacyBlobstore(s3Config)
 		})
 
 		It("can put and get a resource there", func() {
 			redirectLocation, e := blobstore.Head(filepath)
-			Expect(e).To(BeAssignableToTypeOf(&routes.NotFoundError{}))
-			Expect(redirectLocation).To(BeEmpty())
+			Expect(e).NotTo(HaveOccurred())
+			Expect(redirectLocation).NotTo(BeEmpty())
+			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
-			body, redirectLocation, e := blobstore.Get(filepath)
+			body, e := blobstore.GetNoRedirect(filepath)
 			Expect(e).To(BeAssignableToTypeOf(&routes.NotFoundError{}))
-			Expect(redirectLocation).To(BeEmpty())
 			Expect(body).To(BeNil())
 
-			redirectLocation, e = blobstore.Put(filepath, strings.NewReader("the file content"))
-			Expect(redirectLocation, e).To(BeEmpty())
+			e = blobstore.PutNoRedirect(filepath, strings.NewReader("the file content"))
 
 			redirectLocation, e = blobstore.Head(filepath)
-			Expect(redirectLocation, e).To(BeEmpty())
+			Expect(redirectLocation, e).NotTo(BeEmpty())
 
-			body, redirectLocation, e = blobstore.Get(filepath)
-			Expect(redirectLocation, e).To(BeEmpty())
+			body, e = blobstore.GetNoRedirect(filepath)
+			Expect(e).NotTo(HaveOccurred())
 			Expect(ioutil.ReadAll(body)).To(ContainSubstring("the file content"))
 
 			e = blobstore.Delete(filepath)
 			Expect(e).NotTo(HaveOccurred())
 
 			redirectLocation, e = blobstore.Head(filepath)
-			Expect(e).To(BeAssignableToTypeOf(&routes.NotFoundError{}))
-			Expect(redirectLocation).To(BeEmpty())
+			Expect(e).NotTo(HaveOccurred())
+			Expect(redirectLocation).NotTo(BeEmpty())
+			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
-			body, redirectLocation, e = blobstore.Get(filepath)
+			body, e = blobstore.GetNoRedirect(filepath)
 			Expect(e).To(BeAssignableToTypeOf(&routes.NotFoundError{}))
-			Expect(redirectLocation).To(BeEmpty())
 			Expect(body).To(BeNil())
 		})
 
@@ -135,7 +134,7 @@ var _ = Describe("S3 Blobstores", func() {
 
 	Describe("S3PureRedirectBlobstore", func() {
 		It("can put and get a resource there", func() {
-			blobstore := NewPureRedirectBlobstore(s3Config)
+			blobstore := NewLegacyBlobstore(s3Config)
 
 			redirectLocation, e := blobstore.Head(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
@@ -147,12 +146,8 @@ var _ = Describe("S3 Blobstores", func() {
 			Expect(body).To(BeNil())
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
-			redirectLocation, e = blobstore.Put(filepath, nil)
-			Expect(redirectLocation, e).NotTo(BeEmpty())
-
-			request, e := http.NewRequest("PUT", redirectLocation, strings.NewReader("the file content"))
-			Expect(e).NotTo(HaveOccurred())
-			Expect(http.DefaultClient.Do(request)).To(HaveStatusCode(http.StatusOK))
+			redirectLocation, e = blobstore.Put(filepath, strings.NewReader("the file content"))
+			Expect(redirectLocation, e).To(BeEmpty())
 
 			redirectLocation, e = blobstore.Head(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
