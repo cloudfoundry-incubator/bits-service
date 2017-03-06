@@ -19,8 +19,8 @@ func (decorator *PrefixingPathBlobstoreDecorator) Exists(path string) (bool, err
 	return decorator.delegate.Exists(decorator.prefix + path)
 }
 
-func (decorator *PrefixingPathBlobstoreDecorator) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
-	return decorator.delegate.HeadOrDirectToGet(decorator.prefix + path)
+func (decorator *PrefixingPathBlobstoreDecorator) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
+	return decorator.delegate.HeadOrRedirectAsGet(decorator.prefix + path)
 }
 
 func (decorator *PrefixingPathBlobstoreDecorator) Get(path string) (body io.ReadCloser, err error) {

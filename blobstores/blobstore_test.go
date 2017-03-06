@@ -30,7 +30,7 @@ var _ = Describe("Blobstore", func() {
 		It("can be modified by its methods", func() {
 			Expect(blobstore.Exists("/some/path")).To(BeFalse())
 
-			redirectLocation, e := blobstore.HeadOrDirectToGet("/some/path")
+			redirectLocation, e := blobstore.HeadOrRedirectAsGet("/some/path")
 			Expect(redirectLocation).To(BeEmpty())
 			Expect(e).To(BeAssignableToTypeOf(routes.NewNotFoundError()))
 
@@ -38,7 +38,7 @@ var _ = Describe("Blobstore", func() {
 
 			Expect(blobstore.Exists("/some/path")).To(BeTrue())
 
-			Expect(blobstore.HeadOrDirectToGet("/some/path")).To(BeEmpty())
+			Expect(blobstore.HeadOrRedirectAsGet("/some/path")).To(BeEmpty())
 
 			body, redirectLocation, e := blobstore.GetOrRedirect("/some/path")
 			Expect(redirectLocation, e).To(BeEmpty())
@@ -59,7 +59,7 @@ var _ = Describe("Blobstore", func() {
 
 			Expect(blobstore.Exists("/some/other/path")).To(BeTrue())
 
-			redirectLocation, e = blobstore.HeadOrDirectToGet("/some/path")
+			redirectLocation, e = blobstore.HeadOrRedirectAsGet("/some/path")
 			Expect(redirectLocation).To(BeEmpty())
 			Expect(e).To(BeAssignableToTypeOf(routes.NewNotFoundError()))
 

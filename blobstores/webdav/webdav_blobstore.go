@@ -47,7 +47,7 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return false, nil
 }
 
-func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
 	_, redirectLocation, e := blobstore.GetOrRedirect(path)
 	return redirectLocation, e
 }

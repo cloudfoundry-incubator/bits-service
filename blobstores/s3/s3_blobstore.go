@@ -40,7 +40,7 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
 	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,

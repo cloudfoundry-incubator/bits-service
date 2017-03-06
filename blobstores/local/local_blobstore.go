@@ -31,7 +31,7 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
 	logger.Log.Debug("Head", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
 	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
 

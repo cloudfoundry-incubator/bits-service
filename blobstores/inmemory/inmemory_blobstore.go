@@ -29,7 +29,7 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return hasKey, nil
 }
 
-func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
 	_, hasKey := blobstore.Entries[path]
 	if !hasKey {
 		return "", routes.NewNotFoundError()

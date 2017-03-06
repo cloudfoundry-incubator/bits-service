@@ -68,7 +68,7 @@ func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) stri
 }
 
 func (handler *ResourceHandler) Head(responseWriter http.ResponseWriter, request *http.Request) {
-	redirectLocation, e := handler.blobstore.HeadOrDirectToGet(mux.Vars(request)["identifier"])
+	redirectLocation, e := handler.blobstore.HeadOrRedirectAsGet(mux.Vars(request)["identifier"])
 	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, emptyReader)
 }
 
