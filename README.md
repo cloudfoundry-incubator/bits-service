@@ -16,7 +16,7 @@ As blobstore backends it currently supports S3, local and WebDAV. It does *not* 
 Getting Started
 ----------------
 
-Make sure you have a working [Go environment](https://golang.org/doc/install) and the Go vendoring tool [glide]() is properly installed.
+Make sure you have a working [Go environment](https://golang.org/doc/install) and the Go vendoring tool [glide](https://github.com/Masterminds/glide#install) is properly installed.
 
 To install bitsgo:
 
