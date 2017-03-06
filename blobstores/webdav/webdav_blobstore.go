@@ -35,7 +35,7 @@ func NewBlobstore(c config.WebdavBlobstoreConfig) *Blobstore {
 func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	url := blobstore.webdavPrivateEndpoint + "/" + path
 	logger.Log.Debug("Exists", zap.String("path", path), zap.String("url", url))
-	response, e := blobstore.httpClient.Do(blobstore.NewRequest("HEAD", url, nil))
+	response, e := blobstore.httpClient.Do(blobstore.newRequestWithBasicAuth("HEAD", url, nil))
 	if e != nil {
 		return false, errors.Wrapf(e, "Error in Exists, path=%v", path)
 	}
@@ -47,7 +47,7 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return false, nil
 }
 
-func (blobstore *Blobstore) NewRequest(method string, urlStr string, body io.Reader) *http.Request {
+func (blobstore *Blobstore) newRequestWithBasicAuth(method string, urlStr string, body io.Reader) *http.Request {
 	return httputil.NewRequest(method, urlStr, body).
 		WithBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword).
 		Build()
@@ -72,7 +72,7 @@ func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation str
 
 func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	response, e := blobstore.httpClient.Do(
-		blobstore.NewRequest("PUT", blobstore.webdavPrivateEndpoint+"/admin/"+path, src))
+		blobstore.newRequestWithBasicAuth("PUT", blobstore.webdavPrivateEndpoint+"/admin/"+path, src))
 	if e != nil {
 		return "", errors.Wrapf(e, "Request failed. path=%v", path)
 	}
@@ -106,7 +106,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 
 func (blobstore *Blobstore) Delete(path string) error {
 	response, e := blobstore.httpClient.Do(
-		blobstore.NewRequest("DELETE", blobstore.webdavPrivateEndpoint+"/admin/"+path, nil))
+		blobstore.newRequestWithBasicAuth("DELETE", blobstore.webdavPrivateEndpoint+"/admin/"+path, nil))
 	if e != nil {
 		return errors.Wrapf(e, "Request failed. path=%v", path)
 	}
@@ -121,7 +121,7 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 		prefix += "/"
 	}
 	response, e := blobstore.httpClient.Do(
-		blobstore.NewRequest("DELETE", blobstore.webdavPrivateEndpoint+"/admin/"+prefix, nil))
+		blobstore.newRequestWithBasicAuth("DELETE", blobstore.webdavPrivateEndpoint+"/admin/"+prefix, nil))
 	if e != nil {
 		return errors.Wrapf(e, "Request failed. prefix=%v", prefix)
 	}
