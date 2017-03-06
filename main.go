@@ -133,7 +133,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	case "s3", "aws":
 		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
 		return decorator.ForBlobstoreWithPathPartitioning(
-				s3.NewLegacyBlobstore(*blobstoreConfig.S3Config)),
+				s3.NewBlobstore(*blobstoreConfig.S3Config)),
 			routes.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					s3.NewResourceSigner(*blobstoreConfig.S3Config)))
@@ -169,7 +169,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					s3.NewLegacyBlobstore(*blobstoreConfig.S3Config),
+					s3.NewBlobstore(*blobstoreConfig.S3Config),
 					"buildpack_cache/")),
 			routes.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -214,7 +214,7 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) routes.NoRe
 	case "s3", "aws":
 		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
 		return decorator.ForBlobstoreWithPathPartitioning(
-			s3.NewLegacyBlobstore(*blobstoreConfig.S3Config))
+			s3.NewBlobstore(*blobstoreConfig.S3Config))
 	case "webdav":
 		log.Log.Info("Creating Webdav blobstore",
 			zap.String("public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint),

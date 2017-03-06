@@ -38,20 +38,29 @@ func (blobstore *Blobstore) Head(path string) (redirectLocation string, err erro
 }
 
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+	body, e := blobstore.GetNoRedirect(path)
+	return body, "", e
+}
+
+func (blobstore *Blobstore) GetNoRedirect(path string) (body io.ReadCloser, err error) {
 	entry, hasKey := blobstore.Entries[path]
 	if !hasKey {
-		return nil, "", routes.NewNotFoundError()
+		return nil, routes.NewNotFoundError()
 	}
-	return ioutil.NopCloser(bytes.NewBuffer(entry)), "", nil
+	return ioutil.NopCloser(bytes.NewBuffer(entry)), nil
 }
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+	return "", blobstore.PutNoRedirect(path, src)
+}
+
+func (blobstore *Blobstore) PutNoRedirect(path string, src io.ReadSeeker) error {
 	b, e := ioutil.ReadAll(src)
 	if e != nil {
-		return "", fmt.Errorf("Error while reading from src %v. Caused by: %v", path, e)
+		return fmt.Errorf("Error while reading from src %v. Caused by: %v", path, e)
 	}
 	blobstore.Entries[path] = b
-	return "", nil
+	return nil
 }
 
 func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err error) {

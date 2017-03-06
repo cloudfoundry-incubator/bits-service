@@ -44,7 +44,7 @@ var _ = Describe("routes", func() {
 
 	var (
 		blobstoreEntries map[string][]byte
-		blobstore        Blobstore
+		blobstore        *inmemory_blobstore.Blobstore
 		router           *mux.Router
 		responseWriter   *httptest.ResponseRecorder
 	)

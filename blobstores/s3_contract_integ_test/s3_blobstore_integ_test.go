@@ -31,7 +31,7 @@ var _ = Describe("S3 Blobstores", func() {
 	var (
 		s3Config  config.S3BlobstoreConfig
 		filepath  string
-		blobstore *LegacyBlobStore
+		blobstore *Blobstore
 	)
 
 	BeforeEach(func() {
@@ -57,7 +57,7 @@ var _ = Describe("S3 Blobstores", func() {
 
 	Describe("S3NoRedirectBlobStore", func() {
 		BeforeEach(func() {
-			blobstore = NewLegacyBlobstore(s3Config)
+			blobstore = NewBlobstore(s3Config)
 		})
 
 		It("can put and get a resource there", func() {
@@ -134,7 +134,7 @@ var _ = Describe("S3 Blobstores", func() {
 
 	Describe("S3PureRedirectBlobstore", func() {
 		It("can put and get a resource there", func() {
-			blobstore := NewLegacyBlobstore(s3Config)
+			blobstore := NewBlobstore(s3Config)
 
 			redirectLocation, e := blobstore.Head(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
