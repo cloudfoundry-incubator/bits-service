@@ -86,9 +86,8 @@ func main() {
 	httpHandler.UseHandler(rootRouter)
 
 	httpServer := &http.Server{
-		Handler: httpHandler,
-		Addr:    fmt.Sprintf("0.0.0.0:%v", config.Port),
-		// TODO possibly remove timeouts completely?
+		Handler:      httpHandler,
+		Addr:         fmt.Sprintf("0.0.0.0:%v", config.Port),
 		WriteTimeout: 60 * time.Minute,
 		ReadTimeout:  60 * time.Minute,
 	}
