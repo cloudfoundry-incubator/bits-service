@@ -19,19 +19,19 @@ func NewNotFoundErrorWithMessage(message string) *NotFoundError {
 
 type Blobstore interface {
 	// returns a NotFoundError when the path doesn't exist.
+	Exists(path string) (bool, error)
 	HeadOrDirectToGet(path string) (redirectLocation string, err error)
 	GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error)
 	PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error)
 	Copy(src, dest string) error
-	Exists(path string) (bool, error)
 	Delete(path string) error
 	DeleteDir(prefix string) error
 }
 
 type NoRedirectBlobstore interface {
+	Exists(path string) (bool, error)
 	Get(path string) (body io.ReadCloser, err error)
 	Put(path string, src io.ReadSeeker) (err error)
-	Exists(path string) (bool, error)
 	Delete(path string) error
 	DeleteDir(prefix string) error
 }

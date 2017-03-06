@@ -26,6 +26,43 @@ func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
 	}
 }
 
+func (blobstore *Blobstore) Exists(path string) (bool, error) {
+	_, e := blobstore.s3Client.HeadObject(&s3.HeadObjectInput{
+		Bucket: &blobstore.bucket,
+		Key:    &path,
+	})
+	if e != nil {
+		if isS3NotFoundError(e) {
+			return false, nil
+		}
+		return false, errors.Wrapf(e, "Failed to check for %v/%v", blobstore.bucket, path)
+	}
+	return true, nil
+}
+
+func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
+	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: &blobstore.bucket,
+		Key:    &path,
+	})
+	return signedURLFrom(request, blobstore.bucket, path)
+}
+
+func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
+	logger.Log.Debug("Get from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
+	output, e := blobstore.s3Client.GetObject(&s3.GetObjectInput{
+		Bucket: &blobstore.bucket,
+		Key:    &path,
+	})
+	if e != nil {
+		if isS3NotFoundError(e) {
+			return nil, routes.NewNotFoundError()
+		}
+		return nil, errors.Wrapf(e, "Path %v", path)
+	}
+	return output.Body, nil
+}
+
 func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
@@ -35,13 +72,17 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 	return nil, signedUrl, e
 }
 
-func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
-	// TODO: this is actually wrong, but the client requires this contract right now it seems.
-	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
+func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
+	logger.Log.Debug("Put to S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
+	_, e := blobstore.s3Client.PutObject(&s3.PutObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
+		Body:   src,
 	})
-	return signedURLFrom(request, blobstore.bucket, path)
+	if e != nil {
+		return errors.Wrapf(e, "Path %v", path)
+	}
+	return nil
 }
 
 func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
@@ -67,34 +108,6 @@ func signedURLFrom(req *request.Request, bucket, path string) (string, error) {
 
 }
 
-func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
-	logger.Log.Debug("Get from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
-	output, e := blobstore.s3Client.GetObject(&s3.GetObjectInput{
-		Bucket: &blobstore.bucket,
-		Key:    &path,
-	})
-	if e != nil {
-		if isS3NotFoundError(e) {
-			return nil, routes.NewNotFoundError()
-		}
-		return nil, errors.Wrapf(e, "Path %v", path)
-	}
-	return output.Body, nil
-}
-
-func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
-	logger.Log.Debug("Put to S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
-	_, e := blobstore.s3Client.PutObject(&s3.PutObjectInput{
-		Bucket: &blobstore.bucket,
-		Key:    &path,
-		Body:   src,
-	})
-	if e != nil {
-		return errors.Wrapf(e, "Path %v", path)
-	}
-	return nil
-}
-
 func (blobstore *Blobstore) Copy(src, dest string) error {
 	logger.Log.Debug("Copy in S3", zap.String("bucket", blobstore.bucket), zap.String("src", src), zap.String("dest", dest))
 	_, e := blobstore.s3Client.CopyObject(&s3.CopyObjectInput{
@@ -109,20 +122,6 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 		return errors.Wrapf(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.bucket)
 	}
 	return nil
-}
-
-func (blobstore *Blobstore) Exists(path string) (bool, error) {
-	_, e := blobstore.s3Client.HeadObject(&s3.HeadObjectInput{
-		Bucket: &blobstore.bucket,
-		Key:    &path,
-	})
-	if e != nil {
-		if isS3NotFoundError(e) {
-			return false, nil
-		}
-		return false, errors.Wrapf(e, "Failed to check for %v/%v", blobstore.bucket, path)
-	}
-	return true, nil
 }
 
 func (blobstore *Blobstore) Delete(path string) error {

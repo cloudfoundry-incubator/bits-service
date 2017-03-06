@@ -26,32 +26,32 @@ type PartitioningPathBlobstoreDecorator struct {
 	delegate Blobstore
 }
 
-func (decorator *PartitioningPathBlobstoreDecorator) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
-	return decorator.delegate.GetOrRedirect(pathFor(path))
-}
-
-func (decorator *PartitioningPathBlobstoreDecorator) Get(path string) (body io.ReadCloser, err error) {
-	return decorator.delegate.Get(pathFor(path))
+func (decorator *PartitioningPathBlobstoreDecorator) Exists(path string) (bool, error) {
+	return decorator.delegate.Exists(pathFor(path))
 }
 
 func (decorator *PartitioningPathBlobstoreDecorator) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
 	return decorator.delegate.HeadOrDirectToGet(pathFor(path))
 }
 
-func (decorator *PartitioningPathBlobstoreDecorator) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
-	return decorator.delegate.PutOrRedirect(pathFor(path), src)
+func (decorator *PartitioningPathBlobstoreDecorator) Get(path string) (body io.ReadCloser, err error) {
+	return decorator.delegate.Get(pathFor(path))
+}
+
+func (decorator *PartitioningPathBlobstoreDecorator) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
+	return decorator.delegate.GetOrRedirect(pathFor(path))
 }
 
 func (decorator *PartitioningPathBlobstoreDecorator) Put(path string, src io.ReadSeeker) error {
 	return decorator.delegate.Put(pathFor(path), src)
 }
 
-func (decorator *PartitioningPathBlobstoreDecorator) Copy(src, dest string) error {
-	return decorator.delegate.Copy(pathFor(src), pathFor(dest))
+func (decorator *PartitioningPathBlobstoreDecorator) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+	return decorator.delegate.PutOrRedirect(pathFor(path), src)
 }
 
-func (decorator *PartitioningPathBlobstoreDecorator) Exists(path string) (bool, error) {
-	return decorator.delegate.Exists(pathFor(path))
+func (decorator *PartitioningPathBlobstoreDecorator) Copy(src, dest string) error {
+	return decorator.delegate.Copy(pathFor(src), pathFor(dest))
 }
 
 func (decorator *PartitioningPathBlobstoreDecorator) Delete(path string) error {

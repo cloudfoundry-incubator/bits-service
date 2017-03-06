@@ -47,10 +47,30 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return false, nil
 }
 
-func (blobstore *Blobstore) newRequestWithBasicAuth(method string, urlStr string, body io.Reader) *http.Request {
-	return httputil.NewRequest(method, urlStr, body).
-		WithBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword).
-		Build()
+func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
+	_, redirectLocation, e := blobstore.GetOrRedirect(path)
+	return redirectLocation, e
+}
+
+func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
+	exists, e := blobstore.Exists(path)
+	if e != nil {
+		return nil, e
+	}
+	if !exists {
+		return nil, routes.NewNotFoundError()
+	}
+
+	response, e := blobstore.httpClient.Get(blobstore.webdavPrivateEndpoint + "/" + path)
+
+	if e != nil {
+		return nil, errors.Wrapf(e, "path=%v")
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("Unexpected status code %v. Expected status OK", response.Status)
+	}
+
+	return response.Body, nil
 }
 
 func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
@@ -65,9 +85,21 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 	return nil, signedUrl, nil
 }
 
-func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
-	_, redirectLocation, e := blobstore.GetOrRedirect(path)
-	return redirectLocation, e
+func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
+	request, e := http.NewRequest("PUT", blobstore.webdavPrivateEndpoint+"/admin/"+path, src)
+	if e != nil {
+		panic(e)
+	}
+
+	request.SetBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword)
+	response, e := blobstore.httpClient.Do(request)
+	if e != nil {
+		return errors.Wrapf(e, "Request failed. path=%v", path)
+	}
+	if response.StatusCode < 200 || response.StatusCode > 204 {
+		return errors.Errorf("Expected StatusCreated, but got status code: " + response.Status)
+	}
+	return nil
 }
 
 func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
@@ -136,40 +168,8 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	return nil
 }
 
-func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
-	exists, e := blobstore.Exists(path)
-	if e != nil {
-		return nil, e
-	}
-	if !exists {
-		return nil, routes.NewNotFoundError()
-	}
-
-	response, e := blobstore.httpClient.Get(blobstore.webdavPrivateEndpoint + "/" + path)
-
-	if e != nil {
-		return nil, errors.Wrapf(e, "path=%v")
-	}
-	if response.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("Unexpected status code %v. Expected status OK", response.Status)
-	}
-
-	return response.Body, nil
-}
-
-func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
-	request, e := http.NewRequest("PUT", blobstore.webdavPrivateEndpoint+"/admin/"+path, src)
-	if e != nil {
-		panic(e)
-	}
-
-	request.SetBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword)
-	response, e := blobstore.httpClient.Do(request)
-	if e != nil {
-		return errors.Wrapf(e, "Request failed. path=%v", path)
-	}
-	if response.StatusCode < 200 || response.StatusCode > 204 {
-		return errors.Errorf("Expected StatusCreated, but got status code: " + response.Status)
-	}
-	return nil
+func (blobstore *Blobstore) newRequestWithBasicAuth(method string, urlStr string, body io.Reader) *http.Request {
+	return httputil.NewRequest(method, urlStr, body).
+		WithBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword).
+		Build()
 }

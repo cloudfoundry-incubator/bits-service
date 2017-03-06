@@ -31,9 +31,17 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
-	body, e := blobstore.Get(path)
-	return body, "", e
+func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
+	logger.Log.Debug("Head", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
+	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
+
+	if os.IsNotExist(e) {
+		return "", routes.NewNotFoundError()
+	}
+	if e != nil {
+		return "", fmt.Errorf("Error while opening file %v. Caused by: %v", path, e)
+	}
+	return "", nil
 }
 
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
@@ -49,21 +57,9 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	return file, nil
 }
 
-func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
-	logger.Log.Debug("Head", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
-	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
-
-	if os.IsNotExist(e) {
-		return "", routes.NewNotFoundError()
-	}
-	if e != nil {
-		return "", fmt.Errorf("Error while opening file %v. Caused by: %v", path, e)
-	}
-	return "", nil
-}
-
-func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
-	return "", blobstore.Put(path, src)
+func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
+	body, e := blobstore.Get(path)
+	return body, "", e
 }
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
@@ -81,6 +77,10 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 		return fmt.Errorf("Error while writing file %v. Caused by: %v", path, e)
 	}
 	return nil
+}
+
+func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+	return "", blobstore.Put(path, src)
 }
 
 func (blobstore *Blobstore) Copy(src, dest string) error {
@@ -128,7 +128,6 @@ func (blobstore *Blobstore) Delete(path string) error {
 }
 
 func (blobstore *Blobstore) DeleteDir(prefix string) error {
-	// TODO this not strictly deleting a prefix. It assumes the prefix to be a directory.
 	e := os.RemoveAll(filepath.Join(blobstore.pathPrefix, prefix))
 	if e != nil {
 		return errors.Wrapf(e, "Failed to delete path %v", filepath.Join(blobstore.pathPrefix, prefix))

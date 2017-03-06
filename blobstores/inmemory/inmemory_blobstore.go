@@ -37,11 +37,6 @@ func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation str
 	return "", nil
 }
 
-func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
-	body, e := blobstore.Get(path)
-	return body, "", e
-}
-
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	entry, hasKey := blobstore.Entries[path]
 	if !hasKey {
@@ -50,8 +45,9 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	return ioutil.NopCloser(bytes.NewBuffer(entry)), nil
 }
 
-func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
-	return "", blobstore.Put(path, src)
+func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
+	body, e := blobstore.Get(path)
+	return body, "", e
 }
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
@@ -61,6 +57,10 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	}
 	blobstore.Entries[path] = b
 	return nil
+}
+
+func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+	return "", blobstore.Put(path, src)
 }
 
 func (blobstore *Blobstore) Copy(src, dest string) error {
