@@ -1,11 +1,12 @@
 package config
 
 import (
-	"errors"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"code.cloudfoundry.org/bytefmt"
 
