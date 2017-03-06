@@ -15,27 +15,27 @@ type PrefixingPathBlobstoreDecorator struct {
 	prefix   string
 }
 
-func (decorator *PrefixingPathBlobstoreDecorator) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+func (decorator *PrefixingPathBlobstoreDecorator) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
+	return decorator.delegate.GetOrRedirect(decorator.prefix + path)
+}
+
+func (decorator *PrefixingPathBlobstoreDecorator) Get(path string) (body io.ReadCloser, err error) {
 	return decorator.delegate.Get(decorator.prefix + path)
 }
 
-func (decorator *PrefixingPathBlobstoreDecorator) GetNoRedirect(path string) (body io.ReadCloser, err error) {
-	return decorator.delegate.GetNoRedirect(decorator.prefix + path)
+func (decorator *PrefixingPathBlobstoreDecorator) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
+	return decorator.delegate.HeadOrDirectToGet(decorator.prefix + path)
 }
 
-func (decorator *PrefixingPathBlobstoreDecorator) Head(path string) (redirectLocation string, err error) {
-	return decorator.delegate.Head(decorator.prefix + path)
+func (decorator *PrefixingPathBlobstoreDecorator) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+	return decorator.delegate.PutOrRedirect(decorator.prefix+path, src)
 }
 
-func (decorator *PrefixingPathBlobstoreDecorator) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+func (decorator *PrefixingPathBlobstoreDecorator) Put(path string, src io.ReadSeeker) error {
 	return decorator.delegate.Put(decorator.prefix+path, src)
 }
 
-func (decorator *PrefixingPathBlobstoreDecorator) PutNoRedirect(path string, src io.ReadSeeker) error {
-	return decorator.delegate.PutNoRedirect(decorator.prefix+path, src)
-}
-
-func (decorator *PrefixingPathBlobstoreDecorator) Copy(src, dest string) (redirectLocation string, err error) {
+func (decorator *PrefixingPathBlobstoreDecorator) Copy(src, dest string) error {
 	return decorator.delegate.Copy(decorator.prefix+src, decorator.prefix+dest)
 }
 

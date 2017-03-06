@@ -26,7 +26,7 @@ func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
 	}
 }
 
-func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -35,7 +35,7 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, redirectLocati
 	return nil, signedUrl, e
 }
 
-func (blobstore *Blobstore) Head(path string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
 	// TODO: this is actually wrong, but the client requires this contract right now it seems.
 	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
@@ -44,9 +44,9 @@ func (blobstore *Blobstore) Head(path string) (redirectLocation string, err erro
 	return signedURLFrom(request, blobstore.bucket, path)
 }
 
-func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	// This is the behavior as in the current Ruby implementation
-	e := blobstore.PutNoRedirect(path, src)
+	e := blobstore.Put(path, src)
 	return "", e
 
 	// Could also think of a redirect implementation:
@@ -67,7 +67,7 @@ func signedURLFrom(req *request.Request, bucket, path string) (string, error) {
 
 }
 
-func (blobstore *Blobstore) GetNoRedirect(path string) (body io.ReadCloser, err error) {
+func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	logger.Log.Debug("Get from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
 	output, e := blobstore.s3Client.GetObject(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
@@ -82,7 +82,7 @@ func (blobstore *Blobstore) GetNoRedirect(path string) (body io.ReadCloser, err 
 	return output.Body, nil
 }
 
-func (blobstore *Blobstore) PutNoRedirect(path string, src io.ReadSeeker) error {
+func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	logger.Log.Debug("Put to S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
 	_, e := blobstore.s3Client.PutObject(&s3.PutObjectInput{
 		Bucket: &blobstore.bucket,
@@ -95,7 +95,7 @@ func (blobstore *Blobstore) PutNoRedirect(path string, src io.ReadSeeker) error 
 	return nil
 }
 
-func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) Copy(src, dest string) error {
 	logger.Log.Debug("Copy in S3", zap.String("bucket", blobstore.bucket), zap.String("src", src), zap.String("dest", dest))
 	_, e := blobstore.s3Client.CopyObject(&s3.CopyObjectInput{
 		Key:        &dest,
@@ -104,11 +104,11 @@ func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err
 	})
 	if e != nil {
 		if isS3NotFoundError(e) {
-			return "", routes.NewNotFoundError()
+			return routes.NewNotFoundError()
 		}
-		return "", errors.Wrapf(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.bucket)
+		return errors.Wrapf(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.bucket)
 	}
-	return "", nil
+	return nil
 }
 
 func (blobstore *Blobstore) Exists(path string) (bool, error) {

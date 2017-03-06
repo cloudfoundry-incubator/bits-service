@@ -29,7 +29,7 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return hasKey, nil
 }
 
-func (blobstore *Blobstore) Head(path string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
 	_, hasKey := blobstore.Entries[path]
 	if !hasKey {
 		return "", routes.NewNotFoundError()
@@ -37,12 +37,12 @@ func (blobstore *Blobstore) Head(path string) (redirectLocation string, err erro
 	return "", nil
 }
 
-func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
-	body, e := blobstore.GetNoRedirect(path)
+func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
+	body, e := blobstore.Get(path)
 	return body, "", e
 }
 
-func (blobstore *Blobstore) GetNoRedirect(path string) (body io.ReadCloser, err error) {
+func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	entry, hasKey := blobstore.Entries[path]
 	if !hasKey {
 		return nil, routes.NewNotFoundError()
@@ -50,11 +50,11 @@ func (blobstore *Blobstore) GetNoRedirect(path string) (body io.ReadCloser, err 
 	return ioutil.NopCloser(bytes.NewBuffer(entry)), nil
 }
 
-func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
-	return "", blobstore.PutNoRedirect(path, src)
+func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+	return "", blobstore.Put(path, src)
 }
 
-func (blobstore *Blobstore) PutNoRedirect(path string, src io.ReadSeeker) error {
+func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	b, e := ioutil.ReadAll(src)
 	if e != nil {
 		return fmt.Errorf("Error while reading from src %v. Caused by: %v", path, e)
@@ -63,9 +63,9 @@ func (blobstore *Blobstore) PutNoRedirect(path string, src io.ReadSeeker) error 
 	return nil
 }
 
-func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) Copy(src, dest string) error {
 	blobstore.Entries[dest] = blobstore.Entries[src]
-	return
+	return nil
 }
 
 func (blobstore *Blobstore) Delete(path string) error {

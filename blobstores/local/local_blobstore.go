@@ -31,12 +31,12 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
-	body, e := blobstore.GetNoRedirect(path)
+func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
+	body, e := blobstore.Get(path)
 	return body, "", e
 }
 
-func (blobstore *Blobstore) GetNoRedirect(path string) (body io.ReadCloser, err error) {
+func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	logger.Log.Debug("GetNoRedirect", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
 	file, e := os.Open(filepath.Join(blobstore.pathPrefix, path))
 
@@ -49,7 +49,7 @@ func (blobstore *Blobstore) GetNoRedirect(path string) (body io.ReadCloser, err 
 	return file, nil
 }
 
-func (blobstore *Blobstore) Head(path string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
 	logger.Log.Debug("Head", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
 	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
 
@@ -62,11 +62,11 @@ func (blobstore *Blobstore) Head(path string) (redirectLocation string, err erro
 	return "", nil
 }
 
-func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
-	return "", blobstore.PutNoRedirect(path, src)
+func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+	return "", blobstore.Put(path, src)
 }
 
-func (blobstore *Blobstore) PutNoRedirect(path string, src io.ReadSeeker) error {
+func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	e := os.MkdirAll(filepath.Dir(filepath.Join(blobstore.pathPrefix, path)), os.ModeDir|0755)
 	if e != nil {
 		return fmt.Errorf("Error while creating directories for %v. Caused by: %v", path, e)
@@ -83,36 +83,36 @@ func (blobstore *Blobstore) PutNoRedirect(path string, src io.ReadSeeker) error 
 	return nil
 }
 
-func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err error) {
+func (blobstore *Blobstore) Copy(src, dest string) error {
 	srcFull := filepath.Join(blobstore.pathPrefix, src)
 	destFull := filepath.Join(blobstore.pathPrefix, dest)
 
 	srcFile, e := os.Open(srcFull)
 	if e != nil {
 		if os.IsNotExist(e) {
-			return "", routes.NewNotFoundError()
+			return routes.NewNotFoundError()
 		}
-		return "", errors.Wrapf(e, "Opening src failed. (src=%v, dest=%v)", srcFull, destFull)
+		return errors.Wrapf(e, "Opening src failed. (src=%v, dest=%v)", srcFull, destFull)
 	}
 	defer srcFile.Close()
 
 	e = os.MkdirAll(filepath.Dir(destFull), 0755)
 	if e != nil {
-		return "", errors.Wrapf(e, "Make dir failed. (src=%v, dest=%v)", srcFull, destFull)
+		return errors.Wrapf(e, "Make dir failed. (src=%v, dest=%v)", srcFull, destFull)
 	}
 
 	destFile, e := os.Create(destFull)
 	if e != nil {
-		return "", errors.Wrapf(e, "Creating dest failed. (src=%v, dest=%v)", srcFull, destFull)
+		return errors.Wrapf(e, "Creating dest failed. (src=%v, dest=%v)", srcFull, destFull)
 	}
 	defer destFile.Close()
 
 	_, e = io.Copy(destFile, srcFile)
 	if e != nil {
-		return "", errors.Wrapf(e, "Copying failed. (src=%v, dest=%v)", srcFull, destFull)
+		return errors.Wrapf(e, "Copying failed. (src=%v, dest=%v)", srcFull, destFull)
 	}
 
-	return "", nil
+	return nil
 }
 
 func (blobstore *Blobstore) Delete(path string) error {

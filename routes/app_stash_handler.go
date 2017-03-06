@@ -150,7 +150,7 @@ func copyTo(blobstore NoRedirectBlobstore, zipFileEntry *zip.File) (sha string, 
 	}
 	defer entryFileRead.Close()
 
-	e = blobstore.PutNoRedirect(sha, entryFileRead)
+	e = blobstore.Put(sha, entryFileRead)
 	if e != nil {
 		return "", errors.WithStack(e)
 	}
@@ -252,7 +252,7 @@ func (handler *AppStashHandler) createTempZipFileFrom(bundlesPayload []BundlesPa
 			return "", e
 		}
 
-		b, e := handler.blobstore.GetNoRedirect(entry.Sha1)
+		b, e := handler.blobstore.Get(entry.Sha1)
 		if e != nil {
 			if _, ok := e.(*NotFoundError); ok {
 				return "", NewNotFoundErrorWithMessage(entry.Sha1)

@@ -30,26 +30,26 @@ var _ = Describe("Blobstore", func() {
 		It("can be modified by its methods", func() {
 			Expect(blobstore.Exists("/some/path")).To(BeFalse())
 
-			redirectLocation, e := blobstore.Head("/some/path")
+			redirectLocation, e := blobstore.HeadOrDirectToGet("/some/path")
 			Expect(redirectLocation).To(BeEmpty())
 			Expect(e).To(BeAssignableToTypeOf(routes.NewNotFoundError()))
 
-			Expect(blobstore.Put("/some/path", strings.NewReader("some string"))).To(BeEmpty())
+			Expect(blobstore.PutOrRedirect("/some/path", strings.NewReader("some string"))).To(BeEmpty())
 
 			Expect(blobstore.Exists("/some/path")).To(BeTrue())
 
-			Expect(blobstore.Head("/some/path")).To(BeEmpty())
+			Expect(blobstore.HeadOrDirectToGet("/some/path")).To(BeEmpty())
 
-			body, redirectLocation, e := blobstore.Get("/some/path")
+			body, redirectLocation, e := blobstore.GetOrRedirect("/some/path")
 			Expect(redirectLocation, e).To(BeEmpty())
 			Expect(ioutil.ReadAll(body)).To(MatchRegexp("some string"))
 
-			Expect(blobstore.Copy("/some/path", "/some/other/path")).To(BeEmpty())
-			Expect(blobstore.Copy("/some/other/path", "/some/yet/other/path")).To(BeEmpty())
-			Expect(blobstore.Copy("/some/other/path", "/yet/some/other/path")).To(BeEmpty())
-			Expect(blobstore.Copy("/yet/some/other/path", "/yet/some/other/path")).To(BeEmpty())
+			Expect(blobstore.Copy("/some/path", "/some/other/path")).To(Succeed())
+			Expect(blobstore.Copy("/some/other/path", "/some/yet/other/path")).To(Succeed())
+			Expect(blobstore.Copy("/some/other/path", "/yet/some/other/path")).To(Succeed())
+			Expect(blobstore.Copy("/yet/some/other/path", "/yet/some/other/path")).To(Succeed())
 
-			body, redirectLocation, e = blobstore.Get("/some/other/path")
+			body, redirectLocation, e = blobstore.GetOrRedirect("/some/other/path")
 			Expect(redirectLocation, e).To(BeEmpty())
 			Expect(ioutil.ReadAll(body)).To(MatchRegexp("some string"))
 
@@ -59,7 +59,7 @@ var _ = Describe("Blobstore", func() {
 
 			Expect(blobstore.Exists("/some/other/path")).To(BeTrue())
 
-			redirectLocation, e = blobstore.Head("/some/path")
+			redirectLocation, e = blobstore.HeadOrDirectToGet("/some/path")
 			Expect(redirectLocation).To(BeEmpty())
 			Expect(e).To(BeAssignableToTypeOf(routes.NewNotFoundError()))
 

@@ -61,33 +61,33 @@ var _ = Describe("S3 Blobstores", func() {
 		})
 
 		It("can put and get a resource there", func() {
-			redirectLocation, e := blobstore.Head(filepath)
+			redirectLocation, e := blobstore.HeadOrDirectToGet(filepath)
 			Expect(e).NotTo(HaveOccurred())
 			Expect(redirectLocation).NotTo(BeEmpty())
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
-			body, e := blobstore.GetNoRedirect(filepath)
+			body, e := blobstore.Get(filepath)
 			Expect(e).To(BeAssignableToTypeOf(&routes.NotFoundError{}))
 			Expect(body).To(BeNil())
 
-			e = blobstore.PutNoRedirect(filepath, strings.NewReader("the file content"))
+			e = blobstore.Put(filepath, strings.NewReader("the file content"))
 
-			redirectLocation, e = blobstore.Head(filepath)
+			redirectLocation, e = blobstore.HeadOrDirectToGet(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
 
-			body, e = blobstore.GetNoRedirect(filepath)
+			body, e = blobstore.Get(filepath)
 			Expect(e).NotTo(HaveOccurred())
 			Expect(ioutil.ReadAll(body)).To(ContainSubstring("the file content"))
 
 			e = blobstore.Delete(filepath)
 			Expect(e).NotTo(HaveOccurred())
 
-			redirectLocation, e = blobstore.Head(filepath)
+			redirectLocation, e = blobstore.HeadOrDirectToGet(filepath)
 			Expect(e).NotTo(HaveOccurred())
 			Expect(redirectLocation).NotTo(BeEmpty())
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
-			body, e = blobstore.GetNoRedirect(filepath)
+			body, e = blobstore.Get(filepath)
 			Expect(e).To(BeAssignableToTypeOf(&routes.NotFoundError{}))
 			Expect(body).To(BeNil())
 		})
@@ -96,9 +96,9 @@ var _ = Describe("S3 Blobstores", func() {
 			Expect(blobstore.Exists("one")).To(BeFalse())
 			Expect(blobstore.Exists("two")).To(BeFalse())
 
-			redirectLocation, e := blobstore.Put("one", strings.NewReader("the file content"))
+			redirectLocation, e := blobstore.PutOrRedirect("one", strings.NewReader("the file content"))
 			Expect(redirectLocation, e).To(BeEmpty())
-			redirectLocation, e = blobstore.Put("two", strings.NewReader("the file content"))
+			redirectLocation, e = blobstore.PutOrRedirect("two", strings.NewReader("the file content"))
 			Expect(redirectLocation, e).To(BeEmpty())
 
 			Expect(blobstore.Exists("one")).To(BeTrue())
@@ -115,9 +115,9 @@ var _ = Describe("S3 Blobstores", func() {
 			Expect(blobstore.Exists("dir/one")).To(BeFalse())
 			Expect(blobstore.Exists("dir/two")).To(BeFalse())
 
-			redirectLocation, e := blobstore.Put("dir/one", strings.NewReader("the file content"))
+			redirectLocation, e := blobstore.PutOrRedirect("dir/one", strings.NewReader("the file content"))
 			Expect(redirectLocation, e).To(BeEmpty())
-			redirectLocation, e = blobstore.Put("dir/two", strings.NewReader("the file content"))
+			redirectLocation, e = blobstore.PutOrRedirect("dir/two", strings.NewReader("the file content"))
 			Expect(redirectLocation, e).To(BeEmpty())
 
 			Expect(blobstore.Exists("dir/one")).To(BeTrue())
@@ -136,25 +136,25 @@ var _ = Describe("S3 Blobstores", func() {
 		It("can put and get a resource there", func() {
 			blobstore := NewBlobstore(s3Config)
 
-			redirectLocation, e := blobstore.Head(filepath)
+			redirectLocation, e := blobstore.HeadOrDirectToGet(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
 			// NOTE: our current contract with bits-service-client requires to do a GET request on a URL received from Head()
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
-			body, redirectLocation, e := blobstore.Get(filepath)
+			body, redirectLocation, e := blobstore.GetOrRedirect(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
 			Expect(body).To(BeNil())
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
-			redirectLocation, e = blobstore.Put(filepath, strings.NewReader("the file content"))
+			redirectLocation, e = blobstore.PutOrRedirect(filepath, strings.NewReader("the file content"))
 			Expect(redirectLocation, e).To(BeEmpty())
 
-			redirectLocation, e = blobstore.Head(filepath)
+			redirectLocation, e = blobstore.HeadOrDirectToGet(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
 			// NOTE: our current contract with bits-service-client requires to do a GET request on a URL received from Head()
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusOK))
 
-			body, redirectLocation, e = blobstore.Get(filepath)
+			body, redirectLocation, e = blobstore.GetOrRedirect(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
 			Expect(body).To(BeNil())
 			Expect(http.Get(redirectLocation)).To(HaveBodyWithSubstring("the file content"))
@@ -162,12 +162,12 @@ var _ = Describe("S3 Blobstores", func() {
 			e = blobstore.Delete(filepath)
 			Expect(e).NotTo(HaveOccurred())
 
-			redirectLocation, e = blobstore.Head(filepath)
+			redirectLocation, e = blobstore.HeadOrDirectToGet(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
 			// NOTE: our current contract with bits-service-client requires to do a GET request on a URL received from Head()
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
-			body, redirectLocation, e = blobstore.Get(filepath)
+			body, redirectLocation, e = blobstore.GetOrRedirect(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
 			Expect(body).To(BeNil())
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))

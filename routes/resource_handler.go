@@ -37,7 +37,7 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	}
 	defer file.Close()
 
-	redirectLocation, e := handler.blobstore.Put(mux.Vars(request)["identifier"], file)
+	redirectLocation, e := handler.blobstore.PutOrRedirect(mux.Vars(request)["identifier"], file)
 	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusCreated, emptyReader)
 }
 
@@ -46,8 +46,8 @@ func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWrite
 	if sourceGuid == "" {
 		return // response is already handled in sourceGuidFrom
 	}
-	redirectLocation, e := handler.blobstore.Copy(sourceGuid, mux.Vars(request)["identifier"])
-	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusCreated, emptyReader)
+	e := handler.blobstore.Copy(sourceGuid, mux.Vars(request)["identifier"])
+	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, emptyReader)
 }
 
 func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) string {
@@ -68,12 +68,12 @@ func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) stri
 }
 
 func (handler *ResourceHandler) Head(responseWriter http.ResponseWriter, request *http.Request) {
-	redirectLocation, e := handler.blobstore.Head(mux.Vars(request)["identifier"])
+	redirectLocation, e := handler.blobstore.HeadOrDirectToGet(mux.Vars(request)["identifier"])
 	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, emptyReader)
 }
 
 func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
-	body, redirectLocation, e := handler.blobstore.Get(mux.Vars(request)["identifier"])
+	body, redirectLocation, e := handler.blobstore.GetOrRedirect(mux.Vars(request)["identifier"])
 	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, body)
 }
 

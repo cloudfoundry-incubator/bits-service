@@ -53,7 +53,7 @@ func (blobstore *Blobstore) NewRequest(method string, urlStr string, body io.Rea
 		Build()
 }
 
-func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, redirectLocation string, err error) {
+func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
 	exists, e := blobstore.Exists(path)
 	if e != nil {
 		return nil, "", e
@@ -65,12 +65,12 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, redirectLocati
 	return nil, signedUrl, nil
 }
 
-func (blobstore *Blobstore) Head(path string) (redirectLocation string, err error) {
-	_, redirectLocation, e := blobstore.Get(path)
+func (blobstore *Blobstore) HeadOrDirectToGet(path string) (redirectLocation string, err error) {
+	_, redirectLocation, e := blobstore.GetOrRedirect(path)
 	return redirectLocation, e
 }
 
-func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocation string, err error) {
+func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
 	response, e := blobstore.httpClient.Do(
 		blobstore.NewRequest("PUT", blobstore.webdavPrivateEndpoint+"/admin/"+path, src))
 	if e != nil {
@@ -82,10 +82,10 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) (redirectLocatio
 	return "", nil
 }
 
-func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err error) {
-	_, e := blobstore.Put(dest, bytes.NewReader(nil))
+func (blobstore *Blobstore) Copy(src, dest string) error {
+	_, e := blobstore.PutOrRedirect(dest, bytes.NewReader(nil))
 	if e != nil {
-		return "", e
+		return e
 	}
 	response, e := blobstore.httpClient.Do(
 		httputil.NewRequest("COPY", blobstore.webdavPrivateEndpoint+"/admin/"+src, nil).
@@ -93,15 +93,15 @@ func (blobstore *Blobstore) Copy(src, dest string) (redirectLocation string, err
 			WithBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword).
 			Build())
 	if e != nil {
-		return "", errors.Wrapf(e, "Request failed. src=%v, dest=%v", src, dest)
+		return errors.Wrapf(e, "Request failed. src=%v, dest=%v", src, dest)
 	}
 	if response.StatusCode == http.StatusNotFound {
-		return "", routes.NewNotFoundError()
+		return routes.NewNotFoundError()
 	}
 	if response.StatusCode < 200 || response.StatusCode > 204 {
-		return "", errors.Errorf("Expected StatusCreated, but got status code: " + response.Status)
+		return errors.Errorf("Expected StatusCreated, but got status code: " + response.Status)
 	}
-	return "", nil
+	return nil
 }
 
 func (blobstore *Blobstore) Delete(path string) error {
@@ -136,7 +136,7 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	return nil
 }
 
-func (blobstore *Blobstore) GetNoRedirect(path string) (body io.ReadCloser, err error) {
+func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	exists, e := blobstore.Exists(path)
 	if e != nil {
 		return nil, e
@@ -157,7 +157,7 @@ func (blobstore *Blobstore) GetNoRedirect(path string) (body io.ReadCloser, err 
 	return response.Body, nil
 }
 
-func (blobstore *Blobstore) PutNoRedirect(path string, src io.ReadSeeker) error {
+func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	request, e := http.NewRequest("PUT", blobstore.webdavPrivateEndpoint+"/admin/"+path, src)
 	if e != nil {
 		panic(e)
