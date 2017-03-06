@@ -40,9 +40,10 @@ func (signer *WebdavResourceSigner) Sign(resource string, method string) string 
 	case "get":
 		url = fmt.Sprintf(signer.webdavPrivateEndpoint+"/sign?path=/%v&expires=%v", resource, time.Now().Unix()+3600)
 	}
-	request, _ := http.NewRequest("GET", url, nil)
-	request.SetBasicAuth(signer.webdavUsername, signer.webdavPassword)
-	response, e := signer.httpClient.Do(request)
+	response, e := signer.httpClient.Do(
+		httputil.NewRequest("GET", url, nil).
+			WithBasicAuth(signer.webdavUsername, signer.webdavPassword).
+			Build())
 	if e != nil {
 		return "Error during signing. Error: " + e.Error()
 	}
