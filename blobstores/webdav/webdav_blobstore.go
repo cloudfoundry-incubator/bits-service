@@ -118,7 +118,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 		return routes.NewNotFoundError()
 	}
 	if response.StatusCode < 200 || response.StatusCode > 204 {
-		return errors.Errorf("Expected StatusCreated, but got status code: " + response.Status)
+		return errors.Errorf("Expected HTTP status code 200-204, but got status code: " + response.Status)
 	}
 	return nil
 }
@@ -130,7 +130,7 @@ func (blobstore *Blobstore) Delete(path string) error {
 		return errors.Wrapf(e, "Request failed. path=%v", path)
 	}
 	if response.StatusCode < 200 || response.StatusCode > 204 {
-		return errors.Errorf("Expected StatusCreated, but got status code: " + response.Status)
+		return errors.Errorf("Expected HTTP status code 200-204, but got status code: " + response.Status)
 	}
 	return nil
 }
@@ -150,7 +150,7 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	}
 
 	if response.StatusCode < 200 || response.StatusCode > 204 {
-		return errors.Errorf("Expected StatusCreated, but got status code: " + response.Status)
+		return errors.Errorf("Expected HTTP status code 200-204, but got status code: " + response.Status)
 	}
 	return nil
 }
