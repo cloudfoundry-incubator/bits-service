@@ -156,6 +156,7 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 }
 
 func (blobstore *Blobstore) newRequestWithBasicAuth(method string, urlStr string, body io.Reader) *http.Request {
+	logger.Log.Debug("Building HTTP request", zap.String("method", method), zap.String("url", urlStr), zap.Bool("has-body", body != nil), zap.String("user", blobstore.webdavUsername))
 	return httputil.NewRequest(method, urlStr, body).
 		WithBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword).
 		Build()
