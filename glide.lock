@@ -1,5 +1,5 @@
-hash: 5ec6278f9a55cd851385ee0e7843eecb033cba9559144a0b68d448db3464968c
-updated: 2017-04-20T21:20:58.555260464+02:00
+hash: 39fb05b01fd191629195c18afdf9b165ca7a3a50cd0cfa6fdc45f25d40387d79
+updated: 2017-04-20T23:59:56.85016586+02:00
 imports:
 - name: code.cloudfoundry.org/bytefmt
   version: b12c1522f4cbb5f35861bd5dd2c39a4fa996441a
@@ -67,6 +67,8 @@ imports:
   - types
 - name: github.com/pkg/errors
   version: 248dadf4e9068a0b3e79f02ed0a610d935de5302
+- name: github.com/tecnickcom/statsd
+  version: 969e3814be4f15681e2da76965ffa464b576a51f
 - name: github.com/uber-go/atomic
   version: 3b8db5e93c4c02efbc313e17b2e796b0914a01fb
 - name: github.com/uber-go/zap
@@ -75,8 +77,6 @@ imports:
   version: 46eece4d3b43dd330e141b20adf0ce9b2b35ba53
 - name: gopkg.in/alecthomas/kingpin.v2
   version: e9044be3ab2a8e11d4e1f418d12f0790d57e8d70
-- name: gopkg.in/alexcesaro/statsd.v2
-  version: 7fea3f0d2fab1ad973e641e51dba45443a311a90
 - name: gopkg.in/yaml.v2
   version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 testImports:

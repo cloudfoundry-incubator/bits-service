@@ -12,9 +12,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo/logger"
+	"github.com/tecnickcom/statsd"
 	"github.com/uber-go/zap"
-
-	statsd "gopkg.in/alexcesaro/statsd.v2"
 )
 
 type ResourceHandler struct {

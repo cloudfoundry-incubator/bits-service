@@ -3,9 +3,8 @@ package routes
 import (
 	"net/http"
 
-	statsd "gopkg.in/alexcesaro/statsd.v2"
-
 	"github.com/gorilla/mux"
+	"github.com/tecnickcom/statsd"
 )
 
 func SetUpAppStashRoutes(router *mux.Router, blobstore NoRedirectBlobstore) {

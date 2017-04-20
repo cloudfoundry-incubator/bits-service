@@ -20,7 +20,7 @@ import:
 - package: github.com/uber-go/zap
 - package: code.cloudfoundry.org/bytefmt
 - package: github.com/benbjohnson/clock
-- package: gopkg.in/alexcesaro/statsd.v2
+- package: github.com/tecnickcom/statsd
 testImport:
 - package: github.com/onsi/ginkgo
 - package: github.com/petergtz/pegomock
