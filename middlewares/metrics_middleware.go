@@ -38,6 +38,6 @@ func (middleware *MetricsMiddleware) ServeHTTP(responseWriter http.ResponseWrite
 
 	next(negroniResponseWriter, request)
 
-	fmt.Fprintf(middleware.writer, "%v %v %v;%v;%v",
+	fmt.Fprintf(middleware.writer, "%v %v %v;%v;%v\n",
 		request.Method, request.URL.Path, request.Proto, time.Since(startTime).Seconds(), negroniResponseWriter.Size())
 }
