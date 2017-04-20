@@ -37,7 +37,7 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 		negroniResponseWriter = negroni.NewResponseWriter(responseWriter)
 	}
 
-	next(responseWriter, request.WithContext(context.WithValue(nil, "logger", requestLogger)))
+	next(negroniResponseWriter, request.WithContext(context.WithValue(nil, "logger", requestLogger)))
 
 	fields := []zap.Field{
 		zap.String("host", request.Host),
