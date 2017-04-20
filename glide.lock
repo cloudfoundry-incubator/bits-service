@@ -1,5 +1,5 @@
-hash: 7661a444c7f6ed037c544674efa799210ab0c1eb36a230a07484742965c5f0ef
-updated: 2017-01-29T23:52:43.597662276+01:00
+hash: 5ec6278f9a55cd851385ee0e7843eecb033cba9559144a0b68d448db3464968c
+updated: 2017-04-20T21:20:58.555260464+02:00
 imports:
 - name: code.cloudfoundry.org/bytefmt
   version: b12c1522f4cbb5f35861bd5dd2c39a4fa996441a
@@ -75,6 +75,8 @@ imports:
   version: 46eece4d3b43dd330e141b20adf0ce9b2b35ba53
 - name: gopkg.in/alecthomas/kingpin.v2
   version: e9044be3ab2a8e11d4e1f418d12f0790d57e8d70
+- name: gopkg.in/alexcesaro/statsd.v2
+  version: 7fea3f0d2fab1ad973e641e51dba45443a311a90
 - name: gopkg.in/yaml.v2
   version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 testImports:

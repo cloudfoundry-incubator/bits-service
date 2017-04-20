@@ -3,6 +3,8 @@ package routes
 import (
 	"net/http"
 
+	statsd "gopkg.in/alexcesaro/statsd.v2"
+
 	"github.com/gorilla/mux"
 )
 
@@ -16,23 +18,23 @@ func SetUpAppStashRoutes(router *mux.Router, blobstore NoRedirectBlobstore) {
 func SetUpPackageRoutes(router *mux.Router, blobstore Blobstore) {
 	setUpDefaultMethodRoutes(
 		router.Path("/packages/{identifier}").Subrouter(),
-		&ResourceHandler{blobstore: blobstore, resourceType: "package"})
+		&ResourceHandler{blobstore: blobstore, resourceType: "package", statsdClient: newStatsdClient()})
 }
 
 func SetUpBuildpackRoutes(router *mux.Router, blobstore Blobstore) {
 	setUpDefaultMethodRoutes(
 		router.Path("/buildpacks/{identifier}").Subrouter(),
-		&ResourceHandler{blobstore: blobstore, resourceType: "buildpack"})
+		&ResourceHandler{blobstore: blobstore, resourceType: "buildpack", statsdClient: newStatsdClient()})
 }
 
 func SetUpDropletRoutes(router *mux.Router, blobstore Blobstore) {
 	setUpDefaultMethodRoutes(
 		router.Path("/droplets/{identifier:.*}").Subrouter(), // TODO we could probably be more specific in the regex
-		&ResourceHandler{blobstore: blobstore, resourceType: "droplet"})
+		&ResourceHandler{blobstore: blobstore, resourceType: "droplet", statsdClient: newStatsdClient()})
 }
 
 func SetUpBuildpackCacheRoutes(router *mux.Router, blobstore Blobstore) {
-	handler := &ResourceHandler{blobstore: blobstore, resourceType: "buildpack_cache"}
+	handler := &ResourceHandler{blobstore: blobstore, resourceType: "buildpack_cache", statsdClient: newStatsdClient()}
 	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(handler.DeleteDir)
 	router.Path("/buildpack_cache/entries/{identifier}").Methods("DELETE").HandlerFunc(handler.DeleteDir)
 	setUpDefaultMethodRoutes(router.Path("/buildpack_cache/entries/{identifier:.*}").Subrouter(), handler)
@@ -58,4 +60,12 @@ func delegateTo(delegate func(http.ResponseWriter, *http.Request, map[string]str
 	return func(responseWriter http.ResponseWriter, request *http.Request) {
 		delegate(responseWriter, request, mux.Vars(request))
 	}
+}
+
+func newStatsdClient() *statsd.Client {
+	statsdClient, e := statsd.New() // Connect to the UDP port 8125 by default.
+	if e != nil {
+		panic(e)
+	}
+	return statsdClient
 }

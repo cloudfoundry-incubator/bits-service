@@ -8,15 +8,19 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/uber-go/zap"
+
+	statsd "gopkg.in/alexcesaro/statsd.v2"
 )
 
 type ResourceHandler struct {
 	blobstore    Blobstore
 	resourceType string
+	statsdClient *statsd.Client
 }
 
 func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
@@ -37,7 +41,10 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	}
 	defer file.Close()
 
+	startTime := time.Now()
 	redirectLocation, e := handler.blobstore.PutOrRedirect(mux.Vars(request)["identifier"], file)
+	handler.statsdClient.Timing(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime).Seconds()*1000)
+
 	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusCreated, emptyReader)
 }
 
