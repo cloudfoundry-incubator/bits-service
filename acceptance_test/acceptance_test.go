@@ -61,6 +61,15 @@ var _ = Describe("Accessing the bits-service", func() {
 			Expect(http.Get("http://internal.127.0.0.1.xip.io:8000/packages/myguid")).
 				To(WithTransform(GetStatusCode, Equal(http.StatusOK)))
 		})
+
+		It("writes a metrics log file", func() {
+			_, e := httputil.NewPutRequest("http://internal.127.0.0.1.xip.io:8000/packages/myguid", map[string]map[string]io.Reader{
+				"package": map[string]io.Reader{"somefilename": strings.NewReader("My test string")},
+			})
+			Expect(e).NotTo(HaveOccurred())
+
+			Expect("/tmp/bitsgo_metrics.log").To(BeARegularFile())
+		})
 	})
 
 	Context("through public host", func() {

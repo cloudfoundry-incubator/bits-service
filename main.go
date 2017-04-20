@@ -79,7 +79,9 @@ func main() {
 		routes.SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheBlobstore)
 	}
 
-	httpHandler := negroni.New(middlewares.NewZapLoggerMiddleware(log.Log))
+	httpHandler := negroni.New(
+		middlewares.NewMetricsMiddlewareFromFilename(config.MetricsLogDestination),
+		middlewares.NewZapLoggerMiddleware(log.Log))
 	if config.MaxBodySizeBytes() != 0 {
 		httpHandler.Use(middlewares.NewBodySizeLimitMiddleware(config.MaxBodySizeBytes()))
 	}
