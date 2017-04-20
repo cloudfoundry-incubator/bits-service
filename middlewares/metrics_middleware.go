@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/urfave/negroni"
 
@@ -14,7 +15,8 @@ import (
 )
 
 type MetricsMiddleware struct {
-	writer io.Writer
+	writer      io.Writer
+	writerMutex sync.Mutex
 }
 
 func NewMetricsMiddlewareFromFilename(filename string) *MetricsMiddleware {
@@ -38,6 +40,8 @@ func (middleware *MetricsMiddleware) ServeHTTP(responseWriter http.ResponseWrite
 
 	next(negroniResponseWriter, request)
 
+	middleware.writerMutex.Lock()
+	defer middleware.writerMutex.Unlock()
 	fmt.Fprintf(middleware.writer, "%v %v %v;%v;%v\n",
 		request.Method, request.URL.Path, request.Proto, time.Since(startTime).Seconds(), negroniResponseWriter.Size())
 }
