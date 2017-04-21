@@ -118,6 +118,9 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
+	case *NoSpaceLeftError:
+		responseWriter.WriteHeader(http.StatusInsufficientStorage)
+		return
 	case error:
 		internalServerError(responseWriter, e)
 		return

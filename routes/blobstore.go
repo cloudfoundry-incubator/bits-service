@@ -17,6 +17,14 @@ func NewNotFoundErrorWithMessage(message string) *NotFoundError {
 	return &NotFoundError{fmt.Errorf(message)}
 }
 
+type NoSpaceLeftError struct {
+	error
+}
+
+func NewNoSpaceLeftError() *NotFoundError {
+	return &NotFoundError{fmt.Errorf("NoSpaceLeftError")}
+}
+
 type Blobstore interface {
 	// returns a NotFoundError when the path doesn't exist.
 	Exists(path string) (bool, error)

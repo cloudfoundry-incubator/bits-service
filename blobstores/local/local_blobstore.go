@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"syscall"
+
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/petergtz/bitsgo/routes"
 	"github.com/pkg/errors"
@@ -69,11 +71,17 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	}
 	file, e := os.Create(filepath.Join(blobstore.pathPrefix, path))
 	if e != nil {
+		if e.(*os.PathError).Err == syscall.ENOSPC {
+			return routes.NewNoSpaceLeftError()
+		}
 		return fmt.Errorf("Error while creating file %v. Caused by: %v", path, e)
 	}
 	defer file.Close()
 	_, e = io.Copy(file, src)
 	if e != nil {
+		if e.(*os.PathError).Err == syscall.ENOSPC {
+			return routes.NewNoSpaceLeftError()
+		}
 		return fmt.Errorf("Error while writing file %v. Caused by: %v", path, e)
 	}
 	return nil
