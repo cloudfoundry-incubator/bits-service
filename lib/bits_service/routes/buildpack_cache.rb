@@ -21,7 +21,7 @@ module BitsService
       get '/buildpack_cache/entries/:app_guid/:stack_name' do |app_guid, stack_name|
         cache_key = key(app_guid, stack_name)
         blob = buildpack_cache_blobstore.blob(cache_key)
-        fail Errors::ApiError.new_from_details('NotFound', cache_key) unless blob
+        fail Errors::ApiError.new_from_details('ResourceNotFound', cache_key) unless blob
 
         if buildpack_cache_blobstore.local?
           if use_nginx?
@@ -42,7 +42,7 @@ module BitsService
       delete '/buildpack_cache/entries/:app_guid/:stack_name' do |app_guid, stack_name|
         cache_key = key(app_guid, stack_name)
         blob = buildpack_cache_blobstore.blob(cache_key)
-        fail Errors::ApiError.new_from_details('NotFound', cache_key) unless blob
+        fail Errors::ApiError.new_from_details('ResourceNotFound', cache_key) unless blob
         buildpack_cache_blobstore.delete_blob(blob)
         status 204
       end

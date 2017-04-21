@@ -20,7 +20,7 @@ module BitsService
 
       get '/buildpacks/:guid' do |guid|
         blob = buildpack_blobstore.blob(guid)
-        fail Errors::ApiError.new_from_details('NotFound', guid) unless blob
+        fail Errors::ApiError.new_from_details('ResourceNotFound', guid) unless blob
 
         if buildpack_blobstore.local?
           if use_nginx?
@@ -35,7 +35,7 @@ module BitsService
 
       delete '/buildpacks/:guid' do |guid|
         blob = buildpack_blobstore.blob(guid)
-        fail Errors::ApiError.new_from_details('NotFound', guid) unless blob
+        fail Errors::ApiError.new_from_details('ResourceNotFound', guid) unless blob
         buildpack_blobstore.delete_blob(blob)
         status 204
       end

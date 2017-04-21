@@ -268,9 +268,6 @@ module BitsService
             get "/buildpack_cache/entries/#{key}", headers
 
             expect(last_response.status).to eq(404)
-            json = JSON.parse(last_response.body)
-            expect(json['code']).to eq(10_000)
-            expect(json['description']).to match(/Unknown request/)
           end
         end
       end
@@ -305,9 +302,6 @@ module BitsService
             delete "/buildpack_cache/entries/#{key}", headers
 
             expect(last_response.status).to eq(404)
-            json = JSON.parse(last_response.body)
-            expect(json['code']).to eq(10_000)
-            expect(json['description']).to match(/Unknown request/)
           end
         end
       end

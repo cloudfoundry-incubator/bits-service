@@ -15,7 +15,7 @@ module BitsService
 
       get '/packages/:guid' do |guid|
         blob = packages_blobstore.blob(guid)
-        fail Errors::ApiError.new_from_details('NotFound', guid) unless blob
+        fail Errors::ApiError.new_from_details('ResourceNotFound', guid) unless blob
 
         if packages_blobstore.local?
           if use_nginx?
@@ -30,7 +30,7 @@ module BitsService
 
       delete '/packages/:guid' do |guid|
         blob = packages_blobstore.blob(guid)
-        fail Errors::ApiError.new_from_details('NotFound', guid) unless blob
+        fail Errors::ApiError.new_from_details('ResourceNotFound', guid) unless blob
 
         packages_blobstore.delete_blob(blob)
         status 204
@@ -50,7 +50,7 @@ module BitsService
 
       def create_as_duplicate(source_guid, target_guid)
         blob = packages_blobstore.blob(source_guid)
-        fail Errors::ApiError.new_from_details('NotFound', source_guid) unless blob
+        fail Errors::ApiError.new_from_details('ResourceNotFound', source_guid) unless blob
 
         packages_blobstore.cp_file_between_keys(source_guid, target_guid)
         status 201

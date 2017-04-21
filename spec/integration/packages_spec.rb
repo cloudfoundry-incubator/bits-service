@@ -98,12 +98,6 @@ describe 'packages resource', type: :integration do
           response = make_put_request(resource_path, update_body)
           expect(response.code).to eq 404
         end
-
-        it 'returns an error message' do
-          response = make_put_request(resource_path, update_body)
-          description = JSON.parse(response.body)['description']
-          expect(description).to eq 'Unknown request'
-        end
       end
     end
   end
@@ -131,12 +125,6 @@ describe 'packages resource', type: :integration do
       it 'returns HTTP status code 404' do
         response = make_get_request(resource_path)
         expect(response.code).to eq 404
-      end
-
-      it 'returns the expected error description' do
-        response = make_get_request(resource_path)
-        description = JSON.parse(response.body)['description']
-        expect(description).to eq 'Unknown request'
       end
     end
   end
@@ -169,12 +157,6 @@ describe 'packages resource', type: :integration do
       it 'returns HTTP status code 404' do
         response = make_delete_request(resource_path)
         expect(response.code).to eq 404
-      end
-
-      it 'returns the expected error description' do
-        response = make_delete_request(resource_path)
-        description = JSON.parse(response.body)['description']
-        expect(description).to eq 'Unknown request'
       end
     end
   end

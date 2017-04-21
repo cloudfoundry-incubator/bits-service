@@ -19,7 +19,7 @@ module BitsService
 
       get %r{^/droplets/(.*/.*)} do |path|
         blob = droplet_blobstore.blob(path)
-        fail Errors::ApiError.new_from_details('NotFound', path) unless blob
+        fail Errors::ApiError.new_from_details('ResourceNotFound', path) unless blob
 
         if droplet_blobstore.local?
           if use_nginx?
@@ -34,7 +34,7 @@ module BitsService
 
       delete %r{^/droplets/(.*/.*)} do |path|
         blob = droplet_blobstore.blob(path)
-        fail Errors::ApiError.new_from_details('NotFound', path) unless blob
+        fail Errors::ApiError.new_from_details('ResourceNotFound', path) unless blob
         droplet_blobstore.delete_blob(blob)
         status 204
       end
@@ -56,7 +56,7 @@ module BitsService
 
       def create_as_duplicate(source_guid, new_guid)
         blob = droplet_blobstore.blob(source_guid)
-        fail Errors::ApiError.new_from_details('NotFound', source_guid) unless blob
+        fail Errors::ApiError.new_from_details('ResourceNotFound', source_guid) unless blob
 
         droplet_blobstore.cp_file_between_keys(source_guid, new_guid)
         status 201
