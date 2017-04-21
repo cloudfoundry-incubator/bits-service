@@ -12,14 +12,17 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo/logger"
-	"github.com/tecnickcom/statsd"
 	"github.com/uber-go/zap"
 )
 
+type MetricsService interface {
+	SendTimingMetric(name string, duration time.Duration)
+}
+
 type ResourceHandler struct {
-	blobstore    Blobstore
-	resourceType string
-	statsdClient *statsd.Client
+	blobstore      Blobstore
+	resourceType   string
+	metricsService MetricsService
 }
 
 func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
@@ -42,7 +45,7 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 
 	startTime := time.Now()
 	redirectLocation, e := handler.blobstore.PutOrRedirect(mux.Vars(request)["identifier"], file)
-	handler.statsdClient.Timing(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime).Seconds()*1000)
+	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
 
 	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusCreated, emptyReader)
 }
