@@ -21,3 +21,6 @@ func NewMetricsService() *MetricsService {
 func (service *MetricsService) SendTimingMetric(name string, duration time.Duration) {
 	service.statsdClient.Timing(name, duration.Seconds()*1000)
 }
+func (service *MetricsService) SendGaugeMetric(name string, value int64) {
+	service.statsdClient.Gauge(name, value)
+}

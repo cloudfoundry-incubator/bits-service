@@ -18,6 +18,7 @@ import (
 	"github.com/petergtz/bitsgo/middlewares"
 	"github.com/petergtz/bitsgo/pathsigner"
 	"github.com/petergtz/bitsgo/routes"
+	"github.com/petergtz/bitsgo/statsd"
 	"github.com/uber-go/zap"
 	"github.com/urfave/negroni"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -80,7 +81,7 @@ func main() {
 	}
 
 	httpHandler := negroni.New(
-		middlewares.NewMetricsMiddlewareFromFilename(config.MetricsLogDestination),
+		middlewares.NewMetricsMiddleware(statsd.NewMetricsService()),
 		middlewares.NewZapLoggerMiddleware(log.Log))
 	if config.MaxBodySizeBytes() != 0 {
 		httpHandler.Use(middlewares.NewBodySizeLimitMiddleware(config.MaxBodySizeBytes()))

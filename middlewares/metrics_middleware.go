@@ -1,34 +1,26 @@
 package middlewares
 
 import (
-	"fmt"
-	"io"
 	"net/http"
-	"sync"
 
 	"github.com/urfave/negroni"
 
-	"os"
+	"regexp"
+	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
+type MetricsService interface {
+	SendTimingMetric(name string, duration time.Duration)
+	SendGaugeMetric(name string, value int64)
+}
+
 type MetricsMiddleware struct {
-	writer      io.Writer
-	writerMutex sync.Mutex
+	metricsService MetricsService
 }
 
-func NewMetricsMiddlewareFromFilename(filename string) *MetricsMiddleware {
-	fileWriter, e := os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-	if e != nil {
-		panic(errors.Wrapf(e, "Could not open file '%v' for appending", filename))
-	}
-	return &MetricsMiddleware{writer: fileWriter}
-}
-
-func NewMetricsMiddleware(writer io.Writer) *MetricsMiddleware {
-	return &MetricsMiddleware{writer: writer}
+func NewMetricsMiddleware(metricsService MetricsService) *MetricsMiddleware {
+	return &MetricsMiddleware{metricsService: metricsService}
 }
 
 func (middleware *MetricsMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
@@ -40,8 +32,13 @@ func (middleware *MetricsMiddleware) ServeHTTP(responseWriter http.ResponseWrite
 
 	next(negroniResponseWriter, request)
 
-	middleware.writerMutex.Lock()
-	defer middleware.writerMutex.Unlock()
-	fmt.Fprintf(middleware.writer, "%v %v %v;%v;%v\n",
-		request.Method, request.URL.Path, request.Proto, time.Since(startTime).Seconds(), negroniResponseWriter.Size())
+	resourceType := ResourceTypeFrom(request.URL.Path)
+	middleware.metricsService.SendTimingMetric(resourceType+"-time", time.Since(startTime))
+	middleware.metricsService.SendGaugeMetric(resourceType+"-size", int64(negroniResponseWriter.Size()))
+}
+
+var resourceURLPathPattern = regexp.MustCompile(`^/(\w+)/`)
+
+func ResourceTypeFrom(path string) string {
+	return strings.Trim(resourceURLPathPattern.FindString(path), "/")
 }

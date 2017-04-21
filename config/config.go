@@ -14,18 +14,17 @@ import (
 )
 
 type Config struct {
-	Buildpacks            BlobstoreConfig
-	Droplets              BlobstoreConfig
-	Packages              BlobstoreConfig
-	AppStash              BlobstoreConfig `yaml:"app_stash"`
-	Logging               LoggingConfig
-	PublicEndpoint        string `yaml:"public_endpoint"`
-	PrivateEndpoint       string `yaml:"private_endpoint"`
-	Secret                string
-	Port                  int
-	SigningUsers          []Credential `yaml:"signing_users"`
-	MaxBodySize           string       `yaml:"max_body_size"`
-	MetricsLogDestination string       `yaml:"metrics_log_destination"`
+	Buildpacks      BlobstoreConfig
+	Droplets        BlobstoreConfig
+	Packages        BlobstoreConfig
+	AppStash        BlobstoreConfig `yaml:"app_stash"`
+	Logging         LoggingConfig
+	PublicEndpoint  string `yaml:"public_endpoint"`
+	PrivateEndpoint string `yaml:"private_endpoint"`
+	Secret          string
+	Port            int
+	SigningUsers    []Credential `yaml:"signing_users"`
+	MaxBodySize     string       `yaml:"max_body_size"`
 }
 
 func (config *Config) PublicEndpointUrl() *url.URL {
