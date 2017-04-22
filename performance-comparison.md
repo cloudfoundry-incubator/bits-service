@@ -2,7 +2,7 @@
 
 ## Speed
 
-The performance test was done in an AWS environment with an S3 blobstore backend.
+The performance test was done in an AWS environment with an S3 blobstore backend. The bits-service was deployed as one VM with the Ruby implementation in it, and another VM with the Go implementation in it.
 
 ### GET requests
 
