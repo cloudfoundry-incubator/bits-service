@@ -42,42 +42,33 @@ func NewPutRequest(url string, formFiles map[string]map[string]io.Reader) (*http
 		panic("More than one formFile is not supported yet")
 	}
 	bodyBuf := &bytes.Buffer{}
+	contentType, e := AddFormFileTo(bodyBuf, formFiles)
+	if e != nil {
+		return nil, errors.Wrapf(e, "url=%v", url)
+	}
 	request, e := http.NewRequest("PUT", url, bodyBuf)
 	if e != nil {
 		return nil, errors.Wrapf(e, "url=%v", url)
 	}
-	header, e := AddFormFileTo(bodyBuf, formFiles)
-	if e != nil {
-		return nil, errors.Wrapf(e, "url=%v", url)
-	}
-	AddHeaderTo(request, header)
+	request.Header.Add("Content-Type", contentType)
 	return request, nil
 }
 
-func AddFormFileTo(body io.Writer, formFiles map[string]map[string]io.Reader) (header http.Header, err error) {
-	header = make(map[string][]string)
-	for name, fileAndReader := range formFiles {
-		multipartWriter := multipart.NewWriter(body)
-		for file, reader := range fileAndReader {
-			formFileWriter, e := multipartWriter.CreateFormFile(name, file)
+func AddFormFileTo(body io.Writer, formFiles map[string]map[string]io.Reader) (contentType string, err error) {
+	multipartWriter := multipart.NewWriter(body)
+	for name, filenameAndReader := range formFiles {
+		for filename, reader := range filenameAndReader {
+			formFileWriter, e := multipartWriter.CreateFormFile(name, filename)
 			if e != nil {
-				err = fmt.Errorf("Could not CreateFormFile with name %v and filename %v", name, file)
+				err = fmt.Errorf("Could not CreateFormFile with name %v and filename %v", name, filename)
 				return
 			}
 			io.Copy(formFileWriter, reader)
-			multipartWriter.Close()
-			header["Content-Type"] = append(header["Content-Type"], multipartWriter.FormDataContentType())
 		}
 	}
+	multipartWriter.Close()
+	contentType = multipartWriter.FormDataContentType()
 	return
-}
-
-func AddHeaderTo(request *http.Request, header http.Header) {
-	for key, values := range header {
-		for _, value := range values {
-			request.Header.Add(key, value)
-		}
-	}
 }
 
 func MustParse(rawUrl string) *url.URL {

@@ -294,10 +294,10 @@ func newHttpTestPostRequest(path string, formFiles map[string]map[string]io.Read
 
 func newHttpTestRequest(method string, path string, formFiles map[string]map[string]io.Reader) *http.Request {
 	bodyBuf := &bytes.Buffer{}
-	header, e := httputil.AddFormFileTo(bodyBuf, formFiles)
+	contentType, e := httputil.AddFormFileTo(bodyBuf, formFiles)
 	Expect(e).NotTo(HaveOccurred())
 	request := httptest.NewRequest(method, path, bodyBuf)
-	httputil.AddHeaderTo(request, header)
+	request.Header.Add("Content-Type", contentType)
 	return request
 }
 
