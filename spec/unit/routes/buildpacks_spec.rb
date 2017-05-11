@@ -137,6 +137,27 @@ module BitsService
           end
         end
 
+        context 'when the blobstore disk is full' do
+          before(:each) do
+            allow_any_instance_of(Blobstore::Client).to receive(:cp_to_blobstore).and_raise(Errno::ENOSPC)
+          end
+
+          it 'return HTTP status 507' do
+            put "/buildpacks/#{guid}", upload_body, headers
+            expect(last_response.status).to eq(507)
+            payload = JSON(last_response.body)
+            expect(payload['code']).to eq 500000
+            expect(payload['description']).to eq 'No space left on device'
+          end
+
+          it 'does not leave the temporary instance of the uploaded file around' do
+            allow_any_instance_of(Helpers::Upload::Params).to receive(:upload_filepath).and_return(zip_filepath)
+            allow_any_instance_of(Helpers::Upload::Params).to receive(:original_filename).and_return(zip_filename)
+            put "/buildpacks/#{guid}", upload_body, headers
+            expect(File.exist?(zip_filepath)).to be_falsy
+          end
+        end
+
         context 'when the blobstore helper fails' do
           before(:each) do
             allow_any_instance_of(Routes::Buildpacks).to receive(:buildpack_blobstore).and_raise('some error')

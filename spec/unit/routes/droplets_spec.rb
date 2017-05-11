@@ -125,13 +125,26 @@ module BitsService
             end
           end
 
-          context 'when coping the blob object fails' do
+          context 'when copying the blob object fails' do
             before do
               allow(blobstore).to receive(:cp_file_between_keys).and_raise(StandardError)
             end
 
             it 'returns HTTP status 500' do
               expect(response.status).to eq(500)
+            end
+          end
+
+          context 'when the blobstore disk is full' do
+            before do
+              allow(blobstore).to receive(:cp_file_between_keys).and_raise(Errno::ENOSPC)
+            end
+
+            it 'returns HTTP status 507' do
+              expect(response.status).to eq(507)
+              payload = JSON(last_response.body)
+              expect(payload['code']).to eq 500000
+              expect(payload['description']).to eq 'No space left on device'
             end
           end
 
@@ -154,6 +167,26 @@ module BitsService
           it 'return HTTP status 500' do
             put "/droplets/#{guid}", upload_body, headers
             expect(last_response.status).to eq(500)
+          end
+
+          it 'does not leave the temporary instance of the uploaded file around' do
+            allow_any_instance_of(Helpers::Upload::Params).to receive(:upload_filepath).and_return(zip_filepath)
+            put "/droplets/#{guid}", upload_body, headers
+            expect(File.exist?(zip_filepath)).to be_falsy
+          end
+        end
+
+        context 'when the blobstore disk is full' do
+          before(:each) do
+            allow_any_instance_of(Blobstore::Client).to receive(:cp_to_blobstore).and_raise(Errno::ENOSPC)
+          end
+
+          it 'return HTTP status 507' do
+            put "/droplets/#{guid}", upload_body, headers
+            expect(last_response.status).to eq(507)
+            payload = JSON(last_response.body)
+            expect(payload['code']).to eq 500000
+            expect(payload['description']).to eq 'No space left on device'
           end
 
           it 'does not leave the temporary instance of the uploaded file around' do

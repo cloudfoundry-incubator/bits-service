@@ -44,6 +44,8 @@ module BitsService
         end
 
         status 201
+      rescue Errno::ENOSPC
+        fail Errors::ApiError.new_from_details('NoSpaceOnDevice')
       ensure
         FileUtils.rm_f(uploaded_filepath) if uploaded_filepath
       end
@@ -54,6 +56,8 @@ module BitsService
 
         packages_blobstore.cp_file_between_keys(source_guid, target_guid)
         status 201
+      rescue Errno::ENOSPC
+        fail Errors::ApiError.new_from_details('NoSpaceOnDevice')
       end
 
       def parsed_body

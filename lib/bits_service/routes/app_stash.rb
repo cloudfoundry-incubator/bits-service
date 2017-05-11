@@ -24,6 +24,8 @@ module BitsService
           json 201, receipt.contents
         rescue SafeZipper::Error => e
           fail Errors::ApiError.new_from_details('AppBitsUploadInvalid', e.message)
+        rescue Errno::ENOSPC
+          fail Errors::ApiError.new_from_details('NoSpaceOnDevice')
         ensure
           FileUtils.rm_r(destination_path)
         end

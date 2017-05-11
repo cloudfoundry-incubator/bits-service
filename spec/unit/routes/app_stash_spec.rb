@@ -125,6 +125,25 @@ module BitsService
           expect(last_response.status).to eq(500)
         end
       end
+
+      context 'when the blobstore disk is full' do
+        before do
+          allow(blobstore).to receive(:cp_r_to_blobstore).and_raise(Errno::ENOSPC)
+        end
+
+        it 'return HTTP status 507' do
+          post '/app_stash/entries', request_body, headers
+          expect(last_response.status).to eq(507)
+          payload = JSON(last_response.body)
+          expect(payload['code']).to eq 500000
+          expect(payload['description']).to eq 'No space left on device'
+        end
+
+        it 'removes the temporary folder' do
+          expect(FileUtils).to receive(:rm_r).with(tmp_dir)
+          post '/app_stash/entries', request_body, headers
+        end
+      end
     end
 
     describe 'POST /app_stash/matches' do

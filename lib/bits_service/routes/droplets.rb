@@ -44,12 +44,13 @@ module BitsService
       def create_from_upload(uploaded_filepath, path)
         fail Errors::ApiError.new_from_details('DropletUploadInvalid', 'a file must be provided') if uploaded_filepath.to_s == ''
 
-
         statsd.time 'droplet-cp_to_blobstore-time.sparse-avg' do
           droplet_blobstore.cp_to_blobstore(uploaded_filepath, path)
         end
 
         status 201
+      rescue Errno::ENOSPC
+        fail Errors::ApiError.new_from_details('NoSpaceOnDevice')
       ensure
         FileUtils.rm_f(uploaded_filepath) if uploaded_filepath
       end
@@ -60,6 +61,8 @@ module BitsService
 
         droplet_blobstore.cp_file_between_keys(source_guid, new_guid)
         status 201
+      rescue Errno::ENOSPC
+        fail Errors::ApiError.new_from_details('NoSpaceOnDevice')
       end
 
       def parsed_body

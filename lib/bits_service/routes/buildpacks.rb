@@ -13,6 +13,8 @@ module BitsService
           end
 
           status 201
+        rescue Errno::ENOSPC
+          fail Errors::ApiError.new_from_details('NoSpaceOnDevice')
         ensure
           FileUtils.rm_f(uploaded_filepath) if uploaded_filepath
         end

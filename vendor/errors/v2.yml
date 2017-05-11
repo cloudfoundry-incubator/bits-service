@@ -57,3 +57,8 @@
   name: InvalidDropletSource
   http_code: 400
   message: "Cannot create droplet. The source must either be uploaded or the guid of a source droplet to be copied must be provided"
+
+500000:
+  name: NoSpaceOnDevice
+  http_code: 507
+  message: "No space left on device"

@@ -63,7 +63,27 @@ module BitsService
               put "/packages/#{guid}", request_body, headers
             end
           end
+
+          context 'when the blobstore disk is full' do
+            before do
+              allow(blobstore).to receive(:cp_to_blobstore).and_raise(Errno::ENOSPC)
+            end
+
+            it 'return HTTP status 507' do
+              put "/packages/#{guid}", request_body, headers
+              expect(last_response.status).to eq(507)
+              payload = JSON(last_response.body)
+              expect(payload['code']).to eq 500000
+              expect(payload['description']).to eq 'No space left on device'
+            end
+
+            it 'removes the temporary folder' do
+              expect(FileUtils).to receive(:rm_f).with(zip_filepath)
+              put "/packages/#{guid}", request_body, headers
+            end
+          end
         end
+
         context 'from another package' do
           let!(:guid) { SecureRandom.uuid }
           let!(:new_guid) { SecureRandom.uuid }
@@ -111,6 +131,19 @@ module BitsService
 
             it 'returns HTTP status 500' do
               expect(response.status).to eq(500)
+            end
+          end
+
+          context 'when local storage is full' do
+            before do
+              allow(blobstore).to receive(:cp_file_between_keys).and_raise(Errno::ENOSPC)
+            end
+
+            it 'returns HTTP status 507' do
+              expect(response.status).to eq(507)
+              payload = JSON(last_response.body)
+              expect(payload['code']).to eq 500000
+              expect(payload['description']).to eq 'No space left on device'
             end
           end
 
