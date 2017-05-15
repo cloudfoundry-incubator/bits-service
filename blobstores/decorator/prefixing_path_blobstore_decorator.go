@@ -3,7 +3,7 @@ package decorator
 import (
 	"io"
 
-	"github.com/petergtz/bitsgo/routes"
+	"github.com/petergtz/bitsgo"
 )
 
 type PrefixingPathBlobstoreDecorator struct {
@@ -51,11 +51,11 @@ func (decorator *PrefixingPathBlobstoreDecorator) DeleteDir(prefix string) error
 }
 
 type PrefixingPathResourceSigner struct {
-	delegate routes.ResourceSigner
+	delegate bitsgo.ResourceSigner
 	prefix   string
 }
 
-func ForResourceSignerWithPathPrefixing(delegate routes.ResourceSigner, prefix string) *PrefixingPathResourceSigner {
+func ForResourceSignerWithPathPrefixing(delegate bitsgo.ResourceSigner, prefix string) *PrefixingPathResourceSigner {
 	return &PrefixingPathResourceSigner{delegate, prefix}
 }
 

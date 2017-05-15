@@ -17,9 +17,9 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
+	"github.com/petergtz/bitsgo"
 	. "github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
-	"github.com/petergtz/bitsgo/routes"
 )
 
 func TestS3Blobstore(t *testing.T) {
@@ -67,7 +67,7 @@ var _ = Describe("S3 Blobstores", func() {
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
 			body, e := blobstore.Get(filepath)
-			Expect(e).To(BeAssignableToTypeOf(&routes.NotFoundError{}))
+			Expect(e).To(BeAssignableToTypeOf(&bitsgo.NotFoundError{}))
 			Expect(body).To(BeNil())
 
 			e = blobstore.Put(filepath, strings.NewReader("the file content"))
@@ -88,7 +88,7 @@ var _ = Describe("S3 Blobstores", func() {
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
 			body, e = blobstore.Get(filepath)
-			Expect(e).To(BeAssignableToTypeOf(&routes.NotFoundError{}))
+			Expect(e).To(BeAssignableToTypeOf(&bitsgo.NotFoundError{}))
 			Expect(body).To(BeNil())
 		})
 

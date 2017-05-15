@@ -1,4 +1,4 @@
-package routes
+package bitsgo
 
 import (
 	"archive/zip"
@@ -20,6 +20,10 @@ import (
 
 type AppStashHandler struct {
 	blobstore NoRedirectBlobstore
+}
+
+func NewAppStashHandler(blobstore NoRedirectBlobstore) *AppStashHandler {
+	return &AppStashHandler{blobstore: blobstore}
 }
 
 func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, request *http.Request) {

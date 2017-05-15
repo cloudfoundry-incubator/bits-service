@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	. "github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/basic_auth_middleware"
 	"github.com/urfave/negroni"
 )

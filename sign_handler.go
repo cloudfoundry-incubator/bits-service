@@ -1,4 +1,4 @@
-package routes
+package bitsgo
 
 import (
 	"fmt"

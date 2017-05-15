@@ -5,11 +5,11 @@ import (
 	"io"
 	"strings"
 
+	"github.com/petergtz/bitsgo"
+
 	"bytes"
 
 	"io/ioutil"
-
-	"github.com/petergtz/bitsgo/routes"
 )
 
 type Blobstore struct {
@@ -32,7 +32,7 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
 	_, hasKey := blobstore.Entries[path]
 	if !hasKey {
-		return "", routes.NewNotFoundError()
+		return "", bitsgo.NewNotFoundError()
 	}
 	return "", nil
 }
@@ -40,7 +40,7 @@ func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation s
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	entry, hasKey := blobstore.Entries[path]
 	if !hasKey {
-		return nil, routes.NewNotFoundError()
+		return nil, bitsgo.NewNotFoundError()
 	}
 	return ioutil.NopCloser(bytes.NewBuffer(entry)), nil
 }
@@ -71,7 +71,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 func (blobstore *Blobstore) Delete(path string) error {
 	_, hasKey := blobstore.Entries[path]
 	if !hasKey {
-		return routes.NewNotFoundError()
+		return bitsgo.NewNotFoundError()
 	}
 	delete(blobstore.Entries, path)
 	return nil

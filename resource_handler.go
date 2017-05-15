@@ -1,4 +1,4 @@
-package routes
+package bitsgo
 
 import (
 	"bytes"
@@ -23,6 +23,14 @@ type ResourceHandler struct {
 	blobstore      Blobstore
 	resourceType   string
 	metricsService MetricsService
+}
+
+func NewResourceHandler(blobstore Blobstore, resourceType string, metricsService MetricsService) *ResourceHandler {
+	return &ResourceHandler{
+		blobstore:      blobstore,
+		resourceType:   resourceType,
+		metricsService: metricsService,
+	}
 }
 
 func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {

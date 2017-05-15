@@ -4,11 +4,12 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	. "github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/statsd"
 )
 
 func SetUpAppStashRoutes(router *mux.Router, blobstore NoRedirectBlobstore) {
-	handler := &AppStashHandler{blobstore: blobstore}
+	handler := NewAppStashHandler(blobstore)
 	router.Path("/app_stash/entries").Methods("POST").HandlerFunc(handler.PostEntries)
 	router.Path("/app_stash/matches").Methods("POST").HandlerFunc(handler.PostMatches)
 	router.Path("/app_stash/bundles").Methods("POST").HandlerFunc(handler.PostBundles)
@@ -17,23 +18,23 @@ func SetUpAppStashRoutes(router *mux.Router, blobstore NoRedirectBlobstore) {
 func SetUpPackageRoutes(router *mux.Router, blobstore Blobstore) {
 	setUpDefaultMethodRoutes(
 		router.Path("/packages/{identifier}").Subrouter(),
-		&ResourceHandler{blobstore: blobstore, resourceType: "package", metricsService: statsd.NewMetricsService()})
+		NewResourceHandler(blobstore, "package", statsd.NewMetricsService()))
 }
 
 func SetUpBuildpackRoutes(router *mux.Router, blobstore Blobstore) {
 	setUpDefaultMethodRoutes(
 		router.Path("/buildpacks/{identifier}").Subrouter(),
-		&ResourceHandler{blobstore: blobstore, resourceType: "buildpack", metricsService: statsd.NewMetricsService()})
+		NewResourceHandler(blobstore, "buildpack", statsd.NewMetricsService()))
 }
 
 func SetUpDropletRoutes(router *mux.Router, blobstore Blobstore) {
 	setUpDefaultMethodRoutes(
 		router.Path("/droplets/{identifier:.*}").Subrouter(), // TODO we could probably be more specific in the regex
-		&ResourceHandler{blobstore: blobstore, resourceType: "droplet", metricsService: statsd.NewMetricsService()})
+		NewResourceHandler(blobstore, "droplet", statsd.NewMetricsService()))
 }
 
 func SetUpBuildpackCacheRoutes(router *mux.Router, blobstore Blobstore) {
-	handler := &ResourceHandler{blobstore: blobstore, resourceType: "buildpack_cache", metricsService: statsd.NewMetricsService()}
+	handler := NewResourceHandler(blobstore, "buildpack_cache", statsd.NewMetricsService())
 	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(handler.DeleteDir)
 	router.Path("/buildpack_cache/entries/{identifier}").Methods("DELETE").HandlerFunc(handler.DeleteDir)
 	setUpDefaultMethodRoutes(router.Path("/buildpack_cache/entries/{identifier:.*}").Subrouter(), handler)

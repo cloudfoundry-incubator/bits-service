@@ -6,10 +6,10 @@ import (
 
 	"bytes"
 
+	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/httputil"
 	"github.com/petergtz/bitsgo/logger"
-	"github.com/petergtz/bitsgo/routes"
 	"github.com/pkg/errors"
 	"github.com/uber-go/zap"
 )
@@ -58,7 +58,7 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 		return nil, e
 	}
 	if !exists {
-		return nil, routes.NewNotFoundError()
+		return nil, bitsgo.NewNotFoundError()
 	}
 
 	response, e := blobstore.httpClient.Get(blobstore.webdavPrivateEndpoint + "/" + path)
@@ -79,7 +79,7 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 		return nil, "", e
 	}
 	if !exists {
-		return nil, "", routes.NewNotFoundError()
+		return nil, "", bitsgo.NewNotFoundError()
 	}
 	signedUrl := blobstore.signer.Sign(path, "get")
 	return nil, signedUrl, nil
@@ -115,7 +115,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 		return errors.Wrapf(e, "Request failed. src=%v, dest=%v", src, dest)
 	}
 	if response.StatusCode == http.StatusNotFound {
-		return routes.NewNotFoundError()
+		return bitsgo.NewNotFoundError()
 	}
 	if response.StatusCode < 200 || response.StatusCode > 204 {
 		return errors.Errorf("Expected HTTP status code 200-204, but got status code: " + response.Status)
@@ -146,7 +146,7 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	}
 
 	if response.StatusCode == http.StatusNotFound {
-		return routes.NewNotFoundError()
+		return bitsgo.NewNotFoundError()
 	}
 
 	if response.StatusCode < 200 || response.StatusCode > 204 {

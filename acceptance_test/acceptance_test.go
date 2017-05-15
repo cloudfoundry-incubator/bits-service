@@ -28,7 +28,7 @@ var _ = Describe("Accessing the bits-service", func() {
 	var session *gexec.Session
 
 	BeforeSuite(func() {
-		pathToWebserver, err := gexec.Build("github.com/petergtz/bitsgo")
+		pathToWebserver, err := gexec.Build("github.com/petergtz/bitsgo/cmd/bitsgo")
 		Ω(err).ShouldNot(HaveOccurred())
 
 		session, err = gexec.Start(exec.Command(pathToWebserver, "--config", "config.yml"), GinkgoWriter, GinkgoWriter)

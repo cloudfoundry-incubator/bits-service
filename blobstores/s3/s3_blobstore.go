@@ -7,9 +7,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/logger"
-	"github.com/petergtz/bitsgo/routes"
 	"github.com/pkg/errors"
 	"github.com/uber-go/zap"
 )
@@ -56,7 +56,7 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	})
 	if e != nil {
 		if isS3NotFoundError(e) {
-			return nil, routes.NewNotFoundError()
+			return nil, bitsgo.NewNotFoundError()
 		}
 		return nil, errors.Wrapf(e, "Path %v", path)
 	}
@@ -117,7 +117,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 	})
 	if e != nil {
 		if isS3NotFoundError(e) {
-			return routes.NewNotFoundError()
+			return bitsgo.NewNotFoundError()
 		}
 		return errors.Wrapf(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.bucket)
 	}
@@ -131,7 +131,7 @@ func (blobstore *Blobstore) Delete(path string) error {
 	})
 	if e != nil {
 		if isS3NotFoundError(e) {
-			return routes.NewNotFoundError()
+			return bitsgo.NewNotFoundError()
 		}
 		return errors.Wrapf(e, "Path %v", path)
 	}
@@ -149,7 +149,7 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 			for _, object := range p.Contents {
 				e := blobstore.Delete(*object.Key)
 				if e != nil {
-					if _, isNotFoundError := e.(*routes.NotFoundError); !isNotFoundError {
+					if _, isNotFoundError := e.(*bitsgo.NotFoundError); !isNotFoundError {
 						deletionErrs = append(deletionErrs, e)
 					}
 				}

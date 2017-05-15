@@ -8,8 +8,8 @@ import (
 
 	"syscall"
 
+	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/logger"
-	"github.com/petergtz/bitsgo/routes"
 	"github.com/pkg/errors"
 	"github.com/uber-go/zap"
 )
@@ -38,7 +38,7 @@ func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation s
 	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
 
 	if os.IsNotExist(e) {
-		return "", routes.NewNotFoundError()
+		return "", bitsgo.NewNotFoundError()
 	}
 	if e != nil {
 		return "", fmt.Errorf("Error while opening file %v. Caused by: %v", path, e)
@@ -51,7 +51,7 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	file, e := os.Open(filepath.Join(blobstore.pathPrefix, path))
 
 	if os.IsNotExist(e) {
-		return nil, routes.NewNotFoundError()
+		return nil, bitsgo.NewNotFoundError()
 	}
 	if e != nil {
 		return nil, fmt.Errorf("Error while opening file %v. Caused by: %v", path, e)
@@ -72,7 +72,7 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	file, e := os.Create(filepath.Join(blobstore.pathPrefix, path))
 	if e != nil {
 		if e.(*os.PathError).Err == syscall.ENOSPC {
-			return routes.NewNoSpaceLeftError()
+			return bitsgo.NewNoSpaceLeftError()
 		}
 		return fmt.Errorf("Error while creating file %v. Caused by: %v", path, e)
 	}
@@ -80,7 +80,7 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	_, e = io.Copy(file, src)
 	if e != nil {
 		if e.(*os.PathError).Err == syscall.ENOSPC {
-			return routes.NewNoSpaceLeftError()
+			return bitsgo.NewNoSpaceLeftError()
 		}
 		return fmt.Errorf("Error while writing file %v. Caused by: %v", path, e)
 	}
@@ -98,7 +98,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 	srcFile, e := os.Open(srcFull)
 	if e != nil {
 		if os.IsNotExist(e) {
-			return routes.NewNotFoundError()
+			return bitsgo.NewNotFoundError()
 		}
 		return errors.Wrapf(e, "Opening src failed. (src=%v, dest=%v)", srcFull, destFull)
 	}
@@ -126,7 +126,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 func (blobstore *Blobstore) Delete(path string) error {
 	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
 	if os.IsNotExist(e) {
-		return routes.NewNotFoundError()
+		return bitsgo.NewNotFoundError()
 	}
 	e = os.RemoveAll(filepath.Join(blobstore.pathPrefix, path))
 	if e != nil {

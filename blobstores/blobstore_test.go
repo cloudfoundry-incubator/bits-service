@@ -12,9 +12,9 @@ import (
 	"github.com/onsi/gomega"
 
 	. "github.com/onsi/gomega"
+	"github.com/petergtz/bitsgo"
 	inmemory "github.com/petergtz/bitsgo/blobstores/inmemory"
 	"github.com/petergtz/bitsgo/blobstores/local"
-	"github.com/petergtz/bitsgo/routes"
 	"os"
 )
 
@@ -24,7 +24,7 @@ func TestInMemoryBlobstore(t *testing.T) {
 }
 
 var _ = Describe("Blobstore", func() {
-	var blobstore routes.Blobstore
+	var blobstore bitsgo.Blobstore
 
 	itCanBeModifiedByItsMethods := func() {
 		It("can be modified by its methods", func() {
@@ -32,7 +32,7 @@ var _ = Describe("Blobstore", func() {
 
 			redirectLocation, e := blobstore.HeadOrRedirectAsGet("/some/path")
 			Expect(redirectLocation).To(BeEmpty())
-			Expect(e).To(BeAssignableToTypeOf(routes.NewNotFoundError()))
+			Expect(e).To(BeAssignableToTypeOf(bitsgo.NewNotFoundError()))
 
 			Expect(blobstore.PutOrRedirect("/some/path", strings.NewReader("some string"))).To(BeEmpty())
 
@@ -61,7 +61,7 @@ var _ = Describe("Blobstore", func() {
 
 			redirectLocation, e = blobstore.HeadOrRedirectAsGet("/some/path")
 			Expect(redirectLocation).To(BeEmpty())
-			Expect(e).To(BeAssignableToTypeOf(routes.NewNotFoundError()))
+			Expect(e).To(BeAssignableToTypeOf(bitsgo.NewNotFoundError()))
 
 			Expect(blobstore.DeleteDir("/some")).To(Succeed())
 			Expect(blobstore.Exists("/some/other/path")).To(BeFalse())

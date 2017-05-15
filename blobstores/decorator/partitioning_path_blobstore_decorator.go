@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/petergtz/bitsgo/routes"
+	"github.com/petergtz/bitsgo"
 )
 
 type Blobstore interface {
@@ -13,7 +13,7 @@ type Blobstore interface {
 	// routes.NoRedirectBlobstore
 
 	// Instead doing:
-	routes.Blobstore
+	bitsgo.Blobstore
 	Get(path string) (body io.ReadCloser, err error)
 	Put(path string, src io.ReadSeeker) (err error)
 }
@@ -79,12 +79,12 @@ func pathFor(identifier string) string {
 	return ""
 }
 
-func ForResourceSignerWithPathPartitioning(delegate routes.ResourceSigner) *PartitioningPathResourceSigner {
+func ForResourceSignerWithPathPartitioning(delegate bitsgo.ResourceSigner) *PartitioningPathResourceSigner {
 	return &PartitioningPathResourceSigner{delegate}
 }
 
 type PartitioningPathResourceSigner struct {
-	delegate routes.ResourceSigner
+	delegate bitsgo.ResourceSigner
 }
 
 func (signer *PartitioningPathResourceSigner) Sign(resource string, method string) (signedURL string) {
