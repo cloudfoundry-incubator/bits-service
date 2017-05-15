@@ -1,4 +1,4 @@
-package basic_auth_middleware_test
+package middlewares_test
 
 import (
 	"net/http"
@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo/basic_auth_middleware"
+	"github.com/petergtz/bitsgo/middlewares"
 	. "github.com/petergtz/bitsgo/testutil"
 	"github.com/petergtz/pegomock"
 	. "github.com/petergtz/pegomock"
@@ -27,7 +27,7 @@ var _ = Describe("BasicAuthMiddle", func() {
 
 	var (
 		server     *httptest.Server
-		middleware *basic_auth_middleware.BasicAuthMiddleware
+		middleware *middlewares.BasicAuthMiddleware
 		mux        *http.ServeMux
 	)
 
@@ -36,12 +36,12 @@ var _ = Describe("BasicAuthMiddle", func() {
 		mux.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
 			rw.Write([]byte("Hello"))
 		})
-		middleware = basic_auth_middleware.NewBasicAuthMiddleWare(
-			basic_auth_middleware.Credential{
+		middleware = middlewares.NewBasicAuthMiddleWare(
+			middlewares.Credential{
 				Username: "the-username",
 				Password: "the-password",
 			},
-			basic_auth_middleware.Credential{
+			middlewares.Credential{
 				Username: "another-username",
 				Password: "another-password",
 			},

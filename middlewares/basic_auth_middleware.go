@@ -1,4 +1,4 @@
-package basic_auth_middleware
+package middlewares
 
 import "net/http"
 

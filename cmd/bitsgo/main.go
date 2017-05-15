@@ -9,7 +9,6 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/basic_auth_middleware"
 	"github.com/petergtz/bitsgo/blobstores/decorator"
 	"github.com/petergtz/bitsgo/blobstores/local"
 	"github.com/petergtz/bitsgo/blobstores/s3"
@@ -56,7 +55,7 @@ func main() {
 	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpointUrl().Host, config.Port, config.Secret, "buildpacks")
 	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl().Host, config.Port, config.Secret, "droplets")
 
-	routes.SetUpSignRoute(internalRouter, basic_auth_middleware.NewBasicAuthMiddleWare(basicAuthCredentialsFrom(config.SigningUsers)...),
+	routes.SetUpSignRoute(internalRouter, middlewares.NewBasicAuthMiddleWare(basicAuthCredentialsFrom(config.SigningUsers)...),
 		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler)
 
 	routes.SetUpAppStashRoutes(internalRouter, appStashBlobstore)
@@ -118,10 +117,10 @@ func zapLogLevelFrom(configLogLevel string) zap.Level {
 	}
 }
 
-func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAuthCredentials []basic_auth_middleware.Credential) {
-	basicAuthCredentials = make([]basic_auth_middleware.Credential, len(configCredententials))
+func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAuthCredentials []middlewares.Credential) {
+	basicAuthCredentials = make([]middlewares.Credential, len(configCredententials))
 	for i := range configCredententials {
-		basicAuthCredentials[i] = basic_auth_middleware.Credential(configCredententials[i])
+		basicAuthCredentials[i] = middlewares.Credential(configCredententials[i])
 	}
 	return
 }

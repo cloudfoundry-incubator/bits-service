@@ -5,7 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/basic_auth_middleware"
+	"github.com/petergtz/bitsgo/middlewares"
 	"github.com/petergtz/bitsgo/statsd"
 	"github.com/urfave/negroni"
 )
@@ -50,7 +50,7 @@ func setUpDefaultMethodRoutes(router *mux.Router, handler *bitsgo.ResourceHandle
 	setRouteNotFoundStatusCode(router, http.StatusMethodNotAllowed)
 }
 
-func SetUpSignRoute(router *mux.Router, basicAuthMiddleware *basic_auth_middleware.BasicAuthMiddleware,
+func SetUpSignRoute(router *mux.Router, basicAuthMiddleware *middlewares.BasicAuthMiddleware,
 	signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler *bitsgo.SignResourceHandler) {
 	router.Path("/sign/packages/{resource}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signPackageURLHandler))
 	router.Path("/sign/droplets/{resource:.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signDropletURLHandler))
@@ -58,7 +58,7 @@ func SetUpSignRoute(router *mux.Router, basicAuthMiddleware *basic_auth_middlewa
 	router.Path("/sign/{resource:buildpack_cache/entries/.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackCacheURLHandler))
 }
 
-func wrapWith(basicAuthMiddleware *basic_auth_middleware.BasicAuthMiddleware, handler *bitsgo.SignResourceHandler) http.Handler {
+func wrapWith(basicAuthMiddleware *middlewares.BasicAuthMiddleware, handler *bitsgo.SignResourceHandler) http.Handler {
 	return negroni.New(
 		basicAuthMiddleware,
 		negroni.Wrap(http.HandlerFunc(delegateTo(handler.Sign))),
