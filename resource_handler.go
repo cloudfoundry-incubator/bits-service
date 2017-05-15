@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/uber-go/zap"
 )
@@ -33,17 +32,17 @@ func NewResourceHandler(blobstore Blobstore, resourceType string, metricsService
 	}
 }
 
-func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request) {
+func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	if strings.Contains(request.Header.Get("Content-Type"), "multipart/form-data") {
 		logger.From(request).Debug("Multipart upload")
-		handler.uploadMultipart(responseWriter, request)
+		handler.uploadMultipart(responseWriter, request, params)
 	} else {
 		logger.From(request).Debug("Copy source guid")
-		handler.copySourceGuid(responseWriter, request)
+		handler.copySourceGuid(responseWriter, request, params)
 	}
 }
 
-func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWriter, request *http.Request) {
+func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	file, _, e := request.FormFile(handler.resourceType)
 	if e != nil {
 		badRequest(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
@@ -52,18 +51,18 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	defer file.Close()
 
 	startTime := time.Now()
-	redirectLocation, e := handler.blobstore.PutOrRedirect(mux.Vars(request)["identifier"], file)
+	redirectLocation, e := handler.blobstore.PutOrRedirect(params["identifier"], file)
 	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
 
 	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusCreated, emptyReader)
 }
 
-func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWriter, request *http.Request) {
+func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	sourceGuid := sourceGuidFrom(request.Body, responseWriter)
 	if sourceGuid == "" {
 		return // response is already handled in sourceGuidFrom
 	}
-	e := handler.blobstore.Copy(sourceGuid, mux.Vars(request)["identifier"])
+	e := handler.blobstore.Copy(sourceGuid, params["identifier"])
 	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, emptyReader)
 }
 
@@ -84,19 +83,20 @@ func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) stri
 	return payload.SourceGuid
 }
 
-func (handler *ResourceHandler) Head(responseWriter http.ResponseWriter, request *http.Request) {
-	redirectLocation, e := handler.blobstore.HeadOrRedirectAsGet(mux.Vars(request)["identifier"])
+func (handler *ResourceHandler) Head(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	redirectLocation, e := handler.blobstore.HeadOrRedirectAsGet(params["identifier"])
 	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, emptyReader)
 }
 
-func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request) {
-	body, redirectLocation, e := handler.blobstore.GetOrRedirect(mux.Vars(request)["identifier"])
+func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	body, redirectLocation, e := handler.blobstore.GetOrRedirect(params["identifier"])
 	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, body)
 }
 
-func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request) {
+func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	// TODO nothing should be S3 specific here
 	// this check is needed, because S3 does not return a NotFound on a Delete request:
-	exists, e := handler.blobstore.Exists(mux.Vars(request)["identifier"])
+	exists, e := handler.blobstore.Exists(params["identifier"])
 	if e != nil {
 		internalServerError(responseWriter, e)
 		return
@@ -105,12 +105,12 @@ func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, reque
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	}
-	e = handler.blobstore.Delete(mux.Vars(request)["identifier"])
+	e = handler.blobstore.Delete(params["identifier"])
 	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, emptyReader)
 }
 
-func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, request *http.Request) {
-	e := handler.blobstore.DeleteDir(mux.Vars(request)["identifier"])
+func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	e := handler.blobstore.DeleteDir(params["identifier"])
 	switch e.(type) {
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNoContent)

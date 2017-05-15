@@ -29,8 +29,6 @@ import (
 	. "github.com/petergtz/pegomock"
 )
 
-//go:generate pegomock generate --use-experimental-model-gen --package routes_test Blobstore
-
 func TestRoutes(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	pegomock.RegisterMockFailHandler(ginkgo.Fail)

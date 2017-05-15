@@ -4,50 +4,65 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	. "github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/basic_auth_middleware"
 	"github.com/petergtz/bitsgo/statsd"
+	"github.com/urfave/negroni"
 )
 
-func SetUpAppStashRoutes(router *mux.Router, blobstore NoRedirectBlobstore) {
-	handler := NewAppStashHandler(blobstore)
+func SetUpAppStashRoutes(router *mux.Router, blobstore bitsgo.NoRedirectBlobstore) {
+	handler := bitsgo.NewAppStashHandler(blobstore)
 	router.Path("/app_stash/entries").Methods("POST").HandlerFunc(handler.PostEntries)
 	router.Path("/app_stash/matches").Methods("POST").HandlerFunc(handler.PostMatches)
 	router.Path("/app_stash/bundles").Methods("POST").HandlerFunc(handler.PostBundles)
 }
 
-func SetUpPackageRoutes(router *mux.Router, blobstore Blobstore) {
+func SetUpPackageRoutes(router *mux.Router, blobstore bitsgo.Blobstore) {
 	setUpDefaultMethodRoutes(
 		router.Path("/packages/{identifier}").Subrouter(),
-		NewResourceHandler(blobstore, "package", statsd.NewMetricsService()))
+		bitsgo.NewResourceHandler(blobstore, "package", statsd.NewMetricsService()))
 }
 
-func SetUpBuildpackRoutes(router *mux.Router, blobstore Blobstore) {
+func SetUpBuildpackRoutes(router *mux.Router, blobstore bitsgo.Blobstore) {
 	setUpDefaultMethodRoutes(
 		router.Path("/buildpacks/{identifier}").Subrouter(),
-		NewResourceHandler(blobstore, "buildpack", statsd.NewMetricsService()))
+		bitsgo.NewResourceHandler(blobstore, "buildpack", statsd.NewMetricsService()))
 }
 
-func SetUpDropletRoutes(router *mux.Router, blobstore Blobstore) {
+func SetUpDropletRoutes(router *mux.Router, blobstore bitsgo.Blobstore) {
 	setUpDefaultMethodRoutes(
 		router.Path("/droplets/{identifier:.*}").Subrouter(), // TODO we could probably be more specific in the regex
-		NewResourceHandler(blobstore, "droplet", statsd.NewMetricsService()))
+		bitsgo.NewResourceHandler(blobstore, "droplet", statsd.NewMetricsService()))
 }
 
-func SetUpBuildpackCacheRoutes(router *mux.Router, blobstore Blobstore) {
-	handler := NewResourceHandler(blobstore, "buildpack_cache", statsd.NewMetricsService())
-	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(handler.DeleteDir)
-	router.Path("/buildpack_cache/entries/{identifier}").Methods("DELETE").HandlerFunc(handler.DeleteDir)
+func SetUpBuildpackCacheRoutes(router *mux.Router, blobstore bitsgo.Blobstore) {
+	handler := bitsgo.NewResourceHandler(blobstore, "buildpack_cache", statsd.NewMetricsService())
+	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(delegateTo(handler.DeleteDir))
+	router.Path("/buildpack_cache/entries/{identifier}").Methods("DELETE").HandlerFunc(delegateTo(handler.DeleteDir))
 	setUpDefaultMethodRoutes(router.Path("/buildpack_cache/entries/{identifier:.*}").Subrouter(), handler)
 }
 
-func setUpDefaultMethodRoutes(router *mux.Router, handler *ResourceHandler) {
-	// TODO Should we change Put/Get/etc. signature to allow this:
-	// router.Methods("PUT").HandlerFunc(delegateTo(handler.Put))
-	router.Methods("PUT").HandlerFunc(handler.Put)
-	router.Methods("HEAD").HandlerFunc(handler.Head)
-	router.Methods("GET").HandlerFunc(handler.Get)
-	router.Methods("DELETE").HandlerFunc(handler.Delete)
+func setUpDefaultMethodRoutes(router *mux.Router, handler *bitsgo.ResourceHandler) {
+	router.Methods("PUT").HandlerFunc(delegateTo(handler.Put))
+	router.Methods("HEAD").HandlerFunc(delegateTo(handler.Head))
+	router.Methods("GET").HandlerFunc(delegateTo(handler.Get))
+	router.Methods("DELETE").HandlerFunc(delegateTo(handler.Delete))
 	setRouteNotFoundStatusCode(router, http.StatusMethodNotAllowed)
+}
+
+func SetUpSignRoute(router *mux.Router, basicAuthMiddleware *basic_auth_middleware.BasicAuthMiddleware,
+	signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler *bitsgo.SignResourceHandler) {
+	router.Path("/sign/packages/{resource}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signPackageURLHandler))
+	router.Path("/sign/droplets/{resource:.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signDropletURLHandler))
+	router.Path("/sign/buildpacks/{resource}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackURLHandler))
+	router.Path("/sign/{resource:buildpack_cache/entries/.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackCacheURLHandler))
+}
+
+func wrapWith(basicAuthMiddleware *basic_auth_middleware.BasicAuthMiddleware, handler *bitsgo.SignResourceHandler) http.Handler {
+	return negroni.New(
+		basicAuthMiddleware,
+		negroni.Wrap(http.HandlerFunc(delegateTo(handler.Sign))),
+	)
 }
 
 func setRouteNotFoundStatusCode(router *mux.Router, statusCode int) {
