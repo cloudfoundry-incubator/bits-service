@@ -3,19 +3,27 @@ package logger
 import (
 	"net/http"
 
-	"github.com/uber-go/zap"
+	"go.uber.org/zap"
 )
 
-var Log = zap.New(zap.NewTextEncoder(), zap.DebugLevel, zap.AddCaller())
+var Log = setUpDefaultLogger().Sugar()
 
-func SetLogger(logger zap.Logger) {
-	Log = logger
+func setUpDefaultLogger() *zap.Logger {
+	logger, e := zap.NewDevelopment()
+	if e != nil {
+		panic(e)
+	}
+	return logger
 }
 
-func From(r *http.Request) zap.Logger {
+func SetLogger(logger *zap.Logger) {
+	Log = logger.Sugar()
+}
+
+func From(r *http.Request) *zap.SugaredLogger {
 	log := r.Context().Value("logger")
 	if log != nil {
-		return log.(zap.Logger)
+		return log.(*zap.SugaredLogger)
 	} else {
 		return Log
 	}

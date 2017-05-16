@@ -11,7 +11,6 @@ import (
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/pkg/errors"
-	"github.com/uber-go/zap"
 )
 
 type Blobstore struct {
@@ -49,7 +48,7 @@ func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation s
 }
 
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
-	logger.Log.Debug("Get from S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
+	logger.Log.Debugw("Get from S3", "bucket", blobstore.bucket, "path", path)
 	output, e := blobstore.s3Client.GetObject(&s3.GetObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -73,7 +72,7 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 }
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
-	logger.Log.Debug("Put to S3", zap.String("bucket", blobstore.bucket), zap.String("path", path))
+	logger.Log.Debugw("Put to S3", "bucket", blobstore.bucket, "path", path)
 	_, e := blobstore.s3Client.PutObject(&s3.PutObjectInput{
 		Bucket: &blobstore.bucket,
 		Key:    &path,
@@ -109,7 +108,7 @@ func signedURLFrom(req *request.Request, bucket, path string) (string, error) {
 }
 
 func (blobstore *Blobstore) Copy(src, dest string) error {
-	logger.Log.Debug("Copy in S3", zap.String("bucket", blobstore.bucket), zap.String("src", src), zap.String("dest", dest))
+	logger.Log.Debugw("Copy in S3", "bucket", blobstore.bucket, "src", src, "dest", dest)
 	_, e := blobstore.s3Client.CopyObject(&s3.CopyObjectInput{
 		Key:        &dest,
 		CopySource: aws.String(blobstore.bucket + "/" + src),

@@ -8,28 +8,28 @@ import (
 
 	"context"
 
-	"github.com/uber-go/zap"
 	"github.com/urfave/negroni"
+	"go.uber.org/zap"
 )
 
 type ZapLoggerMiddleware struct {
-	logger zap.Logger
+	logger *zap.SugaredLogger
 }
 
-func NewZapLoggerMiddleware(logger zap.Logger) *ZapLoggerMiddleware {
+func NewZapLoggerMiddleware(logger *zap.SugaredLogger) *ZapLoggerMiddleware {
 	return &ZapLoggerMiddleware{logger: logger}
 }
 
 func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
 	startTime := time.Now()
 
-	requestLogger := middleware.logger.With(zap.Int64("request-id", rand.Int63()))
+	requestLogger := middleware.logger.With("request-id", rand.Int63())
 
-	requestLogger.Info(
+	requestLogger.Infow(
 		"HTTP Request started",
-		zap.String("host", request.Host),
-		zap.String("method", request.Method),
-		zap.String("path", request.URL.Path),
+		"host", request.Host,
+		"method", request.Method,
+		"path", request.URL.Path,
 	)
 
 	negroniResponseWriter, ok := responseWriter.(negroni.ResponseWriter)
@@ -39,16 +39,16 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 
 	next(negroniResponseWriter, request.WithContext(context.WithValue(nil, "logger", requestLogger)))
 
-	fields := []zap.Field{
-		zap.String("host", request.Host),
-		zap.String("method", request.Method),
-		zap.String("path", request.URL.Path),
-		zap.Int("status-code", negroniResponseWriter.Status()),
-		zap.Int("body-size", negroniResponseWriter.Size()),
-		zap.Duration("duration", time.Since(startTime)),
+	fields := []interface{}{
+		"host", request.Host,
+		"method", request.Method,
+		"path", request.URL.Path,
+		"status-code", negroniResponseWriter.Status(),
+		"body-size", negroniResponseWriter.Size(),
+		"duration", time.Since(startTime),
 	}
 	if negroniResponseWriter.Status() >= 300 && negroniResponseWriter.Status() < 400 {
 		fields = append(fields, zap.String("Location", negroniResponseWriter.Header().Get("Location")))
 	}
-	requestLogger.Info("HTTP Request completed", fields...)
+	requestLogger.Infow("HTTP Request completed", fields...)
 }

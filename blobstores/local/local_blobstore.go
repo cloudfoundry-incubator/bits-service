@@ -11,7 +11,6 @@ import (
 	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/pkg/errors"
-	"github.com/uber-go/zap"
 )
 
 type Blobstore struct {
@@ -34,7 +33,7 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 }
 
 func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
-	logger.Log.Debug("Head", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
+	logger.Log.Debugw("Head", "local-path", filepath.Join(blobstore.pathPrefix, path))
 	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
 
 	if os.IsNotExist(e) {
@@ -47,7 +46,7 @@ func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation s
 }
 
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
-	logger.Log.Debug("GetNoRedirect", zap.String("local-path", filepath.Join(blobstore.pathPrefix, path)))
+	logger.Log.Debugw("GetNoRedirect", "local-path", filepath.Join(blobstore.pathPrefix, path))
 	file, e := os.Open(filepath.Join(blobstore.pathPrefix, path))
 
 	if os.IsNotExist(e) {

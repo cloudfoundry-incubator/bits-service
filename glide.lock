@@ -1,8 +1,8 @@
-hash: 39fb05b01fd191629195c18afdf9b165ca7a3a50cd0cfa6fdc45f25d40387d79
-updated: 2017-04-20T23:59:56.85016586+02:00
+hash: 610d0e8870648cc8dcbf2f20af2c5f9d465ae4288688885e2dc2632102652d54
+updated: 2017-05-16T11:51:27.752995719+02:00
 imports:
 - name: code.cloudfoundry.org/bytefmt
-  version: b12c1522f4cbb5f35861bd5dd2c39a4fa996441a
+  version: f4415fafc5619dd75599a54a7c91fb3948ad58bd
 - name: github.com/alecthomas/template
   version: a0175ee3bccc567396460bf5acd36800cb10c49c
   subpackages:
@@ -10,7 +10,7 @@ imports:
 - name: github.com/alecthomas/units
   version: 2efee857e7cfd4f3d0138cc3cbb1b4966962b93a
 - name: github.com/aws/aws-sdk-go
-  version: 5e1afe1c0a077fb2da9b5f74232b790d99397ce8
+  version: 1dc0171900ca37b76031153546f388b9beaf07c1
   subpackages:
   - aws
   - aws/awserr
@@ -34,21 +34,20 @@ imports:
   - private/protocol/rest
   - private/protocol/restxml
   - private/protocol/xml/xmlutil
-  - private/waiter
   - service/s3
   - service/sts
 - name: github.com/benbjohnson/clock
   version: 7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19
 - name: github.com/go-ini/ini
-  version: 6f66b0e091edb3c7b380f7c4f0f884274d550b67
+  version: e7fea39b01aea8d5671f6858f0532f56e8bff3a5
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
-  version: 757bef944d0f21880861c2dd9c871ca543023cba
+  version: 4c1c3952b7d9d0a061a3fa7b36fd373ba0398ebc
 - name: github.com/jmespath/go-jmespath
   version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
 - name: github.com/onsi/gomega
-  version: e85f63af4302dc0e4277c6008ecf803f1d80e4f0
+  version: 00acfa9d92a386415bd235ab069c52063f925998
   subpackages:
   - format
   - gbytes
@@ -66,22 +65,55 @@ imports:
   - matchers/support/goraph/util
   - types
 - name: github.com/pkg/errors
-  version: 248dadf4e9068a0b3e79f02ed0a610d935de5302
+  version: c605e284fe17294bda444b34710735b29d1a9d90
 - name: github.com/tecnickcom/statsd
   version: 969e3814be4f15681e2da76965ffa464b576a51f
-- name: github.com/uber-go/atomic
-  version: 3b8db5e93c4c02efbc313e17b2e796b0914a01fb
 - name: github.com/uber-go/zap
-  version: a5783ee4b216a927da8f839c45cfbf9d694e1467
+  version: fab453050a7a08c35f31fc5fff6f2dbd962285ab
 - name: github.com/urfave/negroni
-  version: 46eece4d3b43dd330e141b20adf0ce9b2b35ba53
+  version: 1d8981a52d6bda4467a9faacf3fdddd38222dfc4
+- name: go.uber.org/atomic
+  version: 4e336646b2ef9fc6e47be8e21594178f98e5ebcf
+- name: go.uber.org/zap
+  version: fab453050a7a08c35f31fc5fff6f2dbd962285ab
+  subpackages:
+  - buffer
+  - internal/bufferpool
+  - internal/color
+  - internal/exit
+  - internal/multierror
+  - zapcore
+- name: golang.org/x/net
+  version: 34057069f4ab13dc4433c68d368737ebeafcccdc
+  subpackages:
+  - html
+  - html/atom
+  - html/charset
+- name: golang.org/x/text
+  version: 19e51611da83d6be54ddafce4a4af510cb3e9ea4
+  subpackages:
+  - encoding
+  - encoding/charmap
+  - encoding/htmlindex
+  - encoding/internal
+  - encoding/internal/identifier
+  - encoding/japanese
+  - encoding/korean
+  - encoding/simplifiedchinese
+  - encoding/traditionalchinese
+  - encoding/unicode
+  - internal/tag
+  - internal/utf8internal
+  - language
+  - runes
+  - transform
 - name: gopkg.in/alecthomas/kingpin.v2
-  version: e9044be3ab2a8e11d4e1f418d12f0790d57e8d70
+  version: 7f0871f2e17818990e4eed73f9b5c2f429501228
 - name: gopkg.in/yaml.v2
-  version: a5b47d31c556af34a302ce5d659e6fea44d90de0
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports:
 - name: github.com/onsi/ginkgo
-  version: a23f924ce96d61f963fb6219b8ff069d8d768cc2
+  version: 83438ca4278f2f56757b9ab2cb15dd4f596d84e8
   subpackages:
   - config
   - internal/codelocation
@@ -90,6 +122,7 @@ testImports:
   - internal/leafnodes
   - internal/remote
   - internal/spec
+  - internal/spec_iterator
   - internal/specrunner
   - internal/suite
   - internal/testingtproxy
@@ -100,10 +133,10 @@ testImports:
   - reporters/stenographer/support/go-isatty
   - types
 - name: github.com/petergtz/pegomock
-  version: c40e8dcb00c1b48b83dd5b406561c62e26e666f6
+  version: 87f9b34434e49f59c666d6670ce2e581a1578431
   subpackages:
   - internal/verify
 - name: golang.org/x/sys
-  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
+  version: 1e99a4f9d247b28c670884b9a8d6801f39a47b77
   subpackages:
   - unix

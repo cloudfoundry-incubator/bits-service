@@ -11,7 +11,6 @@ import (
 	"github.com/petergtz/bitsgo/httputil"
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/pkg/errors"
-	"github.com/uber-go/zap"
 )
 
 type Blobstore struct {
@@ -34,16 +33,16 @@ func NewBlobstore(c config.WebdavBlobstoreConfig) *Blobstore {
 
 func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	url := blobstore.webdavPrivateEndpoint + "/" + path
-	logger.Log.Debug("Exists", zap.String("path", path), zap.String("url", url))
+	logger.Log.Debugw("Exists", "path", path, "url", url)
 	response, e := blobstore.httpClient.Do(blobstore.newRequestWithBasicAuth("HEAD", url, nil))
 	if e != nil {
 		return false, errors.Wrapf(e, "Error in Exists, path=%v", path)
 	}
 	if response.StatusCode == http.StatusOK {
-		logger.Log.Debug("Exists", zap.Bool("result", true))
+		logger.Log.Debugw("Exists", "result", true)
 		return true, nil
 	}
-	logger.Log.Debug("Exists", zap.Bool("result", false))
+	logger.Log.Debugw("Exists", "result", false)
 	return false, nil
 }
 
@@ -156,7 +155,7 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 }
 
 func (blobstore *Blobstore) newRequestWithBasicAuth(method string, urlStr string, body io.Reader) *http.Request {
-	logger.Log.Debug("Building HTTP request", zap.String("method", method), zap.String("url", urlStr), zap.Bool("has-body", body != nil), zap.String("user", blobstore.webdavUsername))
+	logger.Log.Debugw("Building HTTP request", "method", method, "url", urlStr, "has-body", body != nil, "user", blobstore.webdavUsername)
 	return httputil.NewRequest(method, urlStr, body).
 		WithBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword).
 		Build()

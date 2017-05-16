@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/petergtz/bitsgo/logger"
-	"github.com/uber-go/zap"
 )
 
 type MetricsService interface {
@@ -34,10 +33,10 @@ func NewResourceHandler(blobstore Blobstore, resourceType string, metricsService
 
 func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	if strings.Contains(request.Header.Get("Content-Type"), "multipart/form-data") {
-		logger.From(request).Debug("Multipart upload")
+		logger.From(request).Debugw("Multipart upload")
 		handler.uploadMultipart(responseWriter, request, params)
 	} else {
-		logger.From(request).Debug("Copy source guid")
+		logger.From(request).Debugw("Copy source guid")
 		handler.copySourceGuid(responseWriter, request, params)
 	}
 }
@@ -148,13 +147,13 @@ func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
 }
 
 func internalServerError(responseWriter http.ResponseWriter, e error) {
-	logger.Log.Error("Internal Server Error.", zap.String("error", fmt.Sprintf("%+v", e)))
+	logger.Log.Errorw("Internal Server Error.", "error", fmt.Sprintf("%+v", e))
 	responseWriter.WriteHeader(http.StatusInternalServerError)
 }
 
 func badRequest(responseWriter http.ResponseWriter, message string, args ...interface{}) {
 	responseBody := fmt.Sprintf(message, args...)
-	logger.Log.Debug("Bad rquest", zap.String("body", responseBody))
+	logger.Log.Debugw("Bad rquest", "body", responseBody)
 	responseWriter.WriteHeader(http.StatusBadRequest)
 	fmt.Fprintf(responseWriter, responseBody)
 }

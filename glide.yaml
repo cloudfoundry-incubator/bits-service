@@ -17,7 +17,7 @@ import:
 - package: github.com/urfave/negroni
 - package: gopkg.in/alecthomas/kingpin.v2
 - package: gopkg.in/yaml.v2
-- package: github.com/uber-go/zap
+- package: go.uber.org/zap
 - package: code.cloudfoundry.org/bytefmt
 - package: github.com/benbjohnson/clock
 - package: github.com/tecnickcom/statsd

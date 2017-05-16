@@ -19,8 +19,8 @@ import (
 	"github.com/petergtz/bitsgo/pathsigner"
 	"github.com/petergtz/bitsgo/routes"
 	"github.com/petergtz/bitsgo/statsd"
-	"github.com/uber-go/zap"
 	"github.com/urfave/negroni"
+	"go.uber.org/zap"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -34,11 +34,10 @@ func main() {
 	config, e := config.LoadConfig(*configPath)
 
 	if e != nil {
-		log.Log.Fatal("Could not load config.", zap.Error(e))
+		log.Log.Fatal("Could not load config.", "error", e)
 	}
-	log.Log.Info("Logging level", zap.String("log-level", config.Logging.Level))
-
-	log.SetLogger(zap.New(zap.NewTextEncoder(), zapLogLevelFrom(config.Logging.Level), zap.AddCaller()))
+	log.Log.Infow("Logging level", "log-level", config.Logging.Level)
+	log.SetLogger(createLoggerWith(config.Logging.Level))
 
 	rootRouter := mux.NewRouter()
 	rootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -96,24 +95,34 @@ func main() {
 	}
 
 	e = httpServer.ListenAndServe()
-	log.Log.Fatal("http server crashed", zap.Error(e))
+	log.Log.Fatal("http server crashed", "error", e)
 }
 
-func zapLogLevelFrom(configLogLevel string) zap.Level {
+func createLoggerWith(logLevel string) *zap.Logger {
+	loggerConfig := zap.NewProductionConfig()
+	loggerConfig.Level = zapLogLevelFrom(logLevel)
+	logger, e := loggerConfig.Build()
+	if e != nil {
+		log.Log.Panic(e)
+	}
+	return logger
+}
+
+func zapLogLevelFrom(configLogLevel string) zap.AtomicLevel {
 	switch strings.ToLower(configLogLevel) {
 	case "", "debug":
-		return zap.DebugLevel
+		return zap.NewAtomicLevelAt(zap.DebugLevel)
 	case "info":
-		return zap.InfoLevel
+		return zap.NewAtomicLevelAt(zap.InfoLevel)
 	case "warn":
-		return zap.WarnLevel
+		return zap.NewAtomicLevelAt(zap.WarnLevel)
 	case "error":
-		return zap.ErrorLevel
+		return zap.NewAtomicLevelAt(zap.ErrorLevel)
 	case "fatal":
-		return zap.FatalLevel
+		return zap.NewAtomicLevelAt(zap.FatalLevel)
 	default:
-		log.Log.Fatal("Invalid log level in config", zap.String("log-level", configLogLevel))
-		return -1
+		log.Log.Fatal("Invalid log level in config", "log-level", configLogLevel)
+		return zap.NewAtomicLevelAt(-1)
 	}
 }
 
@@ -128,21 +137,21 @@ func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAu
 func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
 	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
 	case "local":
-		log.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
+		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix)),
 			createLocalSignResourceHandler(publicHost, port, secret, resourceType)
 	case "s3", "aws":
-		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
+		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				s3.NewBlobstore(*blobstoreConfig.S3Config)),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					s3.NewResourceSigner(*blobstoreConfig.S3Config)))
 	case "webdav":
-		log.Log.Info("Creating Webdav blobstore",
-			zap.String("public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint),
-			zap.String("private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint))
+		log.Log.Infow("Creating Webdav blobstore",
+			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
+			"private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
 					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
@@ -153,7 +162,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 						webdav.NewWebdavResourceSigner(*blobstoreConfig.WebdavConfig), resourceType+"/")))
 
 	default:
-		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))
+		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
 		return nil, nil // satisfy compiler
 	}
 }
@@ -161,14 +170,14 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicHost string, port int, secret string, resourceType string) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
 	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
 	case "local":
-		log.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
+		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
 					local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
 					"buildpack_cache/")),
 			createLocalSignResourceHandler(publicHost, port, secret, resourceType)
 	case "s3", "aws":
-		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
+		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
 					s3.NewBlobstore(*blobstoreConfig.S3Config),
@@ -179,9 +188,9 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 						s3.NewResourceSigner(*blobstoreConfig.S3Config),
 						"buildpack_cache")))
 	case "webdav":
-		log.Log.Info("Creating Webdav blobstore",
-			zap.String("public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint),
-			zap.String("private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint))
+		log.Log.Infow("Creating Webdav blobstore",
+			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
+			"private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
 					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
@@ -192,7 +201,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 						webdav.NewWebdavResourceSigner(*blobstoreConfig.WebdavConfig),
 						"buildpack_cache")))
 	default:
-		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))
+		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
 		return nil, nil // satisfy compiler
 	}
 }
@@ -209,24 +218,24 @@ func createLocalSignResourceHandler(publicHost string, port int, secret string, 
 func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) bitsgo.NoRedirectBlobstore {
 	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
 	case "local":
-		log.Log.Info("Creating local blobstore", zap.String("path-prefix", blobstoreConfig.LocalConfig.PathPrefix))
+		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
 			local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix))
 
 	case "s3", "aws":
-		log.Log.Info("Creating S3 blobstore", zap.String("bucket", blobstoreConfig.S3Config.Bucket))
+		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 			s3.NewBlobstore(*blobstoreConfig.S3Config))
 	case "webdav":
-		log.Log.Info("Creating Webdav blobstore",
-			zap.String("public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint),
-			zap.String("private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint))
+		log.Log.Infow("Creating Webdav blobstore",
+			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
+			"private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint)
 		return decorator.ForBlobstoreWithPathPartitioning(
 			decorator.ForBlobstoreWithPathPrefixing(
 				webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
 				"app_stash/"))
 	default:
-		log.Log.Fatal("blobstoreConfig is invalid.", zap.String("blobstore-type", blobstoreConfig.BlobstoreType))
+		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
 		return nil // satisfy compiler
 	}
 }
