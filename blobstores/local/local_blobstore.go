@@ -86,10 +86,6 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	return nil
 }
 
-func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
-	return "", blobstore.Put(path, src)
-}
-
 func (blobstore *Blobstore) Copy(src, dest string) error {
 	srcFull := filepath.Join(blobstore.pathPrefix, src)
 	destFull := filepath.Join(blobstore.pathPrefix, dest)

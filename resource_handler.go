@@ -50,10 +50,10 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	defer file.Close()
 
 	startTime := time.Now()
-	redirectLocation, e := handler.blobstore.PutOrRedirect(params["identifier"], file)
+	e = handler.blobstore.Put(params["identifier"], file)
 	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
 
-	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusCreated, emptyReader)
+	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, emptyReader)
 }
 
 func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {

@@ -34,9 +34,6 @@ func (decorator *PrefixingPathBlobstoreDecorator) GetOrRedirect(path string) (bo
 func (decorator *PrefixingPathBlobstoreDecorator) Put(path string, src io.ReadSeeker) error {
 	return decorator.delegate.Put(decorator.prefix+path, src)
 }
-func (decorator *PrefixingPathBlobstoreDecorator) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
-	return decorator.delegate.PutOrRedirect(decorator.prefix+path, src)
-}
 
 func (decorator *PrefixingPathBlobstoreDecorator) Copy(src, dest string) error {
 	return decorator.delegate.Copy(decorator.prefix+src, decorator.prefix+dest)

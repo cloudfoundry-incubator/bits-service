@@ -34,7 +34,7 @@ var _ = Describe("Blobstore", func() {
 			Expect(redirectLocation).To(BeEmpty())
 			Expect(e).To(BeAssignableToTypeOf(bitsgo.NewNotFoundError()))
 
-			Expect(blobstore.PutOrRedirect("/some/path", strings.NewReader("some string"))).To(BeEmpty())
+			Expect(blobstore.Put("/some/path", strings.NewReader("some string"))).To(Succeed())
 
 			Expect(blobstore.Exists("/some/path")).To(BeTrue())
 

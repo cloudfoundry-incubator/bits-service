@@ -30,7 +30,7 @@ type Blobstore interface {
 	Exists(path string) (bool, error)
 	HeadOrRedirectAsGet(path string) (redirectLocation string, err error)
 	GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error)
-	PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error)
+	Put(path string, src io.ReadSeeker) error
 	Copy(src, dest string) error
 	Delete(path string) error
 	DeleteDir(prefix string) error
@@ -39,7 +39,7 @@ type Blobstore interface {
 type NoRedirectBlobstore interface {
 	Exists(path string) (bool, error)
 	Get(path string) (body io.ReadCloser, err error)
-	Put(path string, src io.ReadSeeker) (err error)
+	Put(path string, src io.ReadSeeker) error
 	Delete(path string) error
 	DeleteDir(prefix string) error
 }

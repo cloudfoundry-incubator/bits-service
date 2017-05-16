@@ -84,20 +84,6 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	return nil
 }
 
-func (blobstore *Blobstore) PutOrRedirect(path string, src io.ReadSeeker) (redirectLocation string, err error) {
-	// This is the behavior as in the current Ruby implementation
-	e := blobstore.Put(path, src)
-	return "", e
-
-	// Could also think of a redirect implementation:
-
-	// request, _ := blobstore.s3Client.PutObjectRequest(&s3.PutObjectInput{
-	// 	Bucket: &blobstore.bucket,
-	// 	Key:    &path,
-	// })
-	// return signedURLFrom(request, blobstore.bucket, path)
-}
-
 func signedURLFrom(req *request.Request, bucket, path string) (string, error) {
 	signedURL, e := req.Presign(time.Hour)
 	if e != nil {
