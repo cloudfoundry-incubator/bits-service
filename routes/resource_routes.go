@@ -6,40 +6,33 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/middlewares"
-	"github.com/petergtz/bitsgo/statsd"
 	"github.com/urfave/negroni"
 )
 
-func SetUpAppStashRoutes(router *mux.Router, blobstore bitsgo.NoRedirectBlobstore) {
-	handler := bitsgo.NewAppStashHandler(blobstore)
-	router.Path("/app_stash/entries").Methods("POST").HandlerFunc(handler.PostEntries)
-	router.Path("/app_stash/matches").Methods("POST").HandlerFunc(handler.PostMatches)
-	router.Path("/app_stash/bundles").Methods("POST").HandlerFunc(handler.PostBundles)
+func SetUpAppStashRoutes(router *mux.Router, resourceHandler *bitsgo.AppStashHandler) {
+	router.Path("/app_stash/entries").Methods("POST").HandlerFunc(resourceHandler.PostEntries)
+	router.Path("/app_stash/matches").Methods("POST").HandlerFunc(resourceHandler.PostMatches)
+	router.Path("/app_stash/bundles").Methods("POST").HandlerFunc(resourceHandler.PostBundles)
 }
 
-func SetUpPackageRoutes(router *mux.Router, blobstore bitsgo.Blobstore) {
-	setUpDefaultMethodRoutes(
-		router.Path("/packages/{identifier}").Subrouter(),
-		bitsgo.NewResourceHandler(blobstore, "package", statsd.NewMetricsService()))
+func SetUpPackageRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHandler) {
+	setUpDefaultMethodRoutes(router.Path("/packages/{identifier}").Subrouter(), resourceHandler)
 }
 
-func SetUpBuildpackRoutes(router *mux.Router, blobstore bitsgo.Blobstore) {
-	setUpDefaultMethodRoutes(
-		router.Path("/buildpacks/{identifier}").Subrouter(),
-		bitsgo.NewResourceHandler(blobstore, "buildpack", statsd.NewMetricsService()))
+func SetUpBuildpackRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHandler) {
+	setUpDefaultMethodRoutes(router.Path("/buildpacks/{identifier}").Subrouter(), resourceHandler)
 }
 
-func SetUpDropletRoutes(router *mux.Router, blobstore bitsgo.Blobstore) {
+func SetUpDropletRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHandler) {
 	setUpDefaultMethodRoutes(
 		router.Path("/droplets/{identifier:.*}").Subrouter(), // TODO we could probably be more specific in the regex
-		bitsgo.NewResourceHandler(blobstore, "droplet", statsd.NewMetricsService()))
+		resourceHandler)
 }
 
-func SetUpBuildpackCacheRoutes(router *mux.Router, blobstore bitsgo.Blobstore) {
-	handler := bitsgo.NewResourceHandler(blobstore, "buildpack_cache", statsd.NewMetricsService())
-	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(delegateTo(handler.DeleteDir))
-	router.Path("/buildpack_cache/entries/{identifier}").Methods("DELETE").HandlerFunc(delegateTo(handler.DeleteDir))
-	setUpDefaultMethodRoutes(router.Path("/buildpack_cache/entries/{identifier:.*}").Subrouter(), handler)
+func SetUpBuildpackCacheRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHandler) {
+	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(delegateTo(resourceHandler.DeleteDir))
+	router.Path("/buildpack_cache/entries/{identifier}").Methods("DELETE").HandlerFunc(delegateTo(resourceHandler.DeleteDir))
+	setUpDefaultMethodRoutes(router.Path("/buildpack_cache/entries/{identifier:.*}").Subrouter(), resourceHandler)
 }
 
 func setUpDefaultMethodRoutes(router *mux.Router, handler *bitsgo.ResourceHandler) {

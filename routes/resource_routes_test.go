@@ -20,10 +20,12 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
+	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/blobstores/decorator"
 	"github.com/petergtz/bitsgo/blobstores/inmemory"
 	"github.com/petergtz/bitsgo/httputil"
 	. "github.com/petergtz/bitsgo/routes"
+	"github.com/petergtz/bitsgo/statsd"
 	. "github.com/petergtz/bitsgo/testutil"
 	"github.com/petergtz/pegomock"
 	. "github.com/petergtz/pegomock"
@@ -35,6 +37,7 @@ func TestRoutes(t *testing.T) {
 	ginkgo.RunSpecs(t, "Routes")
 }
 
+// TODO this test does more than just routes. Maybe it should be moved to the cmd package instead.
 var _ = Describe("routes", func() {
 	BeforeSuite(func() {
 		log.SetFlags(log.LstdFlags | log.Lshortfile | log.LUTC)
@@ -129,24 +132,37 @@ var _ = Describe("routes", func() {
 	}
 
 	Describe("/packages/{guid}", func() {
-		BeforeEach(func() { SetUpPackageRoutes(router, decorator.ForBlobstoreWithPathPartitioning(blobstore)) })
+		BeforeEach(func() {
+			SetUpPackageRoutes(
+				router,
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), "package", statsd.NewMetricsService(), 0))
+		})
 		ItSupportsMethodsGetPutDeleteFor("packages", "package")
 	})
 
 	Describe("/droplets/{guid}", func() {
-		BeforeEach(func() { SetUpDropletRoutes(router, decorator.ForBlobstoreWithPathPartitioning(blobstore)) })
+		BeforeEach(func() {
+			SetUpDropletRoutes(
+				router,
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), "droplet", statsd.NewMetricsService(), 0))
+		})
 		ItSupportsMethodsGetPutDeleteFor("droplets", "droplet")
 	})
 
 	Describe("/buildpacks/{guid}", func() {
-		BeforeEach(func() { SetUpBuildpackRoutes(router, decorator.ForBlobstoreWithPathPartitioning(blobstore)) })
+		BeforeEach(func() {
+			SetUpBuildpackRoutes(
+				router,
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), "buildpack", statsd.NewMetricsService(), 0))
+		})
 		ItSupportsMethodsGetPutDeleteFor("buildpacks", "buildpack")
 	})
 
 	Describe("/buildpack_cache/entries/{app_guid}/{stack_name}", func() {
 		BeforeEach(func() {
-			SetUpBuildpackCacheRoutes(router, decorator.ForBlobstoreWithPathPartitioning(
-				decorator.ForBlobstoreWithPathPrefixing(blobstore, "buildpack_cache/")))
+			SetUpBuildpackCacheRoutes(
+				router,
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(decorator.ForBlobstoreWithPathPrefixing(blobstore, "buildpack_cache/")), "buildpack_cache", statsd.NewMetricsService(), 0))
 		})
 		Context("Method GET", func() {
 			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
@@ -169,7 +185,7 @@ var _ = Describe("routes", func() {
 
 	Describe("/app_stash", func() {
 		BeforeEach(func() {
-			SetUpAppStashRoutes(router, blobstore)
+			SetUpAppStashRoutes(router, bitsgo.NewAppStashHandler(blobstore, 0))
 		})
 
 		Describe("/app_stash/entries", func() {

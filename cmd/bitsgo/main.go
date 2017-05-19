@@ -54,14 +54,21 @@ func main() {
 	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpointUrl().Host, config.Port, config.Secret, "buildpacks")
 	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl().Host, config.Port, config.Secret, "droplets")
 
+	metricsService := statsd.NewMetricsService()
+
+	appstashHandler := bitsgo.NewAppStashHandler(appStashBlobstore, config.AppStash.MaxBodySizeBytes())
+	packageHandler := bitsgo.NewResourceHandler(packageBlobstore, "package", metricsService, config.Packages.MaxBodySizeBytes())
+	buildpackHandler := bitsgo.NewResourceHandler(buildpackBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes())
+	dropletHandler := bitsgo.NewResourceHandler(dropletBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes())
+	buildpackCacheHandler := bitsgo.NewResourceHandler(buildpackCacheBlobstore, "buildpack_cache", metricsService, config.Droplets.MaxBodySizeBytes())
 	routes.SetUpSignRoute(internalRouter, middlewares.NewBasicAuthMiddleWare(basicAuthCredentialsFrom(config.SigningUsers)...),
 		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler)
 
-	routes.SetUpAppStashRoutes(internalRouter, appStashBlobstore)
-	routes.SetUpPackageRoutes(internalRouter, packageBlobstore)
-	routes.SetUpBuildpackRoutes(internalRouter, buildpackBlobstore)
-	routes.SetUpDropletRoutes(internalRouter, dropletBlobstore)
-	routes.SetUpBuildpackCacheRoutes(internalRouter, buildpackCacheBlobstore)
+	routes.SetUpAppStashRoutes(internalRouter, appstashHandler)
+	routes.SetUpPackageRoutes(internalRouter, packageHandler)
+	routes.SetUpBuildpackRoutes(internalRouter, buildpackHandler)
+	routes.SetUpDropletRoutes(internalRouter, dropletHandler)
+	routes.SetUpBuildpackCacheRoutes(internalRouter, buildpackCacheHandler)
 
 	publicRouter := mux.NewRouter()
 	rootRouter.Host(config.PublicEndpointUrl().Host).Handler(negroni.New(
@@ -69,26 +76,21 @@ func main() {
 		negroni.Wrap(publicRouter),
 	))
 	if config.Packages.BlobstoreType == "local" {
-		routes.SetUpPackageRoutes(publicRouter, packageBlobstore)
+		routes.SetUpPackageRoutes(publicRouter, packageHandler)
 	}
 	if config.Buildpacks.BlobstoreType == "local" {
-		routes.SetUpBuildpackRoutes(publicRouter, buildpackBlobstore)
+		routes.SetUpBuildpackRoutes(publicRouter, buildpackHandler)
 	}
 	if config.Droplets.BlobstoreType == "local" {
-		routes.SetUpDropletRoutes(publicRouter, dropletBlobstore)
-		routes.SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheBlobstore)
+		routes.SetUpDropletRoutes(publicRouter, dropletHandler)
+		routes.SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheHandler)
 	}
-
-	httpHandler := negroni.New(
-		middlewares.NewMetricsMiddleware(statsd.NewMetricsService()),
-		middlewares.NewZapLoggerMiddleware(log.Log))
-	if config.MaxBodySizeBytes() != 0 {
-		httpHandler.Use(middlewares.NewBodySizeLimitMiddleware(config.MaxBodySizeBytes()))
-	}
-	httpHandler.UseHandler(rootRouter)
 
 	httpServer := &http.Server{
-		Handler:      httpHandler,
+		Handler: negroni.New(
+			middlewares.NewMetricsMiddleware(metricsService),
+			middlewares.NewZapLoggerMiddleware(log.Log),
+			negroni.Wrap(rootRouter)),
 		Addr:         fmt.Sprintf("0.0.0.0:%v", config.Port),
 		WriteTimeout: 60 * time.Minute,
 		ReadTimeout:  60 * time.Minute,

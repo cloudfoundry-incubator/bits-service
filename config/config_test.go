@@ -87,7 +87,7 @@ port: 8000
 	})
 
 	It("correctly converts max_body_size", func() {
-		Expect((&Config{MaxBodySize: `13M`}).MaxBodySizeBytes()).To(Equal(uint64(13631488)))
+		Expect((&BlobstoreConfig{MaxBodySize: `13M`}).MaxBodySizeBytes()).To(Equal(uint64(13631488)))
 	})
 
 	It("returns an error when max_body_size is invalid", func() {
@@ -102,7 +102,37 @@ port: 8000
 	})
 
 	It("returns 0 when max_body_size is not defined", func() {
-		Expect((&Config{}).MaxBodySizeBytes()).To(Equal(uint64(0)))
+		Expect((&BlobstoreConfig{}).MaxBodySizeBytes()).To(Equal(uint64(0)))
+	})
+
+	It("uses global value, when blobstore specific value is not set", func() {
+		Expect((&BlobstoreConfig{GlobalMaxBodySize: `13MB`}).MaxBodySizeBytes()).To(Equal(uint64(13631488)))
+	})
+
+	It("correctly inherits global max_body_size when not configured in blobstore specifically", func() {
+		fmt.Fprintf(configFile, "%s", `
+privatebuildpacks:
+droplets:
+packages:
+  max_body_size: 20MB
+app_stash:
+logging:
+  file: /tmp/bits-service.log
+  syslog: vcap.bits-service
+  level: debug
+public_endpoint: http://public.127.0.0.1.xip.io
+private_endpoint: http://internal.127.0.0.1.xip.io
+secret: geheim
+port: 8000
+max_body_size: 13M
+`)
+		config, e := LoadConfig(configFile.Name())
+
+		Expect(e).NotTo(HaveOccurred())
+		Expect(config.Droplets.MaxBodySizeBytes()).To(Equal(uint64(13631488)))
+		Expect(config.Buildpacks.MaxBodySizeBytes()).To(Equal(uint64(13631488)))
+		Expect(config.AppStash.MaxBodySizeBytes()).To(Equal(uint64(13631488)))
+		Expect(config.Packages.MaxBodySizeBytes()).To(Equal(uint64(20971520)))
 	})
 
 })

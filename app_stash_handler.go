@@ -18,14 +18,21 @@ import (
 )
 
 type AppStashHandler struct {
-	blobstore NoRedirectBlobstore
+	blobstore        NoRedirectBlobstore
+	maxBodySizeLimit uint64
 }
 
-func NewAppStashHandler(blobstore NoRedirectBlobstore) *AppStashHandler {
-	return &AppStashHandler{blobstore: blobstore}
+func NewAppStashHandler(blobstore NoRedirectBlobstore, maxBodySizeLimit uint64) *AppStashHandler {
+	return &AppStashHandler{
+		blobstore:        blobstore,
+		maxBodySizeLimit: maxBodySizeLimit,
+	}
 }
 
 func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, request *http.Request) {
+	if !bodySizeWithinLimit(responseWriter, request, handler.maxBodySizeLimit) {
+		return
+	}
 	body, e := ioutil.ReadAll(request.Body)
 	if e != nil {
 		internalServerError(responseWriter, e)
@@ -68,6 +75,9 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 }
 
 func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, request *http.Request) {
+	if !bodySizeWithinLimit(responseWriter, request, handler.maxBodySizeLimit) {
+		return
+	}
 	uploadedFile, _, e := request.FormFile("application")
 	if e != nil {
 		badRequest(responseWriter, "Could not retrieve 'application' form parameter")
@@ -177,6 +187,9 @@ type BundlesPayload struct {
 }
 
 func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, request *http.Request) {
+	if !bodySizeWithinLimit(responseWriter, request, handler.maxBodySizeLimit) {
+		return
+	}
 	body, e := ioutil.ReadAll(request.Body)
 	if e != nil {
 		internalServerError(responseWriter, e)

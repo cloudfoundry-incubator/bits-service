@@ -18,20 +18,25 @@ type MetricsService interface {
 }
 
 type ResourceHandler struct {
-	blobstore      Blobstore
-	resourceType   string
-	metricsService MetricsService
+	blobstore        Blobstore
+	resourceType     string
+	metricsService   MetricsService
+	maxBodySizeLimit uint64
 }
 
-func NewResourceHandler(blobstore Blobstore, resourceType string, metricsService MetricsService) *ResourceHandler {
+func NewResourceHandler(blobstore Blobstore, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64) *ResourceHandler {
 	return &ResourceHandler{
-		blobstore:      blobstore,
-		resourceType:   resourceType,
-		metricsService: metricsService,
+		blobstore:        blobstore,
+		resourceType:     resourceType,
+		metricsService:   metricsService,
+		maxBodySizeLimit: maxBodySizeLimit,
 	}
 }
 
 func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	if !bodySizeWithinLimit(responseWriter, request, handler.maxBodySizeLimit) {
+		return
+	}
 	if strings.Contains(request.Header.Get("Content-Type"), "multipart/form-data") {
 		logger.From(request).Debugw("Multipart upload")
 		handler.uploadMultipart(responseWriter, request, params)
@@ -39,6 +44,26 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 		logger.From(request).Debugw("Copy source guid")
 		handler.copySourceGuid(responseWriter, request, params)
 	}
+}
+
+func bodySizeWithinLimit(responseWriter http.ResponseWriter, request *http.Request, maxBodySizeLimit uint64) bool {
+	if maxBodySizeLimit != 0 {
+		if request.ContentLength == -1 {
+			badRequest(responseWriter, "HTTP header does not contain Content-Length")
+			return false
+		}
+		if uint64(request.ContentLength) > maxBodySizeLimit {
+
+			// Reading the body here is really just to make Ruby's RestClient happy.
+			// For some reason it crashes if we don't read the body.
+			defer request.Body.Close()
+			io.Copy(ioutil.Discard, request.Body)
+
+			responseWriter.WriteHeader(http.StatusRequestEntityTooLarge)
+			return false
+		}
+	}
+	return true
 }
 
 func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {

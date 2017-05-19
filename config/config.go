@@ -43,22 +43,31 @@ func (config *Config) PrivateEndpointUrl() *url.URL {
 	return u
 }
 
-func (config *Config) MaxBodySizeBytes() uint64 {
+type BlobstoreConfig struct {
+	BlobstoreType     string                 `yaml:"blobstore_type"`
+	LocalConfig       *LocalBlobstoreConfig  `yaml:"local_config"`
+	S3Config          *S3BlobstoreConfig     `yaml:"s3_config"`
+	WebdavConfig      *WebdavBlobstoreConfig `yaml:"webdav_config"`
+	MaxBodySize       string                 `yaml:"max_body_size"`
+	GlobalMaxBodySize string                 // Not to be set by yaml
+}
+
+func (config *BlobstoreConfig) MaxBodySizeBytes() uint64 {
 	if config.MaxBodySize == "" {
-		return 0
+		if config.GlobalMaxBodySize == "" {
+			return 0
+		}
+		bytes, e := bytefmt.ToBytes(config.GlobalMaxBodySize)
+		if e != nil {
+			panic("Unexpected error: " + e.Error())
+		}
+		return bytes
 	}
 	bytes, e := bytefmt.ToBytes(config.MaxBodySize)
 	if e != nil {
 		panic("Unexpected error: " + e.Error())
 	}
 	return bytes
-}
-
-type BlobstoreConfig struct {
-	BlobstoreType string                 `yaml:"blobstore_type"`
-	LocalConfig   *LocalBlobstoreConfig  `yaml:"local_config"`
-	S3Config      *S3BlobstoreConfig     `yaml:"s3_config"`
-	WebdavConfig  *WebdavBlobstoreConfig `yaml:"webdav_config"`
 }
 
 type LocalBlobstoreConfig struct {
@@ -112,6 +121,10 @@ func LoadConfig(filename string) (config Config, err error) {
 	if e != nil {
 		return Config{}, errors.New("error parsing config. Caused by: " + e.Error())
 	}
+	config.Droplets.GlobalMaxBodySize = config.MaxBodySize
+	config.Packages.GlobalMaxBodySize = config.MaxBodySize
+	config.AppStash.GlobalMaxBodySize = config.MaxBodySize
+	config.Buildpacks.GlobalMaxBodySize = config.MaxBodySize
 	var errs []string
 	if config.Port == 0 {
 		errs = append(errs, "port must be an integer > 0")
