@@ -30,7 +30,7 @@ func NewAppStashHandler(blobstore NoRedirectBlobstore, maxBodySizeLimit uint64) 
 }
 
 func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, request *http.Request) {
-	if !bodySizeWithinLimit(responseWriter, request, handler.maxBodySizeLimit) {
+	if !handleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
 	}
 	body, e := ioutil.ReadAll(request.Body)
@@ -75,7 +75,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 }
 
 func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, request *http.Request) {
-	if !bodySizeWithinLimit(responseWriter, request, handler.maxBodySizeLimit) {
+	if !handleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
 	}
 	uploadedFile, _, e := request.FormFile("application")
@@ -187,7 +187,7 @@ type BundlesPayload struct {
 }
 
 func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, request *http.Request) {
-	if !bodySizeWithinLimit(responseWriter, request, handler.maxBodySizeLimit) {
+	if !handleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
 	}
 	body, e := ioutil.ReadAll(request.Body)
