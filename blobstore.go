@@ -21,8 +21,8 @@ type NoSpaceLeftError struct {
 	error
 }
 
-func NewNoSpaceLeftError() *NotFoundError {
-	return &NotFoundError{fmt.Errorf("NoSpaceLeftError")}
+func NewNoSpaceLeftError() *NoSpaceLeftError {
+	return &NoSpaceLeftError{fmt.Errorf("NoSpaceLeftError")}
 }
 
 type Blobstore interface {

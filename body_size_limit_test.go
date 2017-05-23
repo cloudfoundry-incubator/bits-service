@@ -1,8 +1,6 @@
 package bitsgo_test
 
 import (
-	"testing"
-
 	. "github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/httputil"
 
@@ -15,16 +13,9 @@ import (
 
 	"io"
 
-	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 )
-
-func TestBitsgo(t *testing.T) {
-	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "bitsgo")
-}
 
 type testHandler struct {
 	maxBodySize              uint64
