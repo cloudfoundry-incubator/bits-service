@@ -21,6 +21,9 @@ import:
 - package: code.cloudfoundry.org/bytefmt
 - package: github.com/benbjohnson/clock
 - package: github.com/tecnickcom/statsd
+- package: cloud.google.com/go
+  subpackages:
+  - storage
 testImport:
 - package: github.com/onsi/ginkgo
 - package: github.com/petergtz/pegomock
