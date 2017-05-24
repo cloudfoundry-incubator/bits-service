@@ -81,6 +81,14 @@ type S3BlobstoreConfig struct {
 	Region          string
 }
 
+type GCPBlobstoreConfig struct {
+	Bucket       string
+	PrivateKeyID string `yaml:"private_key_id"`
+	PrivateKey   string `yaml:"private_key"`
+	Email        string
+	TokenURL     string `yaml:"token_url"`
+}
+
 type WebdavBlobstoreConfig struct {
 	PrivateEndpoint string `yaml:"private_endpoint"`
 	PublicEndpoint  string `yaml:"public_endpoint"`

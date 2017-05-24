@@ -2,15 +2,15 @@ package main_test
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
-
-	"os"
 
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
@@ -18,78 +18,81 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/petergtz/bitsgo"
-	. "github.com/petergtz/bitsgo/blobstores/s3"
+	"github.com/petergtz/bitsgo/blobstores/gcp"
+	"github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
 )
 
-func TestS3Blobstore(t *testing.T) {
+func TestGCPBlobstore(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "S3 Blobstore Contract Integration")
+	ginkgo.RunSpecs(t, "GCP Blobstore Contract Integration")
 }
 
-var _ = Describe("S3 Blobstores", func() {
+type blobstore interface {
+	// Can't do the following until it is added in Go: (See also https://github.com/golang/go/issues/6977)
+	// routes.Blobstore
+	// routes.NoRedirectBlobstore
+
+	// Instead doing:
+	bitsgo.Blobstore
+	Get(path string) (body io.ReadCloser, err error)
+}
+
+var _ = Describe("Non-local blobstores", func() {
 	var (
 		s3Config  config.S3BlobstoreConfig
+		gcpConfig config.GCPBlobstoreConfig
 		filepath  string
-		blobstore *Blobstore
+		blobstore blobstore
 	)
 
-	BeforeEach(func() {
-		filename := os.Getenv("CONFIG")
-		if filename == "" {
-			fmt.Println("No $CONFIG set. Defaulting to integration_test_config.yml")
-			filename = "integration_test_config.yml"
-		}
-		file, e := os.Open(filename)
-		Expect(e).NotTo(HaveOccurred())
-		defer file.Close()
-		content, e := ioutil.ReadAll(file)
-		Expect(e).NotTo(HaveOccurred())
-		e = yaml.Unmarshal(content, &s3Config)
-		Expect(e).NotTo(HaveOccurred())
-		Expect(s3Config.Bucket).NotTo(BeEmpty())
-		Expect(s3Config.AccessKeyID).NotTo(BeEmpty())
-		Expect(s3Config.SecretAccessKey).NotTo(BeEmpty())
-		Expect(s3Config.Region).NotTo(BeEmpty())
-
-		filepath = fmt.Sprintf("testfile-%v", time.Now())
-	})
-
-	Describe("S3NoRedirectBlobStore", func() {
-		BeforeEach(func() {
-			blobstore = NewBlobstore(s3Config)
-		})
+	itCanPutAndGetAResourceThere := func() {
 
 		It("can put and get a resource there", func() {
 			redirectLocation, e := blobstore.HeadOrRedirectAsGet(filepath)
-			Expect(e).NotTo(HaveOccurred())
-			Expect(redirectLocation).NotTo(BeEmpty())
+			Expect(redirectLocation, e).NotTo(BeEmpty())
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
 			body, e := blobstore.Get(filepath)
 			Expect(e).To(BeAssignableToTypeOf(&bitsgo.NotFoundError{}))
 			Expect(body).To(BeNil())
 
+			body, redirectLocation, e = blobstore.GetOrRedirect(filepath)
+			Expect(redirectLocation, e).NotTo(BeEmpty())
+			Expect(body).To(BeNil())
+			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
+
 			e = blobstore.Put(filepath, strings.NewReader("the file content"))
+			Expect(e).NotTo(HaveOccurred())
 
 			redirectLocation, e = blobstore.HeadOrRedirectAsGet(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
+			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusOK))
 
 			body, e = blobstore.Get(filepath)
 			Expect(e).NotTo(HaveOccurred())
 			Expect(ioutil.ReadAll(body)).To(ContainSubstring("the file content"))
 
+			body, redirectLocation, e = blobstore.GetOrRedirect(filepath)
+			Expect(redirectLocation, e).NotTo(BeEmpty())
+			Expect(body).To(BeNil())
+			Expect(http.Get(redirectLocation)).To(HaveBodyWithSubstring("the file content"))
+
 			e = blobstore.Delete(filepath)
 			Expect(e).NotTo(HaveOccurred())
 
 			redirectLocation, e = blobstore.HeadOrRedirectAsGet(filepath)
-			Expect(e).NotTo(HaveOccurred())
-			Expect(redirectLocation).NotTo(BeEmpty())
+			Expect(redirectLocation, e).NotTo(BeEmpty())
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 
 			body, e = blobstore.Get(filepath)
 			Expect(e).To(BeAssignableToTypeOf(&bitsgo.NotFoundError{}))
 			Expect(body).To(BeNil())
+
+			body, redirectLocation, e = blobstore.GetOrRedirect(filepath)
+			Expect(redirectLocation, e).NotTo(BeEmpty())
+			Expect(body).To(BeNil())
+			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 		})
 
 		It("Can delete a prefix", func() {
@@ -130,49 +133,61 @@ var _ = Describe("S3 Blobstores", func() {
 			Expect(blobstore.Exists("dir/one")).To(BeFalse())
 			Expect(blobstore.Exists("dir/two")).To(BeFalse())
 		})
+	}
 
+	Context("S3", func() {
+		BeforeEach(func() {
+			filename := os.Getenv("CONFIG")
+			if filename == "" {
+				fmt.Println("No $CONFIG set. Defaulting to integration_test_config.yml")
+				filename = "integration_test_config.yml"
+			}
+			file, e := os.Open(filename)
+			Expect(e).NotTo(HaveOccurred())
+			defer file.Close()
+			content, e := ioutil.ReadAll(file)
+			Expect(e).NotTo(HaveOccurred())
+			e = yaml.Unmarshal(content, &s3Config)
+			Expect(e).NotTo(HaveOccurred())
+			Expect(s3Config.Bucket).NotTo(BeEmpty())
+			Expect(s3Config.AccessKeyID).NotTo(BeEmpty())
+			Expect(s3Config.SecretAccessKey).NotTo(BeEmpty())
+			Expect(s3Config.Region).NotTo(BeEmpty())
+
+			blobstore = s3.NewBlobstore(s3Config)
+
+			filepath = fmt.Sprintf("testfile-%v", time.Now())
+		})
+
+		itCanPutAndGetAResourceThere()
 	})
 
-	Describe("S3PureRedirectBlobstore", func() {
-		It("can put and get a resource there", func() {
-			blobstore := NewBlobstore(s3Config)
-
-			redirectLocation, e := blobstore.HeadOrRedirectAsGet(filepath)
-			Expect(redirectLocation, e).NotTo(BeEmpty())
-			// NOTE: our current contract with bits-service-client requires to do a GET request on a URL received from Head()
-			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
-
-			body, redirectLocation, e := blobstore.GetOrRedirect(filepath)
-			Expect(redirectLocation, e).NotTo(BeEmpty())
-			Expect(body).To(BeNil())
-			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
-
-			e = blobstore.Put(filepath, strings.NewReader("the file content"))
+	Context("GCP", func() {
+		BeforeEach(func() {
+			filename := os.Getenv("CONFIG")
+			if filename == "" {
+				fmt.Println("No $CONFIG set. Defaulting to integration_test_config.yml")
+				filename = "integration_test_config.yml"
+			}
+			file, e := os.Open(filename)
 			Expect(e).NotTo(HaveOccurred())
-
-			redirectLocation, e = blobstore.HeadOrRedirectAsGet(filepath)
-			Expect(redirectLocation, e).NotTo(BeEmpty())
-			// NOTE: our current contract with bits-service-client requires to do a GET request on a URL received from Head()
-			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusOK))
-
-			body, redirectLocation, e = blobstore.GetOrRedirect(filepath)
-			Expect(redirectLocation, e).NotTo(BeEmpty())
-			Expect(body).To(BeNil())
-			Expect(http.Get(redirectLocation)).To(HaveBodyWithSubstring("the file content"))
-
-			e = blobstore.Delete(filepath)
+			defer file.Close()
+			content, e := ioutil.ReadAll(file)
 			Expect(e).NotTo(HaveOccurred())
+			e = yaml.Unmarshal(content, &gcpConfig)
+			Expect(e).NotTo(HaveOccurred())
+			Expect(gcpConfig.Bucket).NotTo(BeEmpty())
+			Expect(gcpConfig.Email).NotTo(BeEmpty())
+			Expect(gcpConfig.PrivateKey).NotTo(BeEmpty())
+			Expect(gcpConfig.PrivateKeyID).NotTo(BeEmpty())
+			Expect(gcpConfig.TokenURL).NotTo(BeEmpty())
 
-			redirectLocation, e = blobstore.HeadOrRedirectAsGet(filepath)
-			Expect(redirectLocation, e).NotTo(BeEmpty())
-			// NOTE: our current contract with bits-service-client requires to do a GET request on a URL received from Head()
-			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
+			blobstore = gcp.NewBlobstore(gcpConfig)
 
-			body, redirectLocation, e = blobstore.GetOrRedirect(filepath)
-			Expect(redirectLocation, e).NotTo(BeEmpty())
-			Expect(body).To(BeNil())
-			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
+			filepath = fmt.Sprintf("testfile-%v", time.Now())
 		})
+
+		itCanPutAndGetAResourceThere()
 	})
 
 })
