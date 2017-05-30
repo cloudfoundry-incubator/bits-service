@@ -89,6 +89,12 @@ type GCPBlobstoreConfig struct {
 	TokenURL     string `yaml:"token_url"`
 }
 
+type AzureBlobstoreConfig struct {
+	ContainerName string `yaml:"container_name"`
+	AccountName   string `yaml:"account_name"`
+	AccountKey    string `yaml:"account_key"`
+}
+
 type WebdavBlobstoreConfig struct {
 	PrivateEndpoint string `yaml:"private_endpoint"`
 	PublicEndpoint  string `yaml:"public_endpoint"`

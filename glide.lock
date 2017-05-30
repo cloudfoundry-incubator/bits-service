@@ -1,8 +1,8 @@
-hash: fdfd6cef17a6ec1035080f2e88bdb0f25c8a9543f5a41d9cb170b5dd828ac79d
-updated: 2017-05-24T10:49:01.757264349+02:00
+hash: 772d415fad31e4b278bdfe72726144e3e8c5a85e02cf679c844e6d8b56e14a0c
+updated: 2017-05-25T15:02:46.335552515+02:00
 imports:
 - name: cloud.google.com/go
-  version: c203866c32a0f3c347e4e2cdc58edf275882bd03
+  version: ff3a4a928549efd9c569f4d812b885ae7736d402
   subpackages:
   - compute/metadata
   - iam
@@ -19,7 +19,7 @@ imports:
 - name: github.com/alecthomas/units
   version: 2efee857e7cfd4f3d0138cc3cbb1b4966962b93a
 - name: github.com/aws/aws-sdk-go
-  version: 2b8c4298b43558883ab1ff49a73c7c5aa99e3d1e
+  version: 0bc99f4aa1cf50245de234b1ce0b33463a3ad5fe
   subpackages:
   - aws
   - aws/awserr
@@ -45,8 +45,22 @@ imports:
   - private/protocol/xml/xmlutil
   - service/s3
   - service/sts
+- name: github.com/Azure/azure-sdk-for-go
+  version: 26132835cbefa2669a306b777f34b929b56aa0a2
+  subpackages:
+  - storage
+- name: github.com/Azure/go-autorest
+  version: 58f6f26e200fa5dfb40c9cd1c83f3e2c860d779d
+  subpackages:
+  - autorest
+  - autorest/adal
+  - autorest/azure
+  - autorest/date
+  - autorest/to
 - name: github.com/benbjohnson/clock
   version: 7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19
+- name: github.com/dgrijalva/jwt-go
+  version: 6c8dedd55f8a2e41f605de6d5d66e51ed1f299fc
 - name: github.com/go-ini/ini
   version: afbc45e87f3ba324c532d12c71918ef52e0fb194
 - name: github.com/golang/protobuf
@@ -83,6 +97,8 @@ imports:
   - types
 - name: github.com/pkg/errors
   version: c605e284fe17294bda444b34710735b29d1a9d90
+- name: github.com/satori/uuid
+  version: 5bf94b69c6b68ee1b541973bb8e1144db23a194b
 - name: github.com/tecnickcom/statsd
   version: 969e3814be4f15681e2da76965ffa464b576a51f
 - name: github.com/urfave/negroni
@@ -99,7 +115,7 @@ imports:
   - internal/multierror
   - zapcore
 - name: golang.org/x/net
-  version: 445979b94b42a1f13fdf26e8bf839a566e9796f9
+  version: 7dcfb8076726a3fdd9353b6b8a1f1b6be6811bd6
   subpackages:
   - context
   - context/ctxhttp
@@ -121,7 +137,10 @@ imports:
   - jwt
 - name: golang.org/x/text
   version: 19e51611da83d6be54ddafce4a4af510cb3e9ea4
+  repo: https://github.com/golang/text.git
+  vcs: git
   subpackages:
+  - .
   - encoding
   - encoding/charmap
   - encoding/htmlindex
@@ -173,7 +192,7 @@ imports:
   - googleapis/iam/v1
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 6dff7c5f333b5331089ccc6451fc842664f3be6a
+  version: 3a46d9d51931de5beee75086205224a540233baa
   subpackages:
   - codes
   - credentials
@@ -219,6 +238,6 @@ testImports:
   subpackages:
   - internal/verify
 - name: golang.org/x/sys
-  version: dbc2be9168a660ef302e04b6ff6406de6f967473
+  version: a55a76086885b80f79961eacb876ebd8caf3868d
   subpackages:
   - unix

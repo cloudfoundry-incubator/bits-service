@@ -18,6 +18,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/blobstores/azure"
 	"github.com/petergtz/bitsgo/blobstores/gcp"
 	"github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
@@ -40,10 +41,11 @@ type blobstore interface {
 
 var _ = Describe("Non-local blobstores", func() {
 	var (
-		s3Config  config.S3BlobstoreConfig
-		gcpConfig config.GCPBlobstoreConfig
-		filepath  string
-		blobstore blobstore
+		s3Config    config.S3BlobstoreConfig
+		gcpConfig   config.GCPBlobstoreConfig
+		azureConfig config.AzureBlobstoreConfig
+		filepath    string
+		blobstore   blobstore
 	)
 
 	itCanPutAndGetAResourceThere := func() {
@@ -190,6 +192,31 @@ var _ = Describe("Non-local blobstores", func() {
 		itCanPutAndGetAResourceThere()
 	})
 
+	Context("azure", func() {
+		BeforeEach(func() {
+			filename := os.Getenv("CONFIG")
+			if filename == "" {
+				fmt.Println("No $CONFIG set. Defaulting to integration_test_config.yml")
+				filename = "integration_test_config.yml"
+			}
+			file, e := os.Open(filename)
+			Expect(e).NotTo(HaveOccurred())
+			defer file.Close()
+			content, e := ioutil.ReadAll(file)
+			Expect(e).NotTo(HaveOccurred())
+			e = yaml.Unmarshal(content, &azureConfig)
+			Expect(e).NotTo(HaveOccurred())
+			Expect(azureConfig.ContainerName).NotTo(BeEmpty())
+			Expect(azureConfig.AccountKey).NotTo(BeEmpty())
+			Expect(azureConfig.AccountName).NotTo(BeEmpty())
+
+			blobstore = azure.NewBlobstore(azureConfig)
+
+			filepath = fmt.Sprintf("testfile-%v", time.Now())
+		})
+
+		itCanPutAndGetAResourceThere()
+	})
 })
 
 func HaveBodyWithSubstring(substring string) types.GomegaMatcher {

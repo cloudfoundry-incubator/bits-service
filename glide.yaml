@@ -24,6 +24,7 @@ import:
 - package: cloud.google.com/go
   subpackages:
   - storage
+- package: github.com/Azure/azure-sdk-for-go
 testImport:
 - package: github.com/onsi/ginkgo
 - package: github.com/petergtz/pegomock
