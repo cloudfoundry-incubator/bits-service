@@ -10,6 +10,7 @@ import (
 	"cloud.google.com/go/storage"
 
 	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/blobstores/validate"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/pkg/errors"
@@ -24,6 +25,12 @@ type Blobstore struct {
 }
 
 func NewBlobstore(config config.GCPBlobstoreConfig) *Blobstore {
+	validate.NotEmpty(config.Bucket)
+	validate.NotEmpty(config.Email)
+	validate.NotEmpty(config.PrivateKey)
+	validate.NotEmpty(config.PrivateKeyID)
+	validate.NotEmpty(config.TokenURL)
+
 	ctx := context.Background()
 
 	jwtConfig := &jwt.Config{

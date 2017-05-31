@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/blobstores/validate"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/pkg/errors"
@@ -19,6 +20,11 @@ type Blobstore struct {
 }
 
 func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
+	validate.NotEmpty(config.AccessKeyID)
+	validate.NotEmpty(config.Bucket)
+	validate.NotEmpty(config.Region)
+	validate.NotEmpty(config.SecretAccessKey)
+
 	return &Blobstore{
 		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey),
 		bucket:   config.Bucket,

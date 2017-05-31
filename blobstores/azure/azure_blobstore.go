@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/blobstores/validate"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/pkg/errors"
@@ -21,6 +22,10 @@ type Blobstore struct {
 }
 
 func NewBlobstore(config config.AzureBlobstoreConfig) *Blobstore {
+	validate.NotEmpty(config.AccountKey)
+	validate.NotEmpty(config.AccountName)
+	validate.NotEmpty(config.ContainerName)
+
 	client, e := storage.NewBasicClient(config.AccountName, config.AccountKey)
 	if e != nil {
 		panic(e)

@@ -18,7 +18,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/blobstores/azure"
 	"github.com/petergtz/bitsgo/blobstores/gcp"
 	"github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
@@ -41,11 +40,8 @@ type blobstore interface {
 
 var _ = Describe("Non-local blobstores", func() {
 	var (
-		s3Config    config.S3BlobstoreConfig
-		gcpConfig   config.GCPBlobstoreConfig
-		azureConfig config.AzureBlobstoreConfig
-		filepath    string
-		blobstore   blobstore
+		filepath  string
+		blobstore blobstore
 	)
 
 	itCanPutAndGetAResourceThere := func() {
@@ -137,28 +133,28 @@ var _ = Describe("Non-local blobstores", func() {
 		})
 	}
 
+	var configFileContent []byte
+
+	BeforeEach(func() {
+		filename := os.Getenv("CONFIG")
+		if filename == "" {
+			fmt.Println("No $CONFIG set. Defaulting to integration_test_config.yml")
+			filename = "integration_test_config.yml"
+		}
+		file, e := os.Open(filename)
+		Expect(e).NotTo(HaveOccurred())
+		defer file.Close()
+		configFileContent, e = ioutil.ReadAll(file)
+		Expect(e).NotTo(HaveOccurred())
+
+		filepath = fmt.Sprintf("testfile-%v", time.Now())
+	})
+
 	Context("S3", func() {
 		BeforeEach(func() {
-			filename := os.Getenv("CONFIG")
-			if filename == "" {
-				fmt.Println("No $CONFIG set. Defaulting to integration_test_config.yml")
-				filename = "integration_test_config.yml"
-			}
-			file, e := os.Open(filename)
-			Expect(e).NotTo(HaveOccurred())
-			defer file.Close()
-			content, e := ioutil.ReadAll(file)
-			Expect(e).NotTo(HaveOccurred())
-			e = yaml.Unmarshal(content, &s3Config)
-			Expect(e).NotTo(HaveOccurred())
-			Expect(s3Config.Bucket).NotTo(BeEmpty())
-			Expect(s3Config.AccessKeyID).NotTo(BeEmpty())
-			Expect(s3Config.SecretAccessKey).NotTo(BeEmpty())
-			Expect(s3Config.Region).NotTo(BeEmpty())
-
+			var s3Config config.S3BlobstoreConfig
+			Expect(yaml.Unmarshal(configFileContent, &s3Config)).To(Succeed())
 			blobstore = s3.NewBlobstore(s3Config)
-
-			filepath = fmt.Sprintf("testfile-%v", time.Now())
 		})
 
 		itCanPutAndGetAResourceThere()
@@ -166,27 +162,9 @@ var _ = Describe("Non-local blobstores", func() {
 
 	Context("GCP", func() {
 		BeforeEach(func() {
-			filename := os.Getenv("CONFIG")
-			if filename == "" {
-				fmt.Println("No $CONFIG set. Defaulting to integration_test_config.yml")
-				filename = "integration_test_config.yml"
-			}
-			file, e := os.Open(filename)
-			Expect(e).NotTo(HaveOccurred())
-			defer file.Close()
-			content, e := ioutil.ReadAll(file)
-			Expect(e).NotTo(HaveOccurred())
-			e = yaml.Unmarshal(content, &gcpConfig)
-			Expect(e).NotTo(HaveOccurred())
-			Expect(gcpConfig.Bucket).NotTo(BeEmpty())
-			Expect(gcpConfig.Email).NotTo(BeEmpty())
-			Expect(gcpConfig.PrivateKey).NotTo(BeEmpty())
-			Expect(gcpConfig.PrivateKeyID).NotTo(BeEmpty())
-			Expect(gcpConfig.TokenURL).NotTo(BeEmpty())
-
+			var gcpConfig config.GCPBlobstoreConfig
+			Expect(yaml.Unmarshal(configFileContent, &gcpConfig)).To(Succeed())
 			blobstore = gcp.NewBlobstore(gcpConfig)
-
-			filepath = fmt.Sprintf("testfile-%v", time.Now())
 		})
 
 		itCanPutAndGetAResourceThere()
@@ -194,25 +172,9 @@ var _ = Describe("Non-local blobstores", func() {
 
 	Context("azure", func() {
 		BeforeEach(func() {
-			filename := os.Getenv("CONFIG")
-			if filename == "" {
-				fmt.Println("No $CONFIG set. Defaulting to integration_test_config.yml")
-				filename = "integration_test_config.yml"
-			}
-			file, e := os.Open(filename)
-			Expect(e).NotTo(HaveOccurred())
-			defer file.Close()
-			content, e := ioutil.ReadAll(file)
-			Expect(e).NotTo(HaveOccurred())
-			e = yaml.Unmarshal(content, &azureConfig)
-			Expect(e).NotTo(HaveOccurred())
-			Expect(azureConfig.ContainerName).NotTo(BeEmpty())
-			Expect(azureConfig.AccountKey).NotTo(BeEmpty())
-			Expect(azureConfig.AccountName).NotTo(BeEmpty())
+			var azureConfig config.AzureBlobstoreConfig
+			Expect(yaml.Unmarshal(configFileContent, &azureConfig)).To(Succeed())
 
-			blobstore = azure.NewBlobstore(azureConfig)
-
-			filepath = fmt.Sprintf("testfile-%v", time.Now())
 		})
 
 		itCanPutAndGetAResourceThere()
