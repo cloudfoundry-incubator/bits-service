@@ -55,10 +55,11 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	_, e := blobstore.client.Bucket(blobstore.bucket).Object(path).NewReader(context.Background())
 
 	if e != nil {
-		if e == storage.ErrObjectNotExist || e == storage.ErrBucketNotExist {
+		e = blobstore.handleError(e, "Failed to check for %v/%v", blobstore.bucket, path)
+		if _, ok := e.(*bitsgo.NotFoundError); ok {
 			return false, nil
 		}
-		return false, errors.Wrapf(e, "Failed to check for %v/%v", blobstore.bucket, path)
+		return false, e
 	}
 	return true, nil
 }
@@ -76,10 +77,7 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	logger.Log.Debugw("Get from GCP", "bucket", blobstore.bucket, "path", path)
 	reader, e := blobstore.client.Bucket(blobstore.bucket).Object(path).NewReader(context.Background())
 	if e != nil {
-		if e == storage.ErrBucketNotExist || e == storage.ErrObjectNotExist {
-			return nil, bitsgo.NewNotFoundError()
-		}
-		return nil, errors.Wrapf(e, "Path %v", path)
+		return nil, blobstore.handleError(e, "Path %v", path)
 	}
 	return reader, nil
 }
@@ -106,25 +104,11 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	return nil
 }
 
-func (blobstore *Blobstore) bucketExists() error {
-	_, e := blobstore.client.Bucket(blobstore.bucket).Attrs(context.TODO())
-	if e != nil {
-		if e == storage.ErrBucketNotExist {
-			return bitsgo.NewNotFoundErrorWithMessage("bucket '" + blobstore.bucket + "' does not exist")
-		}
-		return errors.Wrapf(e, "Error while checking for bucket existence. Bucket '%v'", blobstore.bucket)
-	}
-	return nil
-}
-
 func (blobstore *Blobstore) Copy(src, dest string) error {
 	logger.Log.Debugw("Copy in GCP", "bucket", blobstore.bucket, "src", src, "dest", dest)
 	_, e := blobstore.client.Bucket(blobstore.bucket).Object(dest).CopierFrom(blobstore.client.Bucket(blobstore.bucket).Object(src)).Run(context.Background())
 	if e != nil {
-		if e == storage.ErrBucketNotExist || e == storage.ErrObjectNotExist {
-			return bitsgo.NewNotFoundError()
-		}
-		return errors.Wrapf(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.bucket)
+		return blobstore.handleError(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.bucket)
 	}
 	return nil
 }
@@ -132,10 +116,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 func (blobstore *Blobstore) Delete(path string) error {
 	e := blobstore.client.Bucket(blobstore.bucket).Object(path).Delete(context.Background())
 	if e != nil {
-		if e == storage.ErrBucketNotExist || e == storage.ErrObjectNotExist {
-			return bitsgo.NewNotFoundError()
-		}
-		return errors.Wrapf(e, "Path %v", path)
+		return blobstore.handleError(e, "Path %v", path)
 	}
 	return nil
 }
@@ -160,6 +141,25 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	}
 	if len(deletionErrs) != 0 {
 		return errors.Errorf("Prefix %v, errors from deleting: %v", prefix, deletionErrs)
+	}
+	return nil
+}
+
+func (blobstore *Blobstore) handleError(e error, context string, args ...interface{}) error {
+	if e == storage.ErrObjectNotExist {
+		e := blobstore.bucketExists()
+		if e != nil {
+			return e
+		}
+		return bitsgo.NewNotFoundError()
+	}
+	return errors.Wrapf(e, context, args...)
+}
+
+func (blobstore *Blobstore) bucketExists() error {
+	_, e := blobstore.client.Bucket(blobstore.bucket).Attrs(context.TODO())
+	if e != nil {
+		return errors.Wrapf(e, "Error while checking for bucket existence. Bucket '%v'", blobstore.bucket)
 	}
 	return nil
 }

@@ -18,6 +18,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/blobstores/azure"
 	"github.com/petergtz/bitsgo/blobstores/gcp"
 	"github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
@@ -132,6 +133,13 @@ var _ = Describe("Non-local blobstores", func() {
 			Expect(blobstore.Exists("dir/two")).To(BeFalse())
 		})
 	}
+	ItDoesNotReturnNotFoundError := func() {
+		It("does not throw a NotFoundError", func() {
+			_, e := blobstore.Get("irrelevant-path")
+			Expect(e).NotTo(Equal(bitsgo.NewNotFoundError()))
+		})
+
+	}
 
 	var configFileContent []byte
 
@@ -151,33 +159,57 @@ var _ = Describe("Non-local blobstores", func() {
 	})
 
 	Context("S3", func() {
-		BeforeEach(func() {
-			var s3Config config.S3BlobstoreConfig
-			Expect(yaml.Unmarshal(configFileContent, &s3Config)).To(Succeed())
-			blobstore = s3.NewBlobstore(s3Config)
+		var s3Config config.S3BlobstoreConfig
+
+		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &s3Config)).To(Succeed()) })
+		JustBeforeEach(func() { blobstore = s3.NewBlobstore(s3Config) })
+
+		Context("With existing bucket", func() {
+			itCanPutAndGetAResourceThere()
 		})
 
-		itCanPutAndGetAResourceThere()
+		Context("With non-existing bucket", func() {
+			BeforeEach(func() { s3Config.Bucket += "non-existing" })
+
+			ItDoesNotReturnNotFoundError()
+		})
+
 	})
 
 	Context("GCP", func() {
-		BeforeEach(func() {
-			var gcpConfig config.GCPBlobstoreConfig
-			Expect(yaml.Unmarshal(configFileContent, &gcpConfig)).To(Succeed())
-			blobstore = gcp.NewBlobstore(gcpConfig)
+		var gcpConfig config.GCPBlobstoreConfig
+
+		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &gcpConfig)).To(Succeed()) })
+		JustBeforeEach(func() { blobstore = gcp.NewBlobstore(gcpConfig) })
+
+		Context("With existing bucket", func() {
+			itCanPutAndGetAResourceThere()
 		})
 
-		itCanPutAndGetAResourceThere()
+		Context("With non-existing bucket", func() {
+			BeforeEach(func() { gcpConfig.Bucket += "non-existing" })
+
+			ItDoesNotReturnNotFoundError()
+		})
+
 	})
 
 	Context("azure", func() {
-		BeforeEach(func() {
-			var azureConfig config.AzureBlobstoreConfig
-			Expect(yaml.Unmarshal(configFileContent, &azureConfig)).To(Succeed())
+		var azureConfig config.AzureBlobstoreConfig
 
+		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &azureConfig)).To(Succeed()) })
+		JustBeforeEach(func() { blobstore = azure.NewBlobstore(azureConfig) })
+
+		Context("With existing bucket", func() {
+			itCanPutAndGetAResourceThere()
 		})
 
-		itCanPutAndGetAResourceThere()
+		Context("With non-existing bucket", func() {
+			BeforeEach(func() { azureConfig.ContainerName += "non-existing" })
+
+			ItDoesNotReturnNotFoundError()
+		})
+
 	})
 })
 

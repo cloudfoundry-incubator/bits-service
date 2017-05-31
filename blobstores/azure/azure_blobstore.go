@@ -49,14 +49,11 @@ func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation s
 }
 
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
-	logger.Log.Debugw("Get from azure", "bucket", blobstore.containerName, "path", path)
+	logger.Log.Debugw("Get", "bucket", blobstore.containerName, "path", path)
 
 	reader, e := blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(path).Get(nil)
 	if e != nil {
-		if azse, ok := e.(storage.AzureStorageServiceError); ok && azse.StatusCode == http.StatusNotFound {
-			return nil, bitsgo.NewNotFoundError()
-		}
-		return nil, errors.Wrapf(e, "Path %v", path)
+		return nil, blobstore.handleError(e, "Path %v", path)
 	}
 	return reader, nil
 }
@@ -67,7 +64,7 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 }
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
-	logger.Log.Debugw("Put to GCP", "bucket", blobstore.containerName, "path", path)
+	logger.Log.Debugw("Put", "bucket", blobstore.containerName, "path", path)
 	blob := blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(path)
 
 	e := blob.CreateBlockBlob(nil)
@@ -112,10 +109,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 	e := blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(dest).Copy(src, nil)
 
 	if e != nil {
-		if azse, ok := e.(storage.AzureStorageServiceError); ok && azse.StatusCode == http.StatusNotFound {
-			return bitsgo.NewNotFoundError()
-		}
-		return errors.Wrapf(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.containerName)
+		blobstore.handleError(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.containerName)
 	}
 	return nil
 }
@@ -151,4 +145,18 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 		return errors.Errorf("Prefix %v, errors from deleting: %v", prefix, deletionErrs)
 	}
 	return nil
+}
+
+func (blobstore *Blobstore) handleError(e error, context string, args ...interface{}) error {
+	if azse, ok := e.(storage.AzureStorageServiceError); ok && azse.StatusCode == http.StatusNotFound {
+		exists, e := blobstore.client.GetContainerReference(blobstore.containerName).Exists()
+		if e != nil {
+			return errors.Wrapf(e, context, args...)
+		}
+		if !exists {
+			return errors.Errorf("Container does not exist '%v", blobstore.containerName)
+		}
+		return bitsgo.NewNotFoundError()
+	}
+	return errors.Wrapf(e, context, args...)
 }

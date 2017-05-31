@@ -21,7 +21,16 @@ func newS3Client(region string, accessKeyID string, secretAccessKey string) *s3.
 
 func isS3NotFoundError(e error) bool {
 	if ae, isAwsErr := e.(awserr.Error); isAwsErr {
-		if ae.Code() == "NoSuchBucket" || ae.Code() == "NoSuchKey" || ae.Code() == "NotFound" {
+		if ae.Code() == "NoSuchKey" || ae.Code() == "NotFound" {
+			return true
+		}
+	}
+	return false
+}
+
+func isS3NoSuchBucketError(e error) bool {
+	if ae, isAwsErr := e.(awserr.Error); isAwsErr {
+		if ae.Code() == "NoSuchBucket" {
 			return true
 		}
 	}
