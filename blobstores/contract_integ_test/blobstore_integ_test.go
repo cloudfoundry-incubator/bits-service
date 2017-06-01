@@ -136,7 +136,7 @@ var _ = Describe("Non-local blobstores", func() {
 	ItDoesNotReturnNotFoundError := func() {
 		It("does not throw a NotFoundError", func() {
 			_, e := blobstore.Get("irrelevant-path")
-			Expect(e).NotTo(Equal(bitsgo.NewNotFoundError()))
+			Expect(e).NotTo(BeAssignableToTypeOf(&bitsgo.NotFoundError{}))
 		})
 
 	}
