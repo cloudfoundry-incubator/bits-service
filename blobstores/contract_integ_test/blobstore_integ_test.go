@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -11,6 +12,8 @@ import (
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
+
+	"crypto/md5"
 
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
@@ -92,6 +95,25 @@ var _ = Describe("Non-local blobstores", func() {
 			Expect(redirectLocation, e).NotTo(BeEmpty())
 			Expect(body).To(BeNil())
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
+		})
+
+		XIt("can upload a 500MB file", func() {
+			filename, expectedMd5sum := createTempFileWithRandomContent(500 << 20)
+			defer os.Remove(filename)
+
+			file, e := os.Open(filename)
+			Expect(e).NotTo(HaveOccurred())
+			defer file.Close()
+
+			e = blobstore.Put(filepath, file)
+			Expect(e).NotTo(HaveOccurred())
+			defer blobstore.Delete(filepath)
+
+			reader, e := blobstore.Get(filepath)
+			Expect(e).NotTo(HaveOccurred())
+			defer reader.Close()
+
+			Expect(md5sum(reader)).To(Equal(expectedMd5sum))
 		})
 
 		It("Can delete a prefix", func() {
@@ -228,4 +250,23 @@ func HaveStatusCode(statusCode int) types.GomegaMatcher {
 	return WithTransform(func(response *http.Response) int {
 		return response.StatusCode
 	}, Equal(statusCode))
+}
+
+func createTempFileWithRandomContent(size int64) (filename string, md5sum []byte) {
+	file, e := ioutil.TempFile("", "")
+	Expect(e).NotTo(HaveOccurred())
+	defer file.Close()
+
+	md5Expected := md5.New()
+	_, e = io.CopyN(io.MultiWriter(file, md5Expected), rand.New(rand.NewSource(time.Now().Unix())), size)
+	Expect(e).NotTo(HaveOccurred())
+
+	return file.Name(), md5Expected.Sum(nil)
+}
+
+func md5sum(reader io.Reader) []byte {
+	md5Actual := md5.New()
+	_, e := io.Copy(md5Actual, reader)
+	Expect(e).NotTo(HaveOccurred())
+	return md5Actual.Sum((nil))
 }
