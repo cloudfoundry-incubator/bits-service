@@ -14,22 +14,23 @@ module BitsService
 
       def sign(resource_type_name, blobstore, identifier, verb)
         if blobstore.local?
-          sign_local("#{resource_type_name}/#{identifier}", verb)
+          sign_local("#{resource_type_name}/#{identifier}")
         else
-          sign_non_local(blobstore, identifier, verb)
+          sign_external(blobstore, identifier, verb, resource_type_name)
         end
       end
 
-      def sign_local(path, verb)
+      def sign_local(path)
         expires = Time.now.utc.to_i + 3600
         signature = signer.sign("/signed/#{path}", expires)
         raise 'Configuration for public_endpoint should start with http://' unless public_endpoint.start_with?('http://')
         "#{public_endpoint}/signed/#{path}?md5=#{signature}&expires=#{expires}"
       end
 
-      def sign_non_local(blobstore, identifier, verb)
+      def sign_external(blobstore, identifier, verb, resource_type_name)
         if verb == 'put'
-          blobstore.public_upload_url(identifier)
+          # We want all external uploads to go through bits-service so that we can enforce safety checks.
+          sign_local("#{resource_type_name}/#{identifier}")
         else
           blobstore.public_download_url(identifier)
         end
