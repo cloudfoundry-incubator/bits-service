@@ -2,24 +2,15 @@ package main_test
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"os"
 	"strings"
-	"testing"
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
 
-	"crypto/md5"
-
-	"strconv"
-
-	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/petergtz/bitsgo"
@@ -29,26 +20,7 @@ import (
 	"github.com/petergtz/bitsgo/config"
 )
 
-func TestGCPBlobstore(t *testing.T) {
-	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "GCP Blobstore Contract Integration")
-}
-
-type blobstore interface {
-	// Can't do the following until it is added in Go: (See also https://github.com/golang/go/issues/6977)
-	// routes.Blobstore
-	// routes.NoRedirectBlobstore
-
-	// Instead doing:
-	bitsgo.Blobstore
-	Get(path string) (body io.ReadCloser, err error)
-}
-
 var _ = Describe("Non-local blobstores", func() {
-
-	BeforeSuite(func() {
-		rand.Seed(time.Now().Unix())
-	})
 
 	var (
 		filepath  string
@@ -104,25 +76,6 @@ var _ = Describe("Non-local blobstores", func() {
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 		})
 
-		XIt("can upload a 500MB file", func() {
-			filename, expectedMd5sum := createTempFileWithRandomContent(500 << 20)
-			defer os.Remove(filename)
-
-			file, e := os.Open(filename)
-			Expect(e).NotTo(HaveOccurred())
-			defer file.Close()
-
-			e = blobstore.Put(filepath, file)
-			Expect(e).NotTo(HaveOccurred())
-			defer blobstore.Delete(filepath)
-
-			reader, e := blobstore.Get(filepath)
-			Expect(e).NotTo(HaveOccurred())
-			defer reader.Close()
-
-			Expect(md5sum(reader)).To(Equal(expectedMd5sum))
-		})
-
 		It("Can delete a prefix", func() {
 			Expect(blobstore.Exists("one")).To(BeFalse())
 			Expect(blobstore.Exists("two")).To(BeFalse())
@@ -161,86 +114,6 @@ var _ = Describe("Non-local blobstores", func() {
 			Expect(blobstore.Exists("dir/one")).To(BeFalse())
 			Expect(blobstore.Exists("dir/two")).To(BeFalse())
 		})
-
-		It("Can delete a dir with many files in it", func() {
-			numWorkers := 150
-			numManyFiles := 100
-			dirname := strconv.Itoa(rand.Int())
-			var filenames []string
-			for i := 0; i < numManyFiles; i++ {
-				filenames = append(filenames, dirname+"/"+strconv.Itoa(rand.Int()))
-			}
-
-			By("Uploading files...")
-			assertionResults := make(chan interface{}, 100)
-			filenamesChannel := make(chan string, 100)
-			for i := 0; i < numWorkers; i++ {
-				go func() {
-					defer func() {
-						e := recover()
-						if e != nil {
-							assertionResults <- e
-						}
-					}()
-					for filename := range filenamesChannel {
-						Expect(blobstore.Exists(filename)).To(BeFalse())
-						Expect(blobstore.Put(filename, strings.NewReader("X"))).To(Succeed())
-						Expect(blobstore.Exists(filename)).To(BeTrue())
-						assertionResults <- nil
-					}
-				}()
-			}
-			go func() {
-				for _, filename := range filenames {
-					filenamesChannel <- filename
-				}
-				close(filenamesChannel)
-			}()
-			for _ = range filenames {
-				e := <-assertionResults
-				if e != nil {
-					panic(e)
-				}
-			}
-			By("Files uploaded.")
-
-			By("Deleting dir...")
-			e := blobstore.DeleteDir(dirname)
-			Expect(e).NotTo(HaveOccurred())
-			By("Dir deleted.")
-
-			time.Sleep(3 * time.Second) // Just help eventual consistency a bit
-
-			By("Checking existence...")
-			filenamesChannel = make(chan string, 100)
-			for i := 0; i < numWorkers; i++ {
-				go func() {
-					defer func() {
-						e := recover()
-						if e != nil {
-							assertionResults <- e
-						}
-					}()
-					for filename := range filenamesChannel {
-						Expect(blobstore.Exists(filename)).To(BeFalse())
-						assertionResults <- nil
-					}
-				}()
-			}
-			go func() {
-				for _, filename := range filenames {
-					filenamesChannel <- filename
-				}
-				close(filenamesChannel)
-			}()
-			for _ = range filenames {
-				e := <-assertionResults
-				if e != nil {
-					panic(e)
-				}
-			}
-			By("Existence checked.")
-		})
 	}
 
 	ItDoesNotReturnNotFoundError := func() {
@@ -274,9 +147,7 @@ var _ = Describe("Non-local blobstores", func() {
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &s3Config)).To(Succeed()) })
 		JustBeforeEach(func() { blobstore = s3.NewBlobstore(s3Config) })
 
-		Context("With existing bucket", func() {
-			itCanPutAndGetAResourceThere()
-		})
+		itCanPutAndGetAResourceThere()
 
 		Context("With non-existing bucket", func() {
 			BeforeEach(func() { s3Config.Bucket += "non-existing" })
@@ -292,9 +163,7 @@ var _ = Describe("Non-local blobstores", func() {
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &gcpConfig)).To(Succeed()) })
 		JustBeforeEach(func() { blobstore = gcp.NewBlobstore(gcpConfig) })
 
-		Context("With existing bucket", func() {
-			itCanPutAndGetAResourceThere()
-		})
+		itCanPutAndGetAResourceThere()
 
 		Context("With non-existing bucket", func() {
 			BeforeEach(func() { gcpConfig.Bucket += "non-existing" })
@@ -310,9 +179,7 @@ var _ = Describe("Non-local blobstores", func() {
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &azureConfig)).To(Succeed()) })
 		JustBeforeEach(func() { blobstore = azure.NewBlobstore(azureConfig) })
 
-		Context("With existing bucket", func() {
-			itCanPutAndGetAResourceThere()
-		})
+		itCanPutAndGetAResourceThere()
 
 		Context("With non-existing bucket", func() {
 			BeforeEach(func() { azureConfig.ContainerName += "non-existing" })
@@ -338,23 +205,4 @@ func HaveStatusCode(statusCode int) types.GomegaMatcher {
 	return WithTransform(func(response *http.Response) int {
 		return response.StatusCode
 	}, Equal(statusCode))
-}
-
-func createTempFileWithRandomContent(size int64) (filename string, md5sum []byte) {
-	file, e := ioutil.TempFile("", "")
-	Expect(e).NotTo(HaveOccurred())
-	defer file.Close()
-
-	md5Expected := md5.New()
-	_, e = io.CopyN(io.MultiWriter(file, md5Expected), rand.New(rand.NewSource(time.Now().Unix())), size)
-	Expect(e).NotTo(HaveOccurred())
-
-	return file.Name(), md5Expected.Sum(nil)
-}
-
-func md5sum(reader io.Reader) []byte {
-	md5Actual := md5.New()
-	_, e := io.Copy(md5Actual, reader)
-	Expect(e).NotTo(HaveOccurred())
-	return md5Actual.Sum((nil))
 }
