@@ -9,6 +9,8 @@ import (
 
 	"net/http"
 
+	"fmt"
+
 	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/blobstores/validate"
 	"github.com/petergtz/bitsgo/config"
@@ -17,11 +19,17 @@ import (
 )
 
 type Blobstore struct {
-	containerName string
-	client        storage.BlobStorageClient
+	containerName  string
+	client         storage.BlobStorageClient
+	putBlockSize   int64
+	maxListResults uint
 }
 
 func NewBlobstore(config config.AzureBlobstoreConfig) *Blobstore {
+	return NewBlobstoreWithDetails(config, 50<<20, 5000)
+}
+
+func NewBlobstoreWithDetails(config config.AzureBlobstoreConfig, putBlockSize int64, maxListResults uint) *Blobstore {
 	validate.NotEmpty(config.AccountKey)
 	validate.NotEmpty(config.AccountName)
 	validate.NotEmpty(config.ContainerName)
@@ -31,8 +39,10 @@ func NewBlobstore(config config.AzureBlobstoreConfig) *Blobstore {
 		panic(e)
 	}
 	return &Blobstore{
-		client:        client.GetBlobService(),
-		containerName: config.ContainerName,
+		client:         client.GetBlobService(),
+		containerName:  config.ContainerName,
+		putBlockSize:   putBlockSize,
+		maxListResults: maxListResults,
 	}
 }
 
@@ -75,27 +85,29 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	uncommittedBlocksList := make([]storage.Block, 0)
 	eof := false
 	for i := 0; !eof; i++ {
-		logger.Log.Debugw("Put a block...")
-		blockID := base64.StdEncoding.EncodeToString([]byte("00000"))
-		data := make([]byte, 50*1024*1024)
-		dataSize, e := src.Read(data)
+		// using information from https://docs.microsoft.com/en-us/rest/api/storageservices/understanding-block-blobs--append-blobs--and-page-blobs
+		block := storage.Block{
+			ID:     base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%05d", i))),
+			Status: storage.BlockStatusUncommitted,
+		}
+		data := make([]byte, blobstore.putBlockSize)
+		numBytesRead, e := src.Read(data)
 		if e != nil {
 			if e.Error() == "EOF" {
 				eof = true
 			} else {
-				panic(e)
+				return errors.Wrapf(e, "put block failed: %v", path)
 			}
 		}
-		if dataSize == 0 {
+		if numBytesRead == 0 {
 			continue
 		}
-		e = blob.PutBlock(blockID, data[:dataSize], nil)
+		e = blob.PutBlock(block.ID, data[:numBytesRead], nil)
 		if e != nil {
 			return errors.Wrapf(e, "put block failed: %v", path)
 		}
-		uncommittedBlocksList = append(uncommittedBlocksList, storage.Block{ID: blockID, Status: storage.BlockStatusUncommitted})
+		uncommittedBlocksList = append(uncommittedBlocksList, block)
 	}
-	logger.Log.Debugw("Commit blocks...")
 	e = blob.PutBlockList(uncommittedBlocksList, nil)
 	if e != nil {
 		return errors.Wrapf(e, "put block list failed: %v", path)
@@ -127,20 +139,30 @@ func (blobstore *Blobstore) Delete(path string) error {
 
 func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	deletionErrs := []error{}
-	response, e := blobstore.client.GetContainerReference(blobstore.containerName).ListBlobs(storage.ListBlobsParameters{
-		Prefix: prefix,
-	})
-	if e != nil {
-		return errors.Wrapf(e, "Prefix %v", prefix)
-	}
-	for _, blob := range response.Blobs {
-		e = blobstore.Delete(blob.Name)
+	marker := ""
+	for {
+		response, e := blobstore.client.GetContainerReference(blobstore.containerName).ListBlobs(storage.ListBlobsParameters{
+			Prefix:     prefix,
+			MaxResults: blobstore.maxListResults,
+			Marker:     marker,
+		})
 		if e != nil {
-			if _, isNotFoundError := e.(*bitsgo.NotFoundError); !isNotFoundError {
-				deletionErrs = append(deletionErrs, e)
+			return errors.Wrapf(e, "Prefix %v", prefix)
+		}
+		for _, blob := range response.Blobs {
+			e = blobstore.Delete(blob.Name)
+			if e != nil {
+				if _, isNotFoundError := e.(*bitsgo.NotFoundError); !isNotFoundError {
+					deletionErrs = append(deletionErrs, e)
+				}
 			}
 		}
+		if response.NextMarker == "" {
+			break
+		}
+		marker = response.NextMarker
 	}
+
 	if len(deletionErrs) != 0 {
 		return errors.Errorf("Prefix %v, errors from deleting: %v", prefix, deletionErrs)
 	}

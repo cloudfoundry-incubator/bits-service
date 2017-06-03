@@ -15,6 +15,8 @@ import (
 
 	"crypto/md5"
 
+	"strconv"
+
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -43,6 +45,11 @@ type blobstore interface {
 }
 
 var _ = Describe("Non-local blobstores", func() {
+
+	BeforeSuite(func() {
+		rand.Seed(time.Now().Unix())
+	})
+
 	var (
 		filepath  string
 		blobstore blobstore
@@ -154,7 +161,88 @@ var _ = Describe("Non-local blobstores", func() {
 			Expect(blobstore.Exists("dir/one")).To(BeFalse())
 			Expect(blobstore.Exists("dir/two")).To(BeFalse())
 		})
+
+		It("Can delete a dir with many files in it", func() {
+			numWorkers := 150
+			numManyFiles := 100
+			dirname := strconv.Itoa(rand.Int())
+			var filenames []string
+			for i := 0; i < numManyFiles; i++ {
+				filenames = append(filenames, dirname+"/"+strconv.Itoa(rand.Int()))
+			}
+
+			By("Uploading files...")
+			assertionResults := make(chan interface{}, 100)
+			filenamesChannel := make(chan string, 100)
+			for i := 0; i < numWorkers; i++ {
+				go func() {
+					defer func() {
+						e := recover()
+						if e != nil {
+							assertionResults <- e
+						}
+					}()
+					for filename := range filenamesChannel {
+						Expect(blobstore.Exists(filename)).To(BeFalse())
+						Expect(blobstore.Put(filename, strings.NewReader("X"))).To(Succeed())
+						Expect(blobstore.Exists(filename)).To(BeTrue())
+						assertionResults <- nil
+					}
+				}()
+			}
+			go func() {
+				for _, filename := range filenames {
+					filenamesChannel <- filename
+				}
+				close(filenamesChannel)
+			}()
+			for _ = range filenames {
+				e := <-assertionResults
+				if e != nil {
+					panic(e)
+				}
+			}
+			By("Files uploaded.")
+
+			By("Deleting dir...")
+			e := blobstore.DeleteDir(dirname)
+			Expect(e).NotTo(HaveOccurred())
+			By("Dir deleted.")
+
+			time.Sleep(3 * time.Second) // Just help eventual consistency a bit
+
+			By("Checking existence...")
+			filenamesChannel = make(chan string, 100)
+			for i := 0; i < numWorkers; i++ {
+				go func() {
+					defer func() {
+						e := recover()
+						if e != nil {
+							assertionResults <- e
+						}
+					}()
+					for filename := range filenamesChannel {
+						Expect(blobstore.Exists(filename)).To(BeFalse())
+						assertionResults <- nil
+					}
+				}()
+			}
+			go func() {
+				for _, filename := range filenames {
+					filenamesChannel <- filename
+				}
+				close(filenamesChannel)
+			}()
+			for _ = range filenames {
+				e := <-assertionResults
+				if e != nil {
+					panic(e)
+				}
+			}
+			By("Existence checked.")
+		})
 	}
+
 	ItDoesNotReturnNotFoundError := func() {
 		It("does not throw a NotFoundError", func() {
 			_, e := blobstore.Get("irrelevant-path")
