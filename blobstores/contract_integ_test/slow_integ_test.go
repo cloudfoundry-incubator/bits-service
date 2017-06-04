@@ -67,8 +67,6 @@ var _ = XDescribe("Non-local blobstores SLOW TESTS", func() {
 			Expect(blobstore.DeleteDir(dirname)).To(Succeed())
 			By("Dir deleted.")
 
-			time.Sleep(3 * time.Second) // Just help eventual consistency a bit
-
 			By("Checking existence...")
 			assertFilesDoNotExist(blobstore, randomFilenames)
 			By("Existence checked.")
@@ -148,14 +146,14 @@ func generateRandomFilenames(numFilenames int, dirname string) []string {
 }
 
 func uploadFiles(blobstore blobstore, filenames []string) {
-	numWorkers := 150
+	numWorkers := 50
 	assertionErrors := make(chan interface{}, 100)
 	filenamesChannel := make(chan interface{}, 100)
 	setUpWorkers(numWorkers, assertionErrors, filenamesChannel, func(unit interface{}) {
 		filename := unit.(string)
-		Expect(blobstore.Exists(filename)).To(BeFalse())
-		Expect(blobstore.Put(filename, strings.NewReader("X"))).To(Succeed())
-		Expect(blobstore.Exists(filename)).To(BeTrue())
+		Eventually(func() (bool, error) { return blobstore.Exists(filename) }, 1*time.Minute).Should(BeFalse())
+		Eventually(func() error { return blobstore.Put(filename, strings.NewReader("X")) }, 1*time.Minute).Should(Succeed())
+		Eventually(func() (bool, error) { return blobstore.Exists(filename) }, 1*time.Minute).Should(BeTrue())
 	})
 
 	go feedFilenamesInto(filenamesChannel, filenames)
@@ -163,12 +161,12 @@ func uploadFiles(blobstore blobstore, filenames []string) {
 }
 
 func assertFilesDoNotExist(blobstore blobstore, filenames []string) {
-	numWorkers := 150
+	numWorkers := 50
 	assertionErrors := make(chan interface{}, 100)
 	filenamesChannel := make(chan interface{}, 100)
 	setUpWorkers(numWorkers, assertionErrors, filenamesChannel, func(unit interface{}) {
 		filename := unit.(string)
-		Expect(blobstore.Exists(filename)).To(BeFalse())
+		Eventually(func() (bool, error) { return blobstore.Exists(filename) }, 1*time.Minute).Should(BeFalse())
 	})
 
 	go feedFilenamesInto(filenamesChannel, filenames)
