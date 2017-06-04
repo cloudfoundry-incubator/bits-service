@@ -9,7 +9,9 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/blobstores/azure"
 	"github.com/petergtz/bitsgo/blobstores/decorator"
+	"github.com/petergtz/bitsgo/blobstores/gcp"
 	"github.com/petergtz/bitsgo/blobstores/local"
 	"github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/blobstores/webdav"
@@ -150,6 +152,20 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					s3.NewBlobstore(*blobstoreConfig.S3Config)))
+	case "google", "gcp":
+		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
+		return decorator.ForBlobstoreWithPathPartitioning(
+				gcp.NewBlobstore(*blobstoreConfig.GCPConfig)),
+			bitsgo.NewSignResourceHandler(
+				decorator.ForResourceSignerWithPathPartitioning(
+					gcp.NewBlobstore(*blobstoreConfig.GCPConfig)))
+	case "azure":
+		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
+		return decorator.ForBlobstoreWithPathPartitioning(
+				azure.NewBlobstore(*blobstoreConfig.AzureConfig)),
+			bitsgo.NewSignResourceHandler(
+				decorator.ForResourceSignerWithPathPartitioning(
+					azure.NewBlobstore(*blobstoreConfig.AzureConfig)))
 	case "webdav":
 		log.Log.Infow("Creating Webdav blobstore",
 			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
@@ -189,6 +205,28 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					decorator.ForResourceSignerWithPathPrefixing(
 						s3.NewBlobstore(*blobstoreConfig.S3Config),
 						"buildpack_cache")))
+	case "gcp", "google":
+		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
+		return decorator.ForBlobstoreWithPathPartitioning(
+				decorator.ForBlobstoreWithPathPrefixing(
+					gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
+					"buildpack_cache/")),
+			bitsgo.NewSignResourceHandler(
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.ForResourceSignerWithPathPrefixing(
+						gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
+						"buildpack_cache")))
+	case "azure":
+		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
+		return decorator.ForBlobstoreWithPathPartitioning(
+				decorator.ForBlobstoreWithPathPrefixing(
+					azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+					"buildpack_cache/")),
+			bitsgo.NewSignResourceHandler(
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.ForResourceSignerWithPathPrefixing(
+						azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+						"buildpack_cache")))
 	case "webdav":
 		log.Log.Infow("Creating Webdav blobstore",
 			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
@@ -227,6 +265,14 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) bitsgo.NoRe
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 			s3.NewBlobstore(*blobstoreConfig.S3Config))
+	case "gcp", "google":
+		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
+		return decorator.ForBlobstoreWithPathPartitioning(
+			gcp.NewBlobstore(*blobstoreConfig.GCPConfig))
+	case "azure":
+		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
+		return decorator.ForBlobstoreWithPathPartitioning(
+			azure.NewBlobstore(*blobstoreConfig.AzureConfig))
 	case "webdav":
 		log.Log.Infow("Creating Webdav blobstore",
 			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
