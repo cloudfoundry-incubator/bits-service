@@ -3,6 +3,7 @@ package azure
 import (
 	"encoding/base64"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
@@ -167,6 +168,22 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 		return errors.Errorf("Prefix %v, errors from deleting: %v", prefix, deletionErrs)
 	}
 	return nil
+}
+
+func (blobstore *Blobstore) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {
+	var e error
+	switch strings.ToLower(method) {
+	case "put":
+		signedURL, e = blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(resource).GetSASURI(expirationTime, "wuca")
+	case "get":
+		signedURL, e = blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(resource).GetSASURI(expirationTime, "r")
+	default:
+		panic("The only supported methods are 'put' and 'get'")
+	}
+	if e != nil {
+		panic(e)
+	}
+	return
 }
 
 func (blobstore *Blobstore) handleError(e error, context string, args ...interface{}) error {
