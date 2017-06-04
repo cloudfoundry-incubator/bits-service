@@ -6,6 +6,8 @@ import (
 
 	"bytes"
 
+	"time"
+
 	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/httputil"
@@ -80,7 +82,8 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 	if !exists {
 		return nil, "", bitsgo.NewNotFoundError()
 	}
-	signedUrl := blobstore.signer.Sign(path, "get")
+	// TODO use clock instead
+	signedUrl := blobstore.signer.Sign(path, "get", time.Now().Add(1*time.Hour))
 	return nil, signedUrl, nil
 }
 

@@ -31,14 +31,14 @@ type WebdavResourceSigner struct {
 	webdavPassword        string
 }
 
-func (signer *WebdavResourceSigner) Sign(resource string, method string) string {
+func (signer *WebdavResourceSigner) Sign(resource string, method string, expirationTime time.Time) string {
 	var url string
 	switch strings.ToLower(method) {
 	case "put":
 		// TODO why do we need a "/" before the resource?
-		url = fmt.Sprintf(signer.webdavPrivateEndpoint+"/sign_for_put?path=/%v&expires=%v", resource, time.Now().Unix()+3600)
+		url = fmt.Sprintf(signer.webdavPrivateEndpoint+"/sign_for_put?path=/%v&expires=%v", resource, expirationTime.Unix())
 	case "get":
-		url = fmt.Sprintf(signer.webdavPrivateEndpoint+"/sign?path=/%v&expires=%v", resource, time.Now().Unix()+3600)
+		url = fmt.Sprintf(signer.webdavPrivateEndpoint+"/sign?path=/%v&expires=%v", resource, expirationTime.Unix())
 	}
 	response, e := signer.httpClient.Do(
 		httputil.NewRequest("GET", url, nil).

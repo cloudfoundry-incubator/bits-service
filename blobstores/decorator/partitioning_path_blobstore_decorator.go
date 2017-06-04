@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 
+	"time"
+
 	"github.com/petergtz/bitsgo"
 )
 
@@ -82,6 +84,6 @@ type PartitioningPathResourceSigner struct {
 	delegate bitsgo.ResourceSigner
 }
 
-func (signer *PartitioningPathResourceSigner) Sign(resource string, method string) (signedURL string) {
-	return signer.delegate.Sign(pathFor(resource), method)
+func (signer *PartitioningPathResourceSigner) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {
+	return signer.delegate.Sign(pathFor(resource), method, expirationTime)
 }

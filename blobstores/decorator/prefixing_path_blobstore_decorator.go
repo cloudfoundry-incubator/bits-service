@@ -2,6 +2,7 @@ package decorator
 
 import (
 	"io"
+	"time"
 
 	"github.com/petergtz/bitsgo"
 )
@@ -56,6 +57,6 @@ func ForResourceSignerWithPathPrefixing(delegate bitsgo.ResourceSigner, prefix s
 	return &PrefixingPathResourceSigner{delegate, prefix}
 }
 
-func (signer *PrefixingPathResourceSigner) Sign(resource string, method string) (signedURL string) {
-	return signer.delegate.Sign(signer.prefix+resource, method)
+func (signer *PrefixingPathResourceSigner) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {
+	return signer.delegate.Sign(signer.prefix+resource, method, expirationTime)
 }

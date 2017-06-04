@@ -3,6 +3,7 @@ package gcp
 import (
 	"context"
 	"io"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2/jwt"
@@ -143,6 +144,23 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 		return errors.Errorf("Prefix %v, errors from deleting: %v", prefix, deletionErrs)
 	}
 	return nil
+}
+
+func (blobstore *Blobstore) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {
+	if strings.ToLower(method) != "get" && method != "put" {
+		panic("The only supported methods are 'put' and 'get'")
+	}
+	signedURL, e := storage.SignedURL(blobstore.bucket, resource, &storage.SignedURLOptions{
+		GoogleAccessID: blobstore.jwtConfig.Email,
+		PrivateKey:     blobstore.jwtConfig.PrivateKey,
+		Method:         strings.ToUpper(method),
+		Expires:        expirationTime,
+	})
+	if e != nil {
+		panic(e)
+	}
+	logger.Log.Debugw("Signed URL", "verb", method, "signed-url", signedURL)
+	return
 }
 
 func (blobstore *Blobstore) handleError(e error, context string, args ...interface{}) error {

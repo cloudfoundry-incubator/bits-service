@@ -33,6 +33,6 @@ type LocalResourceSigner struct {
 	Clock              clock.Clock
 }
 
-func (signer *LocalResourceSigner) Sign(resource string, method string) (signedURL string) {
-	return fmt.Sprintf("%s%s", signer.DelegateEndpoint, signer.Signer.Sign(signer.ResourcePathPrefix+resource, signer.Clock.Now().Add(time.Hour)))
+func (signer *LocalResourceSigner) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {
+	return fmt.Sprintf("%s%s", signer.DelegateEndpoint, signer.Signer.Sign(signer.ResourcePathPrefix+resource, expirationTime))
 }

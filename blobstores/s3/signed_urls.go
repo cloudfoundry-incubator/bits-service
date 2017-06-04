@@ -23,7 +23,7 @@ type ResourceSigner struct {
 	bucket   string
 }
 
-func (signer *ResourceSigner) Sign(resource string, method string) (signedURL string) {
+func (signer *ResourceSigner) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {
 	var request *request.Request
 	switch strings.ToLower(method) {
 	case "put":
@@ -39,8 +39,8 @@ func (signer *ResourceSigner) Sign(resource string, method string) (signedURL st
 	default:
 		panic("The only supported methods are 'put' and 'get'")
 	}
-	// TODO what expiration duration should we use?
-	signedURL, e := request.Presign(time.Hour)
+	// TODO use clock
+	signedURL, e := request.Presign(expirationTime.Sub(time.Now()))
 	if e != nil {
 		panic(e)
 	}
