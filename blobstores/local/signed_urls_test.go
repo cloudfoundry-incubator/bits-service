@@ -43,13 +43,12 @@ var _ = Describe("Signing URLs", func() {
 			Signer:             pathSignerValidator,
 			DelegateEndpoint:   "http://example.com",
 			ResourcePathPrefix: "/my/",
-			Clock:              mockClock,
 		}
 	})
 
 	It("signs and verifies URLs", func() {
 		// signing
-		responseBody := handler.Sign("path", "get")
+		responseBody := handler.Sign("path", "get", mockClock.Now().Add(1*time.Hour))
 
 		Expect(responseBody).To(ContainSubstring("http://example.com/my/path?md5="))
 		Expect(responseBody).To(ContainSubstring("expires"))
@@ -68,9 +67,9 @@ var _ = Describe("Signing URLs", func() {
 		Expect(responseWriter.Code).To(Equal(http.StatusOK))
 	})
 
-	It("signs and verifies URLs", func() {
+	It("signs and returns an error when URL has expired", func() {
 		// signing
-		responseBody := handler.Sign("path", "get")
+		responseBody := handler.Sign("path", "get", mockClock.Now().Add(1*time.Hour))
 
 		Expect(responseBody).To(ContainSubstring("http://example.com/my/path?md5="))
 		Expect(responseBody).To(ContainSubstring("expires"))

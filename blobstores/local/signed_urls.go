@@ -6,7 +6,6 @@ import (
 
 	"time"
 
-	"github.com/benbjohnson/clock"
 	"github.com/petergtz/bitsgo/pathsigner"
 )
 
@@ -30,7 +29,6 @@ type LocalResourceSigner struct {
 	Signer             pathsigner.PathSigner
 	ResourcePathPrefix string
 	DelegateEndpoint   string
-	Clock              clock.Clock
 }
 
 func (signer *LocalResourceSigner) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {

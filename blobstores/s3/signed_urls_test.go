@@ -2,6 +2,7 @@ package s3_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
@@ -19,10 +20,10 @@ func TestS3Blobstore(t *testing.T) {
 
 var _ = Describe("Signing URLs", func() {
 	It("Can create pre-signed URLs for S3", func() {
-		signer := decorator.ForResourceSignerWithPathPartitioning(NewResourceSigner(
+		signer := decorator.ForResourceSignerWithPathPartitioning(NewBlobstore(
 			config.S3BlobstoreConfig{"mybucket", "MY-Key_ID", "dummy", "us-east-1"}))
 
-		signedURL := signer.Sign("myresource", "get")
+		signedURL := signer.Sign("myresource", "get", time.Now())
 
 		Expect(signedURL).To(SatisfyAll(
 			ContainSubstring("https://mybucket.s3.amazonaws.com/my/re/myresource"),

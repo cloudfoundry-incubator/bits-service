@@ -2,6 +2,8 @@ package s3
 
 import (
 	"io"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -154,4 +156,29 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 		return errors.Errorf("Prefix %v, errors from deleting: %v", prefix, deletionErrs)
 	}
 	return nil
+}
+
+func (signer *Blobstore) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {
+	var request *request.Request
+	switch strings.ToLower(method) {
+	case "put":
+		request, _ = signer.s3Client.PutObjectRequest(&s3.PutObjectInput{
+			Bucket: aws.String(signer.bucket),
+			Key:    aws.String(resource),
+		})
+	case "get":
+		request, _ = signer.s3Client.GetObjectRequest(&s3.GetObjectInput{
+			Bucket: aws.String(signer.bucket),
+			Key:    aws.String(resource),
+		})
+	default:
+		panic("The only supported methods are 'put' and 'get'")
+	}
+	// TODO use clock
+	signedURL, e := request.Presign(expirationTime.Sub(time.Now()))
+	if e != nil {
+		panic(e)
+	}
+	log.Printf("Signed URL (verb=%v): %v", method, signedURL)
+	return
 }

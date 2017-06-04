@@ -149,7 +149,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 				s3.NewBlobstore(*blobstoreConfig.S3Config)),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
-					s3.NewResourceSigner(*blobstoreConfig.S3Config)))
+					s3.NewBlobstore(*blobstoreConfig.S3Config)))
 	case "webdav":
 		log.Log.Infow("Creating Webdav blobstore",
 			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
@@ -161,7 +161,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					decorator.ForResourceSignerWithPathPrefixing(
-						webdav.NewWebdavResourceSigner(*blobstoreConfig.WebdavConfig), resourceType+"/")))
+						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig), resourceType+"/")))
 
 	default:
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
@@ -187,7 +187,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					decorator.ForResourceSignerWithPathPrefixing(
-						s3.NewResourceSigner(*blobstoreConfig.S3Config),
+						s3.NewBlobstore(*blobstoreConfig.S3Config),
 						"buildpack_cache")))
 	case "webdav":
 		log.Log.Infow("Creating Webdav blobstore",
@@ -200,7 +200,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					decorator.ForResourceSignerWithPathPrefixing(
-						webdav.NewWebdavResourceSigner(*blobstoreConfig.WebdavConfig),
+						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
 						"buildpack_cache")))
 	default:
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
@@ -213,7 +213,6 @@ func createLocalSignResourceHandler(publicHost string, port int, secret string, 
 		DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
 		Signer:             &pathsigner.PathSignerValidator{secret, clock.New()},
 		ResourcePathPrefix: "/" + resourceType + "/",
-		Clock:              clock.New(),
 	})
 }
 

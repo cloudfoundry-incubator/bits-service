@@ -1,8 +1,11 @@
 package webdav
 
 import (
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"bytes"
 
@@ -18,7 +21,7 @@ import (
 type Blobstore struct {
 	httpClient            *http.Client
 	webdavPrivateEndpoint string
-	signer                *WebdavResourceSigner
+	webdavPublicEndpoint  string
 	webdavUsername        string
 	webdavPassword        string
 }
@@ -26,8 +29,8 @@ type Blobstore struct {
 func NewBlobstore(c config.WebdavBlobstoreConfig) *Blobstore {
 	return &Blobstore{
 		webdavPrivateEndpoint: c.PrivateEndpoint,
+		webdavPublicEndpoint:  c.PublicEndpoint,
 		httpClient:            NewHttpClient(c.CACert(), c.SkipCertVerify),
-		signer:                NewWebdavResourceSigner(c),
 		webdavUsername:        c.Username,
 		webdavPassword:        c.Password,
 	}
@@ -83,7 +86,7 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 		return nil, "", bitsgo.NewNotFoundError()
 	}
 	// TODO use clock instead
-	signedUrl := blobstore.signer.Sign(path, "get", time.Now().Add(1*time.Hour))
+	signedUrl := blobstore.Sign(path, "get", time.Now().Add(1*time.Hour))
 	return nil, signedUrl, nil
 }
 
@@ -155,6 +158,40 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 		return errors.Errorf("Expected HTTP status code 200-204, but got status code: " + response.Status)
 	}
 	return nil
+}
+
+func (signer *Blobstore) Sign(resource string, method string, expirationTime time.Time) string {
+	var url string
+	switch strings.ToLower(method) {
+	case "put":
+		// TODO why do we need a "/" before the resource?
+		url = fmt.Sprintf(signer.webdavPrivateEndpoint+"/sign_for_put?path=/%v&expires=%v", resource, expirationTime.Unix())
+	case "get":
+		url = fmt.Sprintf(signer.webdavPrivateEndpoint+"/sign?path=/%v&expires=%v", resource, expirationTime.Unix())
+	}
+	response, e := signer.httpClient.Do(
+		httputil.NewRequest("GET", url, nil).
+			WithBasicAuth(signer.webdavUsername, signer.webdavPassword).
+			Build())
+	if e != nil {
+		return "Error during signing. Error: " + e.Error()
+	}
+	if response.StatusCode != http.StatusOK {
+		return "Error during signing. Error code: " + response.Status
+	}
+	defer response.Body.Close()
+	content, e := ioutil.ReadAll(response.Body)
+	if e != nil {
+		return "Error reading response body. Error: " + e.Error()
+	}
+
+	signedUrl := httputil.MustParse(string(content))
+
+	// TODO Is this really what we want to do?
+	signedUrl.Host = httputil.MustParse(signer.webdavPublicEndpoint).Host
+	signedUrl.Scheme = httputil.MustParse(signer.webdavPublicEndpoint).Scheme
+
+	return signedUrl.String()
 }
 
 func (blobstore *Blobstore) newRequestWithBasicAuth(method string, urlStr string, body io.Reader) *http.Request {
