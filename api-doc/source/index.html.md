@@ -520,10 +520,10 @@ curl 'http://username:password@internal.example.com/sign/packages/bdf47b84-1349-
 
 > Example response:
 
-```
+```shell
 HTTP/1.1 200 OK
 
-https://ci-bits-service-blobs.s3-eu-west-1.amazonaws.com/bd/f4/bdf47b84-1349-4abd-9561-5004858dfa05?X-Amz-Expires=3600&X-Amz-Date=20161202T152037Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAJ22EGSN2MKAXL3MA/20161202/eu-west-1/s3/aws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=b8c79895f0cfa7e38ee2585ae9f92aa56fc66601daf272f637aa04e7b70e8cc2
+http://bits-service.example.com/signed/packages/test-package?md5=yBh47LwYRQ4d8SG6mNsL4w&expires=1497357804
 ```
 
 ### HTTP Request
@@ -539,32 +539,13 @@ Parameter | Default | Description
 ### Access
 Internal endpoint only
 
-<aside class="notice">
-Signing URL does not imply that the resource exists.
-</aside>
-
-> Example upload with S3 blobstore:
-
-```shell
-curl -X PUT 'https://ci-bits-service-blobs.s3-eu-west-1.amazonaws.com/bd/f4/bdf47b84-1349-4abd-9561-5004858dfa05?X-Amz-Expires=3600&X-Amz-Date=20161202T152037Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAJ22EGSN2MKAXL3MA/20161202/eu-west-1/s3/aws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=b8c79895f0cfa7e38ee2585ae9f92aa56fc66601daf272f637aa04e7b70e8cc2' \
-  --data-binary @package-file
-```
-
-> Example upload with WebDAV blobstore:
-
-```shell
-curl -X PUT 'http://webdav-blobstore.example.com/write/packages/bd/f4/bdf47b84-1349-4abd-9561-5004858dfa05?md5=YDjcMjytsnVEzoSxqpiC4A&expires=1492594615' \
-  --data-binary @package-file
-```
-
-> Example upload with Local blobstore:
+> Example signed upload:
 
 ```shell
 curl -X PUT 'http://internal.example.com/signed/packages/bdf47b84-1349-4abd-9561-5004858dfa05?md5=YDjcMjytsnVEzoSxqpiC4A&expires=1492594615' \
   -F package=@package-file
 ```
 
-<aside class="warning">
-Depending on the blobstore backend being used, you might need to adjust how the returned signed PUT URL is used.
-For local blobstore it needs to be a form-data upload. For S3 and WebDAV binary data is sent directly in the request body.
+<aside class="notice">
+Signing URL does not imply that the resource exists.
 </aside>
