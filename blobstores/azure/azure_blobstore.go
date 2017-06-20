@@ -174,7 +174,7 @@ func (blobstore *Blobstore) Sign(resource string, method string, expirationTime 
 	var e error
 	switch strings.ToLower(method) {
 	case "put":
-		signedURL, e = blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(resource).GetSASURI(expirationTime, "wuca")
+		signedURL, e = blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(resource).GetSASURI(expirationTime, "wc")
 	case "get":
 		signedURL, e = blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(resource).GetSASURI(expirationTime, "r")
 	default:

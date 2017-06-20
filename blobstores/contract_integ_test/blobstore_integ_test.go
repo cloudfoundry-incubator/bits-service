@@ -18,6 +18,7 @@ import (
 	"github.com/petergtz/bitsgo/blobstores/gcp"
 	"github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
+	"github.com/petergtz/bitsgo/httputil"
 )
 
 var _ = Describe("Non-local blobstores", func() {
@@ -113,6 +114,26 @@ var _ = Describe("Non-local blobstores", func() {
 
 			Expect(blobstore.Exists("dir/one")).To(BeFalse())
 			Expect(blobstore.Exists("dir/two")).To(BeFalse())
+		})
+
+		It("can get a signed PUT URL and upload something to it", func() {
+			signedUrl := blobstore.Sign(filepath, "put", time.Now().Add(1*time.Hour))
+
+			r := httputil.NewRequest("PUT", signedUrl, strings.NewReader("the file content"))
+
+			// The following line is a hack to make Azure work.
+			// (See:
+			// https://stackoverflow.com/questions/37824136/put-on-sas-blob-url-without-specifying-x-ms-blob-type-header
+			// https://stackoverflow.com/questions/16160045/azure-rest-webclient-put-blob
+			// https://stackoverflow.com/questions/12711150/unable-to-upload-file-image-n-vdo-to-blob-storage-getting-error-mandatory-he)
+
+			// Not a huge problem, since we decided that all uploads must go through the bits-service anyway. But still annoying.
+			r.WithHeader("x-ms-blob-type", "BlockBlob")
+
+			response, e := http.DefaultClient.Do(r.Build())
+			Expect(e).NotTo(HaveOccurred())
+
+			Expect(response.StatusCode).To(Or(Equal(http.StatusOK), Equal(http.StatusCreated)))
 		})
 	}
 

@@ -23,4 +23,6 @@ type blobstore interface {
 	// Instead doing:
 	bitsgo.Blobstore
 	Get(path string) (body io.ReadCloser, err error)
+
+	bitsgo.ResourceSigner
 }
