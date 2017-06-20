@@ -1,12 +1,13 @@
 require 'rake'
-require 'rspec/core/rake_task'
 require 'rake/clean'
+require 'rspec/core/rake_task'
+require 'rubocop/rake_task'
 
 task default: ['spec:all']
 
 namespace :spec do
   desc 'Run all specs'
-  task all: [:rubocop_autocorrect, :unit, :integration]
+  task all: ['rubocop:auto_correct', :unit, :integration]
 
   RSpec::Core::RakeTask.new(:unit) do |t|
     t.pattern = 'spec/unit/**/*_spec.rb'
@@ -17,13 +18,7 @@ namespace :spec do
   end
 end
 
-desc 'Run rubocop with --auto-correct'
-task :rubocop_autocorrect do
-  require 'rubocop'
-  cli = RuboCop::CLI.new
-  exit_code = cli.run(%w(--auto-correct))
-  exit(exit_code) if exit_code != 0
-end
+RuboCop::RakeTask.new
 
 namespace :docs do
   SOURCE_FILES = FileList['docs/*.txt']

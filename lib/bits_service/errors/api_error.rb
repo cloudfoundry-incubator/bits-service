@@ -39,6 +39,10 @@ module BitsService
         end
       end
 
+      def to_s
+        message
+      end
+
       def code
         details.code
       end

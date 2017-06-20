@@ -58,6 +58,11 @@
   http_code: 400
   message: "Cannot create droplet. The source must either be uploaded or the guid of a source droplet to be copied must be provided"
 
+290008:
+  name: CannotUpdateExistingPackage
+  http_code: 400
+  message: "Cannot update an existing package."
+
 500000:
   name: NoSpaceOnDevice
   http_code: 507

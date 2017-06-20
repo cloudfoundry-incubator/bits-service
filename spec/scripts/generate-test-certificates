@@ -1,0 +1,24 @@
+#!/bin/bash -e
+
+scripts_folder=$(dirname $0)
+
+# Install certstrap
+go get -v github.com/square/certstrap
+
+# Place keys and certificates here
+depot_path="${scripts_folder}/../certificates"
+mkdir -p ${depot_path}
+
+# CA to generate client certs
+${scripts_folder}/generate_ca_cert --common-name "BitsServiceCA" --depot-path ${depot_path} --output-file ca
+
+# Certificate to use for the CC server
+server_cn="localhost"
+${scripts_folder}/generate_end_entity_certs --common-name ${server_cn} --ca-name ca --depot-path ${depot_path} --output-file server
+
+# Certificates to use as client
+client_cns=( "bits-service" )
+for client_cn in "${client_cns[@]}"; do
+  ${scripts_folder}/generate_end_entity_certs --common-name "${client_cn}" --ca-name ca --depot-path "${depot_path}" --output-file "${client_cn}"
+  chmod 600 "${depot_path}/${client_cn}.key"
+done

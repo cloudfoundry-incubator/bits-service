@@ -213,6 +213,7 @@ GEM
     rspec-expectations (3.4.0)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.4.0)
+    rspec-json_expectations (2.1.0)
     rspec-mocks (3.4.0)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.4.0)
@@ -235,6 +236,8 @@ GEM
     steno (1.2.4)
       fluent-logger
       yajl-ruby (~> 1.0)
+    stub_server (0.2.1)
+      rack
     thor (0.19.1)
     thread_safe (0.3.5)
     tilt (2.0.2)
@@ -273,10 +276,12 @@ DEPENDENCIES
   rest-client
   rspec
   rspec-collection_matchers
+  rspec-json_expectations
   rubocop
   sinatra (~> 1.4)
   statsd-ruby
   steno
+  stub_server
   timecop
   webmock
 

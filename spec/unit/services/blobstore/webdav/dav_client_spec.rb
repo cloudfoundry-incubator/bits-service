@@ -3,7 +3,7 @@ require_relative '../client_shared'
 
 module BitsService
   module Blobstore
-    FIXTURES = File.expand_path('../../../../fixtures', File.dirname(__FILE__))
+    CERTIFICATES = File.expand_path('../../../../certificates', File.dirname(__FILE__))
 
     describe DavClient do
       subject(:client) { DavClient.new(options, directory_key, root_dir) }
@@ -12,13 +12,17 @@ module BitsService
         {
           private_endpoint: 'http://localhost',
           public_endpoint: 'http://localhost.public',
-          ca_cert_path: File.join(FIXTURES, 'certs/webdav_ca.crt')
+          ca_cert_path: File.join(CERTIFICATES, 'webdav_ca.crt')
         }
       end
       let(:directory_key) { 'droplets' }
       let(:root_dir) { nil }
       let(:ssl_config) { instance_double(HTTPClient::SSLConfig, :verify_mode= => nil, set_default_paths: nil, add_trust_ca: nil) }
       let(:httpclient) { instance_double(HTTPClient, ssl_config: ssl_config) }
+
+      it 'has the CA certificate' do
+        expect(File).to exist(File.join(CERTIFICATES, 'webdav_ca.crt'))
+      end
 
       describe 'conforms to blobstore client interface' do
         let(:deletable_blob) { instance_double(DavBlob, key: nil) }
@@ -52,7 +56,7 @@ module BitsService
       describe '#configure_ssl' do
         let(:httpclient) { HTTPClient.new }
         let(:skip_cert_verify) { true }
-        let(:ca_cert_path) { File.join(FIXTURES, 'certs/webdav_ca.crt') }
+        let(:ca_cert_path) { File.join(CERTIFICATES, 'webdav_ca.crt') }
         let(:config) { { skip_cert_verify: skip_cert_verify } }
 
         before do

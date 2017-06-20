@@ -15,6 +15,7 @@ gem 'statsd-ruby'
 group :development do
   gem 'rspec'
   gem 'rspec-collection_matchers'
+  gem 'rspec-json_expectations'
   gem 'rack-test'
   gem 'posix-spawn'
   gem 'timecop'
@@ -27,4 +28,5 @@ group :development do
   gem 'pry-byebug'
   gem 'machinist', '~> 1.0.6'
   gem 'rb-readline'
+  gem 'stub_server'
 end

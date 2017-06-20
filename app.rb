@@ -14,6 +14,7 @@ helpers BitsService::Helpers::Config
 helpers BitsService::Helpers::Upload
 helpers BitsService::Helpers::Blobstore
 helpers BitsService::Helpers::StatsdHelper
+helpers BitsService::Helpers::MTLSHelper
 
 set :dump_errors, false if ENV['RACK_ENV'] == 'production'
 

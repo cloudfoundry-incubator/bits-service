@@ -149,7 +149,7 @@ describe 'droplet resource', type: :integration do
       end
     end
 
-    context 'when the droplets does not exist' do
+    context 'when the droplet does not exist' do
       let(:resource_path) { '/droplets/not-existing/droplet' }
 
       it 'returns HTTP status code 404' do
