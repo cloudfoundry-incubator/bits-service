@@ -14,6 +14,7 @@ import (
 	"github.com/petergtz/bitsgo/blobstores/validate"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/logger"
+	"github.com/petergtz/bitsgo/util"
 	"github.com/pkg/errors"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -94,11 +95,15 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 		return e
 	}
 	writer := blobstore.client.Bucket(blobstore.bucket).Object(path).NewWriter(context.TODO())
+	var safeCloser util.SafeCloser
+	defer safeCloser.Close(writer)
+
 	_, e := io.Copy(writer, src)
 	if e != nil {
 		return errors.Wrapf(e, "Path %v", path)
 	}
-	e = writer.Close()
+
+	e = safeCloser.Close(writer)
 	if e != nil {
 		return errors.Wrapf(e, "Path %v", path)
 	}
