@@ -31,3 +31,25 @@ func (handler *SignResourceHandler) Sign(responseWriter http.ResponseWriter, req
 	}
 	fmt.Fprint(responseWriter, handler.signer.Sign(params["resource"], method, handler.clock.Now().Add(1*time.Hour)))
 }
+
+type DistinguishingResourceSigner struct {
+	putResourceSigner, getResourceSigner ResourceSigner
+}
+
+func NewDistinguishingResourceSigner(put, get ResourceSigner) *DistinguishingResourceSigner {
+	return &DistinguishingResourceSigner{
+		putResourceSigner: put,
+		getResourceSigner: get,
+	}
+}
+
+func (signer *DistinguishingResourceSigner) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {
+	switch method {
+	case "get":
+		return signer.getResourceSigner.Sign(resource, method, expirationTime)
+	case "put":
+		return signer.putResourceSigner.Sign(resource, method, expirationTime)
+	default:
+		panic("Invalid method:" + method)
+	}
+}
