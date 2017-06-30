@@ -42,15 +42,6 @@ func main() {
 	log.Log.Infow("Logging level", "log-level", config.Logging.Level)
 	log.SetLogger(createLoggerWith(config.Logging.Level))
 
-	rootRouter := mux.NewRouter()
-	rootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-	})
-
-	internalRouter := mux.NewRouter()
-
-	rootRouter.Host(config.PrivateEndpointUrl().Host).Handler(internalRouter)
-
 	appStashBlobstore := createAppStashBlobstore(config.AppStash)
 	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpointUrl().Host, config.Port, config.Secret, "packages")
 	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpointUrl().Host, config.Port, config.Secret, "droplets")
@@ -64,6 +55,15 @@ func main() {
 	buildpackHandler := bitsgo.NewResourceHandler(buildpackBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes())
 	dropletHandler := bitsgo.NewResourceHandler(dropletBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes())
 	buildpackCacheHandler := bitsgo.NewResourceHandler(buildpackCacheBlobstore, "buildpack_cache", metricsService, config.Droplets.MaxBodySizeBytes())
+
+	rootRouter := mux.NewRouter()
+	rootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+
+	internalRouter := mux.NewRouter()
+	rootRouter.Host(config.PrivateEndpointUrl().Host).Handler(internalRouter)
+
 	routes.SetUpSignRoute(internalRouter, middlewares.NewBasicAuthMiddleWare(basicAuthCredentialsFrom(config.SigningUsers)...),
 		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler)
 
