@@ -16,6 +16,7 @@ import (
 	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/blobstores/azure"
 	"github.com/petergtz/bitsgo/blobstores/gcp"
+	"github.com/petergtz/bitsgo/blobstores/openstack"
 	"github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/httputil"
@@ -204,6 +205,22 @@ var _ = Describe("Non-local blobstores", func() {
 
 		Context("With non-existing bucket", func() {
 			BeforeEach(func() { azureConfig.ContainerName += "non-existing" })
+
+			ItDoesNotReturnNotFoundError()
+		})
+
+	})
+
+	Context("openstack", func() {
+		var openstackConfig config.OpenstackBlobstoreConfig
+
+		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &openstackConfig)).To(Succeed()) })
+		JustBeforeEach(func() { blobstore = openstack.NewBlobstore(openstackConfig) })
+
+		itCanPutAndGetAResourceThere()
+
+		Context("With non-existing bucket", func() {
+			BeforeEach(func() { openstackConfig.ContainerName += "non-existing" })
 
 			ItDoesNotReturnNotFoundError()
 		})

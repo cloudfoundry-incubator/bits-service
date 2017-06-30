@@ -1,8 +1,8 @@
-hash: 772d415fad31e4b278bdfe72726144e3e8c5a85e02cf679c844e6d8b56e14a0c
-updated: 2017-05-25T15:02:46.335552515+02:00
+hash: 28f1226ab83e63a496df249a03d14bb1b4812004d03f8ddb8e1685a10dc3aa80
+updated: 2017-06-30T00:11:45.666771593+02:00
 imports:
 - name: cloud.google.com/go
-  version: ff3a4a928549efd9c569f4d812b885ae7736d402
+  version: 7c205da84d8d024a8200be93ab042357c9a70177
   subpackages:
   - compute/metadata
   - iam
@@ -19,7 +19,7 @@ imports:
 - name: github.com/alecthomas/units
   version: 2efee857e7cfd4f3d0138cc3cbb1b4966962b93a
 - name: github.com/aws/aws-sdk-go
-  version: 0bc99f4aa1cf50245de234b1ce0b33463a3ad5fe
+  version: 87aa1287b67f86a66c22477c9c730568c9b5977a
   subpackages:
   - aws
   - aws/awserr
@@ -37,6 +37,7 @@ imports:
   - aws/request
   - aws/session
   - aws/signer/v4
+  - internal/shareddefaults
   - private/protocol
   - private/protocol/query
   - private/protocol/query/queryutil
@@ -46,11 +47,11 @@ imports:
   - service/s3
   - service/sts
 - name: github.com/Azure/azure-sdk-for-go
-  version: 26132835cbefa2669a306b777f34b929b56aa0a2
+  version: b558f7a651d50f9b2256b1f45abfef9e92efdfae
   subpackages:
   - storage
 - name: github.com/Azure/go-autorest
-  version: 58f6f26e200fa5dfb40c9cd1c83f3e2c860d779d
+  version: 10791a4516e77c53ab10f198f144804cca3d5b43
   subpackages:
   - autorest
   - autorest/adal
@@ -60,25 +61,27 @@ imports:
 - name: github.com/benbjohnson/clock
   version: 7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19
 - name: github.com/dgrijalva/jwt-go
-  version: 6c8dedd55f8a2e41f605de6d5d66e51ed1f299fc
+  version: a539ee1a749a2b895533f979515ac7e6e0f5b650
 - name: github.com/go-ini/ini
-  version: afbc45e87f3ba324c532d12c71918ef52e0fb194
+  version: 3d73f4b845efdf9989fffd4b4e562727744a34ba
 - name: github.com/golang/protobuf
-  version: 7a211bcf3bce0e3f1d74f9894916e6f116ae83b4
+  version: 6a1fa9404c0aebf36c879bc50152edcc953910d2
   subpackages:
   - proto
   - protoc-gen-go/descriptor
   - ptypes/any
 - name: github.com/googleapis/gax-go
-  version: 9af46dd5a1713e8b5cd71106287eba3cefdde50b
+  version: 84ed26760e7f6f80887a2fbfb50db3cc415d2cea
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
-  version: 043ee6597c29786140136a5747b6a886364f5282
+  version: 8c683ee571b6ee7ffc9f1cafd13103c422e71cbf
 - name: github.com/jmespath/go-jmespath
   version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
+- name: github.com/ncw/swift
+  version: 9e6fdb8957a022d5780a78b58d6181c3580bb01f
 - name: github.com/onsi/gomega
-  version: 00acfa9d92a386415bd235ab069c52063f925998
+  version: f9b2e15b86f3d6dd556700ffbaa4feee86745028
   subpackages:
   - format
   - gbytes
@@ -102,20 +105,21 @@ imports:
 - name: github.com/tecnickcom/statsd
   version: 969e3814be4f15681e2da76965ffa464b576a51f
 - name: github.com/urfave/negroni
-  version: 1d8981a52d6bda4467a9faacf3fdddd38222dfc4
+  version: 460c5567329bbad8917f126d2b386787f48e343b
 - name: go.uber.org/atomic
   version: 4e336646b2ef9fc6e47be8e21594178f98e5ebcf
+- name: go.uber.org/multierr
+  version: ef109dc7f883f3a99db2d89edc701c25cac40571
 - name: go.uber.org/zap
-  version: fab453050a7a08c35f31fc5fff6f2dbd962285ab
+  version: e15639dab1b6ca5a651fe7ebfd8d682683b7d6a8
   subpackages:
   - buffer
   - internal/bufferpool
   - internal/color
   - internal/exit
-  - internal/multierror
   - zapcore
 - name: golang.org/x/net
-  version: 7dcfb8076726a3fdd9353b6b8a1f1b6be6811bd6
+  version: 1f9224279e98554b6a6432d4dd998a739f8b2b7c
   subpackages:
   - context
   - context/ctxhttp
@@ -129,14 +133,14 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/oauth2
-  version: f047394b6d14284165300fd82dad67edb3a4d7f6
+  version: cce311a261e6fcf29de72ca96827bdb0b7d9c9e6
   subpackages:
   - google
   - internal
   - jws
   - jwt
 - name: golang.org/x/text
-  version: 19e51611da83d6be54ddafce4a4af510cb3e9ea4
+  version: 6353ef0f924300eea566d3438817aa4d3374817e
   repo: https://github.com/golang/text.git
   vcs: git
   subpackages:
@@ -160,7 +164,7 @@ imports:
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/api
-  version: d9d64fe74969b80fb4a435ae9280c9ff061a6097
+  version: e6586c9293b9d514c7f5d5076731ec977cff1be6
   subpackages:
   - gensupport
   - googleapi
@@ -186,13 +190,13 @@ imports:
   - socket
   - urlfetch
 - name: google.golang.org/genproto
-  version: d80a6e20e776b0b17a324d0ba1ab50a39c8e8944
+  version: aa2eb687b4d3e17154372564ad8d6bf11c3cf21f
   subpackages:
   - googleapis/api/annotations
   - googleapis/iam/v1
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 3a46d9d51931de5beee75086205224a540233baa
+  version: 3c33c26290b747350f8650c7d38bcc51b42dc785
   subpackages:
   - codes
   - credentials
@@ -214,7 +218,7 @@ imports:
   version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports:
 - name: github.com/onsi/ginkgo
-  version: a1f616c97771e46da1722d3aa9dcde0a43f55682
+  version: 6665a7cf0a58963034f099ffcd3bc4e4a11c300c
   subpackages:
   - config
   - internal/codelocation
@@ -234,10 +238,10 @@ testImports:
   - reporters/stenographer/support/go-isatty
   - types
 - name: github.com/petergtz/pegomock
-  version: 87f9b34434e49f59c666d6670ce2e581a1578431
+  version: c92d581608b11f1f674983f784def14927a1ce99
   subpackages:
   - internal/verify
 - name: golang.org/x/sys
-  version: a55a76086885b80f79961eacb876ebd8caf3868d
+  version: 90796e5a05ce440b41c768bd9af257005e470461
   subpackages:
   - unix

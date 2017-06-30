@@ -25,6 +25,7 @@ import:
   subpackages:
   - storage
 - package: github.com/Azure/azure-sdk-for-go
+- package: github.com/ncw/swift
 testImport:
 - package: github.com/onsi/ginkgo
 - package: github.com/petergtz/pegomock

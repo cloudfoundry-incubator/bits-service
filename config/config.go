@@ -97,6 +97,26 @@ type AzureBlobstoreConfig struct {
 	AccountKey    string `yaml:"account_key"`
 }
 
+type OpenstackBlobstoreConfig struct {
+	ContainerName  string `yaml:"container_name"`
+	DomainName     string `yaml:"domain_name"`
+	DomainId       string `yaml:"domain_id"`
+	Username       string
+	ApiKey         string `yaml:"api_key"`
+	AuthURL        string `yaml:"auth_url"`
+	Region         string
+	AuthVersion    int    `yaml:"auth_version"`
+	Internal       bool   // Set this to true to use the the internal / service network
+	Tenant         string // Name of the tenant (v2,v3 auth only)
+	TenantId       string `yaml:"tenant_id"`        // Id of the tenant (v2,v3 auth only)
+	EndpointType   string `yaml:"endpoint_type"`    // Endpoint type (v2,v3 auth only) (default is public URL unless Internal is set)
+	TenantDomain   string `yaml:"tenant_domain"`    // Name of the tenant's domain (v3 auth only), only needed if it differs from the user domain
+	TenantDomainId string `yaml:"tenant_domain_id"` // Id of the tenant's domain (v3 auth only), only needed if it differs the from user domain
+	TrustId        string `yaml:"trust_id"`         // Id of the trust (v3 auth only)
+
+	AccountMetaTempURLKey string `yaml:"account_meta_temp_url_key"` // used as secret for signed URLs
+}
+
 type WebdavBlobstoreConfig struct {
 	PrivateEndpoint string `yaml:"private_endpoint"`
 	PublicEndpoint  string `yaml:"public_endpoint"`

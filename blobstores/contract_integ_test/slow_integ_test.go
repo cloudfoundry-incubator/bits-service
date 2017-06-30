@@ -18,6 +18,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/petergtz/bitsgo/blobstores/azure"
 	"github.com/petergtz/bitsgo/blobstores/gcp"
+	"github.com/petergtz/bitsgo/blobstores/openstack"
 	"github.com/petergtz/bitsgo/blobstores/s3"
 	"github.com/petergtz/bitsgo/config"
 )
@@ -113,6 +114,15 @@ var _ = XDescribe("Non-local blobstores SLOW TESTS", func() {
 
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &azureConfig)).To(Succeed()) })
 		JustBeforeEach(func() { blobstore = azure.NewBlobstore(azureConfig) })
+
+		slowTests()
+	})
+
+	Context("openstack", func() {
+		var openstackConfig config.OpenstackBlobstoreConfig
+
+		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &openstackConfig)).To(Succeed()) })
+		JustBeforeEach(func() { blobstore = openstack.NewBlobstore(openstackConfig) })
 
 		slowTests()
 	})
