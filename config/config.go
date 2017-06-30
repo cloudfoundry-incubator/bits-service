@@ -44,14 +44,15 @@ func (config *Config) PrivateEndpointUrl() *url.URL {
 }
 
 type BlobstoreConfig struct {
-	BlobstoreType     string                 `yaml:"blobstore_type"`
-	LocalConfig       *LocalBlobstoreConfig  `yaml:"local_config"`
-	S3Config          *S3BlobstoreConfig     `yaml:"s3_config"`
-	GCPConfig         *GCPBlobstoreConfig    `yaml:"gcp_config"`
-	AzureConfig       *AzureBlobstoreConfig  `yaml:"azure_config"`
-	WebdavConfig      *WebdavBlobstoreConfig `yaml:"webdav_config"`
-	MaxBodySize       string                 `yaml:"max_body_size"`
-	GlobalMaxBodySize string                 // Not to be set by yaml
+	BlobstoreType     string                    `yaml:"blobstore_type"`
+	LocalConfig       *LocalBlobstoreConfig     `yaml:"local_config"`
+	S3Config          *S3BlobstoreConfig        `yaml:"s3_config"`
+	GCPConfig         *GCPBlobstoreConfig       `yaml:"gcp_config"`
+	AzureConfig       *AzureBlobstoreConfig     `yaml:"azure_config"`
+	OpenstackConfig   *OpenstackBlobstoreConfig `yaml:"openstack_config"`
+	WebdavConfig      *WebdavBlobstoreConfig    `yaml:"webdav_config"`
+	MaxBodySize       string                    `yaml:"max_body_size"`
+	GlobalMaxBodySize string                    // Not to be set by yaml
 }
 
 func (config *BlobstoreConfig) MaxBodySizeBytes() uint64 {
