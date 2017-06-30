@@ -39,14 +39,14 @@ func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request 
 	}
 	if strings.Contains(request.Header.Get("Content-Type"), "multipart/form-data") {
 		logger.From(request).Debugw("Multipart upload")
-		handler.uploadMultipart(responseWriter, request, params)
+		handler.uploadMultipart(responseWriter, request, params["identifier"])
 	} else {
 		logger.From(request).Debugw("Copy source guid")
-		handler.copySourceGuid(responseWriter, request, params)
+		handler.copySourceGuid(responseWriter, request, params["identifier"])
 	}
 }
 
-func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWriter, request *http.Request, identifier string) {
 	file, _, e := request.FormFile(handler.resourceType)
 	if e != nil {
 		badRequest(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
@@ -55,18 +55,18 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	defer file.Close()
 
 	startTime := time.Now()
-	e = handler.blobstore.Put(params["identifier"], file)
+	e = handler.blobstore.Put(identifier, file)
 	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
 
 	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, emptyReader)
 }
 
-func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWriter, request *http.Request, identifier string) {
 	sourceGuid := sourceGuidFrom(request.Body, responseWriter)
 	if sourceGuid == "" {
 		return // response is already handled in sourceGuidFrom
 	}
-	e := handler.blobstore.Copy(sourceGuid, params["identifier"])
+	e := handler.blobstore.Copy(sourceGuid, identifier)
 	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, emptyReader)
 }
 
