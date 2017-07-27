@@ -1,3 +1,5 @@
+require 'yaml'
+
 module BitsService
   module Environment
     class << self

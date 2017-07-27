@@ -21,8 +21,6 @@ module BitsService
           end
         when source_guid = parsed_body['source_guid']
           create_as_duplicate(source_guid, guid)
-          # TODO: (ae, su) Figure out what to do for copied packages, all updates are disabled for now.
-          # try_update_status { cc_updater.ready(guid, sha1: 'potato', sha256: 'potatoest') }
         else
           fail(ApiError.new_from_details('InvalidPackageSource').tap { |err|
             # CloudController allows to set package state to FAILED or READY directly from AWAITING_UPLOAD
@@ -75,7 +73,6 @@ module BitsService
 
       def create_as_duplicate(source_guid, target_guid)
         blob = packages_blobstore.blob(source_guid)
-        # TODO: (ae, ns) ResourceNotFound error message is just guid. Should there be some info.
         fail ApiError.new_from_details('ResourceNotFound', source_guid) unless blob
 
         packages_blobstore.cp_file_between_keys(source_guid, target_guid)
