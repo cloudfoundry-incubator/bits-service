@@ -77,7 +77,7 @@ describe 'app_stash endpoint', type: :integration do
       it 'returns an json describing the issue' do
         response = make_post_request('/app_stash/entries', request_body)
         description = JSON.parse(response.body)['description']
-        expect(description).to match(/The app upload is invalid: Unzipping had errors/)
+        expect(description).to match(/The app upload is invalid: Invalid zip archive/)
       end
     end
 
@@ -262,7 +262,7 @@ describe 'app_stash endpoint', type: :integration do
         zip = write_response_body_to_file(response)
         unzip_path = Dir.mktmpdir('unzip')
 
-        BitsService::SafeZipper.unzip!(zip.path, unzip_path)
+        BitsService::AppPackager.unzip(zip.path, unzip_path)
 
         unzipped_files = Dir[File.join(unzip_path, '**', '*')].reject { |f| File.directory?(f) }.sort
         expected_files = resources.map { |spec| File.join(unzip_path, spec[:fn]) }.sort

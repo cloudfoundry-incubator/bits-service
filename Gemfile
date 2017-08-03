@@ -11,6 +11,7 @@ gem 'activesupport'
 gem 'puma'
 gem 'cloudfront-signer'
 gem 'statsd-ruby'
+gem 'rubyzip'
 
 group :development do
   gem 'rspec'

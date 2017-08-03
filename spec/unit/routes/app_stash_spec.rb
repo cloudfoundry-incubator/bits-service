@@ -17,7 +17,7 @@ module BitsService
       before do
         allow_any_instance_of(Helpers::Upload::Params).to receive(:upload_filepath).and_return(zip_filepath)
         allow(Dir).to receive(:mktmpdir).and_return(tmp_dir)
-        allow(SafeZipper).to receive(:unzip!)
+        allow(AppPackager).to receive(:unzip)
         allow(blobstore).to receive(:cp_r_to_blobstore)
         allow(FileUtils).to receive(:rm_r)
         allow_any_instance_of(Receipt).to receive(:contents).and_return(receipt_contents)
@@ -39,7 +39,7 @@ module BitsService
       end
 
       it 'unzips the uploaded zip file' do
-        expect(SafeZipper).to receive(:unzip!).with(zip_filepath, tmp_dir)
+        expect(AppPackager).to receive(:unzip).with(zip_filepath, tmp_dir)
         post '/app_stash/entries', request_body, headers
       end
 
@@ -76,9 +76,9 @@ module BitsService
         end
       end
 
-      context 'when the SafeZipper raises an error' do
+      context 'when the AppPackager raises an error' do
         before do
-          allow(SafeZipper).to receive(:unzip!).and_raise(SafeZipper::Error.new('failed here'))
+          allow(AppPackager).to receive(:unzip).and_raise(Errors::ApiError.new_from_details('AppBitsUploadInvalid', 'failed here'))
         end
 
         it 'returns HTTP status 400' do
@@ -254,7 +254,7 @@ module BitsService
         allow(blobstore).to receive(:exists?).with('existing').and_return(true)
         allow(blobstore).to receive(:exists?).with('non-existing').and_return(false)
         allow(blobstore).to receive(:download_from_blobstore)
-        allow(SafeZipper).to receive(:zip)
+        allow(AppPackager).to receive(:zip)
         allow(Dir).to receive(:mktmpdir).and_return(destination_dir, zip_dir)
         allow(File).to receive(:open).with(zip_path).and_return(output_file)
         allow(FileUtils).to receive(:rm_rf)
@@ -273,7 +273,7 @@ module BitsService
       end
 
       it 'zips the download directory' do
-        expect(SafeZipper).to receive(:zip).with(destination_dir, zip_path)
+        expect(AppPackager).to receive(:zip).with(destination_dir, zip_path)
         post '/app_stash/bundles', request_body, headers
       end
 

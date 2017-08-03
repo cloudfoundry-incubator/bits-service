@@ -15,15 +15,13 @@ module BitsService
         destination_path = Dir.mktmpdir('app_stash')
 
         begin
-          SafeZipper.unzip!(uploaded_filepath, destination_path)
+          AppPackager.unzip(uploaded_filepath, destination_path)
           statsd.time 'app_stash-cp_r_to_blobstore-time.sparse-avg' do
             app_stash_blobstore.cp_r_to_blobstore(destination_path)
           end
           receipt = Receipt.new(destination_path)
 
           json 201, receipt.contents
-        rescue SafeZipper::Error => e
-          fail Errors::ApiError.new_from_details('AppBitsUploadInvalid', e.message)
         rescue Errno::ENOSPC
           fail Errors::ApiError.new_from_details('NoSpaceOnDevice')
         ensure
@@ -52,7 +50,7 @@ module BitsService
         end
 
         output_path = File.join(Dir.mktmpdir('app_stash'), 'bundle.zip')
-        SafeZipper.zip(destination_path, output_path)
+        AppPackager.zip(destination_path, output_path)
 
         status 200
         stream do |out|
