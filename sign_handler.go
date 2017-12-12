@@ -13,43 +13,33 @@ type ResourceSigner interface {
 }
 
 type SignResourceHandler struct {
-	signer ResourceSigner
-	clock  clock.Clock
+	clock                                clock.Clock
+	putResourceSigner, getResourceSigner ResourceSigner
 }
 
-func NewSignResourceHandler(signer ResourceSigner) *SignResourceHandler {
+func NewSignResourceHandler(getResourceSigner, putResourceSigner ResourceSigner) *SignResourceHandler {
 	return &SignResourceHandler{
-		signer: signer,
-		clock:  clock.New(),
+		getResourceSigner: getResourceSigner,
+		putResourceSigner: putResourceSigner,
+		clock:             clock.New(),
 	}
 }
 
 func (handler *SignResourceHandler) Sign(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
-	method := request.URL.Query().Get("verb")
-	if method == "" {
-		method = "get"
-	}
-	fmt.Fprint(responseWriter, handler.signer.Sign(params["resource"], method, handler.clock.Now().Add(1*time.Hour)))
-}
+	method := params["verb"]
+	var signer ResourceSigner
 
-type DistinguishingResourceSigner struct {
-	putResourceSigner, getResourceSigner ResourceSigner
-}
-
-func NewDistinguishingResourceSigner(put, get ResourceSigner) *DistinguishingResourceSigner {
-	return &DistinguishingResourceSigner{
-		putResourceSigner: put,
-		getResourceSigner: get,
-	}
-}
-
-func (signer *DistinguishingResourceSigner) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {
 	switch method {
-	case "get":
-		return signer.getResourceSigner.Sign(resource, method, expirationTime)
+	case "", "get":
+		signer = handler.getResourceSigner
 	case "put":
-		return signer.putResourceSigner.Sign(resource, method, expirationTime)
+		signer = handler.putResourceSigner
 	default:
-		panic("Invalid method:" + method)
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		responseWriter.Write([]byte("Invalid verb: " + method))
+		return
 	}
+
+	signature := signer.Sign(params["resource"], method, handler.clock.Now().Add(1*time.Hour))
+	fmt.Fprint(responseWriter, signature)
 }

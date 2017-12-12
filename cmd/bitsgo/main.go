@@ -146,37 +146,33 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 		return decorator.ForBlobstoreWithPathPartitioning(
 				s3.NewBlobstore(*blobstoreConfig.S3Config)),
 			bitsgo.NewSignResourceHandler(
-				bitsgo.NewDistinguishingResourceSigner(
-					localResourceSigner,
-					decorator.ForResourceSignerWithPathPartitioning(
-						s3.NewBlobstore(*blobstoreConfig.S3Config))))
+				decorator.ForResourceSignerWithPathPartitioning(
+					s3.NewBlobstore(*blobstoreConfig.S3Config)),
+				localResourceSigner)
 	case "google", "gcp":
 		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				gcp.NewBlobstore(*blobstoreConfig.GCPConfig)),
 			bitsgo.NewSignResourceHandler(
-				bitsgo.NewDistinguishingResourceSigner(
-					localResourceSigner,
-					decorator.ForResourceSignerWithPathPartitioning(
-						gcp.NewBlobstore(*blobstoreConfig.GCPConfig))))
+				decorator.ForResourceSignerWithPathPartitioning(
+					gcp.NewBlobstore(*blobstoreConfig.GCPConfig)),
+				localResourceSigner)
 	case "azure":
 		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				azure.NewBlobstore(*blobstoreConfig.AzureConfig)),
 			bitsgo.NewSignResourceHandler(
-				bitsgo.NewDistinguishingResourceSigner(
-					localResourceSigner,
-					decorator.ForResourceSignerWithPathPartitioning(
-						azure.NewBlobstore(*blobstoreConfig.AzureConfig))))
+				decorator.ForResourceSignerWithPathPartitioning(
+					azure.NewBlobstore(*blobstoreConfig.AzureConfig)),
+				localResourceSigner)
 	case "openstack":
 		log.Log.Infow("Creating Openstack blobstore", "container", blobstoreConfig.OpenstackConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig)),
 			bitsgo.NewSignResourceHandler(
-				bitsgo.NewDistinguishingResourceSigner(
-					localResourceSigner,
-					decorator.ForResourceSignerWithPathPartitioning(
-						openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig))))
+				decorator.ForResourceSignerWithPathPartitioning(
+					openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig)),
+				localResourceSigner)
 	case "webdav":
 		log.Log.Infow("Creating Webdav blobstore",
 			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
@@ -186,11 +182,10 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
 					resourceType+"/")),
 			bitsgo.NewSignResourceHandler(
-				bitsgo.NewDistinguishingResourceSigner(
-					localResourceSigner,
-					decorator.ForResourceSignerWithPathPartitioning(
-						decorator.ForResourceSignerWithPathPrefixing(
-							webdav.NewBlobstore(*blobstoreConfig.WebdavConfig), resourceType+"/"))))
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.ForResourceSignerWithPathPrefixing(
+						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig), resourceType+"/")),
+				localResourceSigner)
 
 	default:
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
@@ -215,12 +210,11 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					s3.NewBlobstore(*blobstoreConfig.S3Config),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
-				bitsgo.NewDistinguishingResourceSigner(
-					localResourceSigner,
-					decorator.ForResourceSignerWithPathPartitioning(
-						decorator.ForResourceSignerWithPathPrefixing(
-							s3.NewBlobstore(*blobstoreConfig.S3Config),
-							"buildpack_cache"))))
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.ForResourceSignerWithPathPrefixing(
+						s3.NewBlobstore(*blobstoreConfig.S3Config),
+						"buildpack_cache")),
+				localResourceSigner)
 	case "gcp", "google":
 		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
@@ -228,12 +222,11 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
-				bitsgo.NewDistinguishingResourceSigner(
-					localResourceSigner,
-					decorator.ForResourceSignerWithPathPartitioning(
-						decorator.ForResourceSignerWithPathPrefixing(
-							gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
-							"buildpack_cache"))))
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.ForResourceSignerWithPathPrefixing(
+						gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
+						"buildpack_cache")),
+				localResourceSigner)
 	case "azure":
 		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
@@ -241,12 +234,11 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					azure.NewBlobstore(*blobstoreConfig.AzureConfig),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
-				bitsgo.NewDistinguishingResourceSigner(
-					localResourceSigner,
-					decorator.ForResourceSignerWithPathPartitioning(
-						decorator.ForResourceSignerWithPathPrefixing(
-							azure.NewBlobstore(*blobstoreConfig.AzureConfig),
-							"buildpack_cache"))))
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.ForResourceSignerWithPathPrefixing(
+						azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+						"buildpack_cache")),
+				localResourceSigner)
 	case "openstack":
 		log.Log.Infow("Creating Openstack blobstore", "container", blobstoreConfig.OpenstackConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
@@ -254,12 +246,11 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
-				bitsgo.NewDistinguishingResourceSigner(
-					localResourceSigner,
-					decorator.ForResourceSignerWithPathPartitioning(
-						decorator.ForResourceSignerWithPathPrefixing(
-							openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
-							"buildpack_cache"))))
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.ForResourceSignerWithPathPrefixing(
+						openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
+						"buildpack_cache")),
+				localResourceSigner)
 	case "webdav":
 		log.Log.Infow("Creating Webdav blobstore",
 			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
@@ -269,12 +260,11 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
 					resourceType+"/buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
-				bitsgo.NewDistinguishingResourceSigner(
-					localResourceSigner,
-					decorator.ForResourceSignerWithPathPartitioning(
-						decorator.ForResourceSignerWithPathPrefixing(
-							webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
-							"buildpack_cache"))))
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.ForResourceSignerWithPathPrefixing(
+						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
+						"buildpack_cache")),
+				localResourceSigner)
 	default:
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
 		return nil, nil // satisfy compiler
@@ -282,7 +272,8 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 }
 
 func createLocalSignResourceHandler(publicHost string, port int, secret string, resourceType string) *bitsgo.SignResourceHandler {
-	return bitsgo.NewSignResourceHandler(createLocalResourceSigner(publicHost, port, secret, resourceType))
+	signer := createLocalResourceSigner(publicHost, port, secret, resourceType)
+	return bitsgo.NewSignResourceHandler(signer, signer)
 }
 
 func createLocalResourceSigner(publicHost string, port int, secret string, resourceType string) bitsgo.ResourceSigner {
