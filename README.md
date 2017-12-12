@@ -28,6 +28,8 @@ git clone https://github.com/petergtz/bitsgo.git
 cd bitsgo
 
 glide install
+
+cd cmd/bitsgo
 go install
 ```
 
