@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/petergtz/bitsgo/config"
+
 	"syscall"
 
 	"github.com/petergtz/bitsgo"
@@ -17,8 +19,8 @@ type Blobstore struct {
 	pathPrefix string
 }
 
-func NewBlobstore(pathPrefix string) *Blobstore {
-	return &Blobstore{pathPrefix: pathPrefix}
+func NewBlobstore(localConfig config.LocalBlobstoreConfig) *Blobstore {
+	return &Blobstore{pathPrefix: localConfig.PathPrefix}
 }
 
 func (blobstore *Blobstore) Exists(path string) (bool, error) {

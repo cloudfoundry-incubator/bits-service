@@ -139,7 +139,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	case "local":
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
-				local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix)),
+				local.NewBlobstore(*blobstoreConfig.LocalConfig)),
 			createLocalSignResourceHandler(publicHost, port, secret, resourceType)
 	case "s3", "aws":
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
@@ -205,7 +205,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix),
+					local.NewBlobstore(*blobstoreConfig.LocalConfig),
 					"buildpack_cache/")),
 			createLocalSignResourceHandler(publicHost, port, secret, resourceType)
 	case "s3", "aws":
@@ -298,8 +298,7 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) bitsgo.NoRe
 	case "local":
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			local.NewBlobstore(blobstoreConfig.LocalConfig.PathPrefix))
-
+			local.NewBlobstore(*blobstoreConfig.LocalConfig))
 	case "s3", "aws":
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
