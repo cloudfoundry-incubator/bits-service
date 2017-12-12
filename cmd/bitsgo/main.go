@@ -94,7 +94,7 @@ func main() {
 	}
 
 	e = httpServer.ListenAndServe()
-	log.Log.Fatal("http server crashed", "error", e)
+	log.Log.Fatalw("http server crashed", "error", e)
 }
 
 func createLoggerWith(logLevel string) *zap.Logger {

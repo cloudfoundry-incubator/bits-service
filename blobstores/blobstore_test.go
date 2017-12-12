@@ -15,6 +15,7 @@ import (
 	"github.com/petergtz/bitsgo"
 	inmemory "github.com/petergtz/bitsgo/blobstores/inmemory"
 	"github.com/petergtz/bitsgo/blobstores/local"
+	"github.com/petergtz/bitsgo/config"
 	"os"
 )
 
@@ -81,7 +82,7 @@ var _ = Describe("Blobstore", func() {
 			tempDirname, e = ioutil.TempDir("", "bitsgo")
 			Expect(e).NotTo(HaveOccurred())
 
-			blobstore = local.NewBlobstore(tempDirname)
+			blobstore = local.NewBlobstore(config.LocalBlobstoreConfig{PathPrefix: tempDirname})
 		})
 		AfterEach(func() { os.RemoveAll(tempDirname) })
 

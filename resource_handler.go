@@ -33,7 +33,7 @@ func NewResourceHandler(blobstore Blobstore, resourceType string, metricsService
 	}
 }
 
-func (handler *ResourceHandler) Put(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
 	}
@@ -87,7 +87,7 @@ func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) stri
 	return payload.SourceGuid
 }
 
-func (handler *ResourceHandler) Head(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+func (handler *ResourceHandler) HeadOrRedirectAsGet(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	redirectLocation, e := handler.blobstore.HeadOrRedirectAsGet(params["identifier"])
 	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, emptyReader)
 }

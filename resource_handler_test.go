@@ -29,7 +29,7 @@ var _ = Describe("ResourceHandler", func() {
 			Expect(e).NotTo(HaveOccurred())
 
 			When(blobstore.Put(AnyString(), anyReadSeeker())).ThenReturn(NewNoSpaceLeftError())
-			handler.Put(responseWriter, request, map[string]string{})
+			handler.AddOrReplace(responseWriter, request, map[string]string{})
 
 			Expect(responseWriter.Code).To(Equal(http.StatusInsufficientStorage))
 		})
