@@ -9,10 +9,10 @@ import (
 	"github.com/urfave/negroni"
 )
 
-func SetUpAppStashRoutes(router *mux.Router, resourceHandler *bitsgo.AppStashHandler) {
-	router.Path("/app_stash/entries").Methods("POST").HandlerFunc(resourceHandler.PostEntries)
-	router.Path("/app_stash/matches").Methods("POST").HandlerFunc(resourceHandler.PostMatches)
-	router.Path("/app_stash/bundles").Methods("POST").HandlerFunc(resourceHandler.PostBundles)
+func SetUpAppStashRoutes(router *mux.Router, appStashHandler *bitsgo.AppStashHandler) {
+	router.Path("/app_stash/entries").Methods("POST").HandlerFunc(appStashHandler.PostEntries)
+	router.Path("/app_stash/matches").Methods("POST").HandlerFunc(appStashHandler.PostMatches)
+	router.Path("/app_stash/bundles").Methods("POST").HandlerFunc(appStashHandler.PostBundles)
 }
 
 func SetUpPackageRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHandler) {

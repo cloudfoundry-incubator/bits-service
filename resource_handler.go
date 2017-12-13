@@ -33,6 +33,8 @@ func NewResourceHandler(blobstore Blobstore, resourceType string, metricsService
 	}
 }
 
+// TODO: instead of params, we could use `identifier string` to make the interface more type-safe.
+//       Here and in the other methods.
 func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
@@ -125,7 +127,7 @@ func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, re
 
 var emptyReader = ioutil.NopCloser(bytes.NewReader(nil))
 
-func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.ResponseWriter, statusCode int, responseReader io.ReadCloser) {
+func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.ResponseWriter, statusCode int, body io.ReadCloser) {
 	switch e.(type) {
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
@@ -141,9 +143,9 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		redirect(responseWriter, redirectLocation)
 		return
 	}
-	defer responseReader.Close()
+	defer body.Close()
 	responseWriter.WriteHeader(statusCode)
-	io.Copy(responseWriter, responseReader)
+	io.Copy(responseWriter, body)
 }
 
 func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
