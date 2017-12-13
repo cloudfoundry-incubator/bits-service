@@ -29,7 +29,7 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 		"HTTP Request started",
 		"host", request.Host,
 		"method", request.Method,
-		"path", request.URL.Path,
+		"path", request.URL.RequestURI(),
 	)
 
 	negroniResponseWriter, ok := responseWriter.(negroni.ResponseWriter)
@@ -42,7 +42,7 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 	fields := []interface{}{
 		"host", request.Host,
 		"method", request.Method,
-		"path", request.URL.Path,
+		"path", request.URL.RequestURI(),
 		"status-code", negroniResponseWriter.Status(),
 		"body-size", negroniResponseWriter.Size(),
 		"duration", time.Since(startTime),

@@ -25,6 +25,8 @@ type Config struct {
 	Port            int
 	SigningUsers    []Credential `yaml:"signing_users"`
 	MaxBodySize     string       `yaml:"max_body_size"`
+	CertFile        string       `yaml:"cert_file"`
+	KeyFile         string       `yaml:"key_file"`
 }
 
 func (config *Config) PublicEndpointUrl() *url.URL {

@@ -83,6 +83,7 @@ func main() {
 	routes.SetUpDropletRoutes(publicRouter, dropletHandler)
 	routes.SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheHandler)
 
+	log.Log.Infow("Starting server", "port", config.Port)
 	httpServer := &http.Server{
 		Handler: negroni.New(
 			middlewares.NewMetricsMiddleware(metricsService),
@@ -92,8 +93,7 @@ func main() {
 		WriteTimeout: 60 * time.Minute,
 		ReadTimeout:  60 * time.Minute,
 	}
-
-	e = httpServer.ListenAndServe()
+	e = httpServer.ListenAndServeTLS(config.CertFile, config.KeyFile)
 	log.Log.Fatalw("http server crashed", "error", e)
 }
 
@@ -278,7 +278,7 @@ func createLocalSignResourceHandler(publicHost string, port int, secret string, 
 
 func createLocalResourceSigner(publicHost string, port int, secret string, resourceType string) bitsgo.ResourceSigner {
 	return &local.LocalResourceSigner{
-		DelegateEndpoint:   fmt.Sprintf("http://%v:%v", publicHost, port),
+		DelegateEndpoint:   fmt.Sprintf("https://%v:%v", publicHost, port),
 		Signer:             &pathsigner.PathSignerValidator{secret, clock.New()},
 		ResourcePathPrefix: "/" + resourceType + "/",
 	}
