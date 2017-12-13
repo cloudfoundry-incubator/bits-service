@@ -174,8 +174,13 @@ func LoadConfig(filename string) (config Config, err error) {
 		publicEndpoint, e := url.Parse(config.PublicEndpoint)
 		if e != nil {
 			errs = append(errs, "public_endpoint is invalid. Caused by:"+e.Error())
-		} else if publicEndpoint.Host == "" {
-			errs = append(errs, "public_endpoint host must not be empty")
+		} else {
+			if publicEndpoint.Host == "" {
+				errs = append(errs, "public_endpoint host must not be empty")
+			}
+			if publicEndpoint.Scheme != "https" {
+				errs = append(errs, "public_endpoint must use https://")
+			}
 		}
 	}
 	if config.PrivateEndpoint == "" {
@@ -184,9 +189,20 @@ func LoadConfig(filename string) (config Config, err error) {
 		privateEndpoint, e := url.Parse(config.PrivateEndpoint)
 		if e != nil {
 			errs = append(errs, "private_endpoint is invalid. Caused by:"+e.Error())
-		} else if privateEndpoint.Host == "" {
-			errs = append(errs, "private_endpoint host must not be empty")
+		} else {
+			if privateEndpoint.Host == "" {
+				errs = append(errs, "private_endpoint host must not be empty")
+			}
+			if privateEndpoint.Scheme != "https" {
+				errs = append(errs, "private_endpoint must use https://")
+			}
 		}
+	}
+	if config.CertFile == "" {
+		errs = append(errs, "cert_file must not be empty")
+	}
+	if config.KeyFile == "" {
+		errs = append(errs, "key_file must not be empty")
 	}
 	if config.MaxBodySize != "" {
 		_, e = bytefmt.ToBytes(config.MaxBodySize)

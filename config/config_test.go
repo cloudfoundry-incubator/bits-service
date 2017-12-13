@@ -45,10 +45,12 @@ logging:
   file: /tmp/bits-service.log
   syslog: vcap.bits-service
   level: debug
-public_endpoint: http://public.127.0.0.1.xip.io
-private_endpoint: http://internal.127.0.0.1.xip.io
+public_endpoint: https://public.127.0.0.1.xip.io
+private_endpoint: https://internal.127.0.0.1.xip.io
 secret: geheim
 port: 8000
+key_file: /some/path
+cert_file: /some/path
 `)
 		config, e := LoadConfig(configFile.Name())
 
@@ -120,11 +122,13 @@ logging:
   file: /tmp/bits-service.log
   syslog: vcap.bits-service
   level: debug
-public_endpoint: http://public.127.0.0.1.xip.io
-private_endpoint: http://internal.127.0.0.1.xip.io
+public_endpoint: https://public.127.0.0.1.xip.io
+private_endpoint: https://internal.127.0.0.1.xip.io
 secret: geheim
 port: 8000
 max_body_size: 13M
+key_file: /some/path
+cert_file: /some/path
 `)
 		config, e := LoadConfig(configFile.Name())
 
