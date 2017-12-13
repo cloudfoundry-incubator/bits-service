@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/benbjohnson/clock"
-	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/blobstores/azure"
 	"github.com/petergtz/bitsgo/blobstores/decorator"
@@ -51,46 +50,27 @@ func main() {
 
 	metricsService := statsd.NewMetricsService()
 
-	appstashHandler := bitsgo.NewAppStashHandler(appStashBlobstore, config.AppStash.MaxBodySizeBytes())
-	packageHandler := bitsgo.NewResourceHandler(packageBlobstore, "package", metricsService, config.Packages.MaxBodySizeBytes())
-	buildpackHandler := bitsgo.NewResourceHandler(buildpackBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes())
-	dropletHandler := bitsgo.NewResourceHandler(dropletBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes())
-	buildpackCacheHandler := bitsgo.NewResourceHandler(buildpackCacheBlobstore, "buildpack_cache", metricsService, config.Droplets.MaxBodySizeBytes())
-
-	rootRouter := mux.NewRouter()
-
-	internalRouter := mux.NewRouter()
-	rootRouter.Host(config.PrivateEndpointUrl().Host).Handler(internalRouter)
-
-	routes.SetUpSignRoute(internalRouter, middlewares.NewBasicAuthMiddleWare(basicAuthCredentialsFrom(config.SigningUsers)...),
-		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler)
-
-	routes.SetUpAppStashRoutes(internalRouter, appstashHandler)
-	routes.SetUpPackageRoutes(internalRouter, packageHandler)
-	routes.SetUpBuildpackRoutes(internalRouter, buildpackHandler)
-	routes.SetUpDropletRoutes(internalRouter, dropletHandler)
-	routes.SetUpBuildpackCacheRoutes(internalRouter, buildpackCacheHandler)
-
-	publicRouter := mux.NewRouter()
-	rootRouter.Host(config.PublicEndpointUrl().Host).Handler(negroni.New(
+	handler := routes.SetUpAllRoutes(
+		config.PrivateEndpointUrl().Host,
+		config.PublicEndpointUrl().Host,
+		middlewares.NewBasicAuthMiddleWare(basicAuthCredentialsFrom(config.SigningUsers)...),
 		&local.SignatureVerificationMiddleware{&pathsigner.PathSignerValidator{config.Secret, clock.New()}},
-		negroni.Wrap(publicRouter),
-	))
-	routes.SetUpPackageRoutes(publicRouter, packageHandler)
-	routes.SetUpBuildpackRoutes(publicRouter, buildpackHandler)
-	routes.SetUpDropletRoutes(publicRouter, dropletHandler)
-	routes.SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheHandler)
-
-	rootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-	})
+		signPackageURLHandler,
+		signDropletURLHandler,
+		signBuildpackURLHandler,
+		signBuildpackCacheURLHandler,
+		bitsgo.NewAppStashHandler(appStashBlobstore, config.AppStash.MaxBodySizeBytes()),
+		bitsgo.NewResourceHandler(packageBlobstore, "package", metricsService, config.Packages.MaxBodySizeBytes()),
+		bitsgo.NewResourceHandler(buildpackBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes()),
+		bitsgo.NewResourceHandler(dropletBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes()),
+		bitsgo.NewResourceHandler(buildpackCacheBlobstore, "buildpack_cache", metricsService, config.Droplets.MaxBodySizeBytes()))
 
 	log.Log.Infow("Starting server", "port", config.Port)
 	httpServer := &http.Server{
 		Handler: negroni.New(
 			middlewares.NewMetricsMiddleware(metricsService),
 			middlewares.NewZapLoggerMiddleware(log.Log),
-			negroni.Wrap(rootRouter)),
+			negroni.Wrap(handler)),
 		Addr:         fmt.Sprintf("0.0.0.0:%v", config.Port),
 		WriteTimeout: 60 * time.Minute,
 		ReadTimeout:  60 * time.Minute,

@@ -5,9 +5,46 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/blobstores/local"
 	"github.com/petergtz/bitsgo/middlewares"
 	"github.com/urfave/negroni"
 )
+
+func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlewares.BasicAuthMiddleware,
+	signatureVerificationMiddleware *local.SignatureVerificationMiddleware,
+	signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler *bitsgo.SignResourceHandler,
+	appstashHandler *bitsgo.AppStashHandler,
+	packageHandler, buildpackHandler, dropletHandler, buildpackCacheHandler *bitsgo.ResourceHandler) http.Handler {
+	rootRouter := mux.NewRouter()
+
+	internalRouter := mux.NewRouter()
+	rootRouter.Host(privateHost).Handler(internalRouter)
+
+	SetUpSignRoute(internalRouter, basicAuthMiddleware,
+		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler)
+
+	SetUpAppStashRoutes(internalRouter, appstashHandler)
+	SetUpPackageRoutes(internalRouter, packageHandler)
+	SetUpBuildpackRoutes(internalRouter, buildpackHandler)
+	SetUpDropletRoutes(internalRouter, dropletHandler)
+	SetUpBuildpackCacheRoutes(internalRouter, buildpackCacheHandler)
+
+	publicRouter := mux.NewRouter()
+	rootRouter.Host(publicHost).Handler(negroni.New(
+		signatureVerificationMiddleware,
+		negroni.Wrap(publicRouter),
+	))
+	SetUpPackageRoutes(publicRouter, packageHandler)
+	SetUpBuildpackRoutes(publicRouter, buildpackHandler)
+	SetUpDropletRoutes(publicRouter, dropletHandler)
+	SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheHandler)
+
+	rootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+
+	return rootRouter
+}
 
 func SetUpAppStashRoutes(router *mux.Router, appStashHandler *bitsgo.AppStashHandler) {
 	router.Path("/app_stash/entries").Methods("POST").HandlerFunc(appStashHandler.PostEntries)
