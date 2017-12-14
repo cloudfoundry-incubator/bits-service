@@ -18,13 +18,21 @@ func AnyTime() (result time.Time) {
 	return
 }
 
-var getSigner = NewMockResourceSigner()
-var putSigner = NewMockResourceSigner()
-
 var _ = Describe("SignResourceHandler", func() {
+	var (
+		getSigner *MockResourceSigner
+		putSigner *MockResourceSigner
+		recorder  *httptest.ResponseRecorder
+	)
+
+	BeforeEach(func() {
+		getSigner = NewMockResourceSigner()
+		putSigner = NewMockResourceSigner()
+		recorder = httptest.NewRecorder()
+	})
+
 	It("Signs a GET URL", func() {
 		When(getSigner.Sign(AnyString(), AnyString(), AnyTime())).ThenReturn("Some get signature")
-		recorder := httptest.NewRecorder()
 		handler := bitsgo.NewSignResourceHandler(getSigner, putSigner)
 		request := httputil.NewRequest("GET", "/foo", nil).Build()
 
@@ -35,7 +43,6 @@ var _ = Describe("SignResourceHandler", func() {
 
 	Context("Invalid method", func() {
 		It("Responds with error code", func() {
-			recorder := httptest.NewRecorder()
 			handler := bitsgo.NewSignResourceHandler(getSigner, putSigner)
 			request := httputil.NewRequest("", "/does", nil).Build()
 
@@ -48,7 +55,6 @@ var _ = Describe("SignResourceHandler", func() {
 	It("Signs a PUT URL", func() {
 		When(putSigner.Sign(AnyString(), AnyString(), AnyTime())).ThenReturn("Some put signature")
 
-		recorder := httptest.NewRecorder()
 		handler := bitsgo.NewSignResourceHandler(getSigner, putSigner)
 		request := httputil.NewRequest("PUT", "/bar", nil).Build()
 
