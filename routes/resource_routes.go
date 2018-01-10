@@ -91,7 +91,7 @@ func SetUpSignRoute(router *mux.Router, basicAuthMiddleware *middlewares.BasicAu
 func wrapWith(basicAuthMiddleware *middlewares.BasicAuthMiddleware, handler *bitsgo.SignResourceHandler) http.Handler {
 	return negroni.New(
 		basicAuthMiddleware,
-		negroni.Wrap(http.HandlerFunc(delegateTo(handler.Sign))),
+		negroni.Wrap(http.HandlerFunc(delegateWithQueryParamsExtractedTo(handler.Sign))),
 	)
 }
 
@@ -103,6 +103,14 @@ func setRouteNotFoundStatusCode(router *mux.Router, statusCode int) {
 
 func delegateTo(delegate func(http.ResponseWriter, *http.Request, map[string]string)) func(http.ResponseWriter, *http.Request) {
 	return func(responseWriter http.ResponseWriter, request *http.Request) {
+		delegate(responseWriter, request, mux.Vars(request))
+	}
+}
+
+func delegateWithQueryParamsExtractedTo(delegate func(http.ResponseWriter, *http.Request, map[string]string)) func(http.ResponseWriter, *http.Request) {
+	return func(responseWriter http.ResponseWriter, request *http.Request) {
+		// TODO: make this more generic
+		mux.Vars(request)["verb"] = request.URL.Query().Get("verb")
 		delegate(responseWriter, request, mux.Vars(request))
 	}
 }

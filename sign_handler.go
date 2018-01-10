@@ -29,8 +29,12 @@ func (handler *SignResourceHandler) Sign(responseWriter http.ResponseWriter, req
 	method := params["verb"]
 	var signer ResourceSigner
 
+	if method == "" {
+		method = "get"
+	}
+
 	switch method {
-	case "", "get":
+	case "get":
 		signer = handler.getResourceSigner
 	case "put":
 		signer = handler.putResourceSigner

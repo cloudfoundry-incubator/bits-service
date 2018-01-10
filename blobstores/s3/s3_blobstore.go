@@ -2,7 +2,6 @@ package s3
 
 import (
 	"io"
-	"log"
 	"strings"
 	"time"
 
@@ -172,13 +171,13 @@ func (signer *Blobstore) Sign(resource string, method string, expirationTime tim
 			Key:    aws.String(resource),
 		})
 	default:
-		panic("The only supported methods are 'put' and 'get'")
+		panic("The only supported methods are 'put' and 'get'. But got '" + method + "'")
 	}
 	// TODO use clock
 	signedURL, e := request.Presign(expirationTime.Sub(time.Now()))
 	if e != nil {
 		panic(e)
 	}
-	log.Printf("Signed URL (verb=%v): %v", method, signedURL)
+	logger.Log.Debugw("Signed URL", "verb", method, "signed-url", signedURL)
 	return
 }
