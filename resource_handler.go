@@ -35,6 +35,44 @@ func NewResourceHandler(blobstore Blobstore, resourceType string, metricsService
 
 // TODO: instead of params, we could use `identifier string` to make the interface more type-safe.
 //       Here and in the other methods.
+func (handler *ResourceHandler) PutNoMultiPart(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
+		return
+	}
+	logger.From(request).Debugw("Octet-Stream")
+
+	digest := request.Header.Get("Digest")
+	if digest == "" {
+		badRequest(responseWriter, "No Digest header")
+		return
+	}
+	parts := strings.Split(digest, "=")
+	if len(parts) != 2 {
+		badRequest(responseWriter, "Digest must have format sha256=value, but is "+digest)
+		return
+	}
+	alg, value := strings.ToLower(parts[0]), parts[1]
+	if alg != "sha256" {
+		badRequest(responseWriter, "Digest must have format sha256=value, but is "+digest)
+		return
+	}
+	if value == "" {
+		badRequest(responseWriter, "Digest must have format sha256=value. Value cannot be empty")
+		return
+	}
+
+	// TODO this can cause an out of memory panic. Should be smart about writing big files to disk instead.
+	content, e := ioutil.ReadAll(request.Body)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	e = handler.blobstore.Put(params["identifier"]+"/"+value, bytes.NewReader(content))
+	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, emptyReader)
+}
+
+// TODO: instead of params, we could use `identifier string` to make the interface more type-safe.
+//       Here and in the other methods.
 func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
@@ -160,7 +198,11 @@ func internalServerError(responseWriter http.ResponseWriter, e error) {
 
 func badRequest(responseWriter http.ResponseWriter, message string, args ...interface{}) {
 	responseBody := fmt.Sprintf(message, args...)
-	logger.Log.Debugw("Bad rquest", "body", responseBody)
+	logger.Log.Debugw("Bad request", "body", responseBody)
 	responseWriter.WriteHeader(http.StatusBadRequest)
-	fmt.Fprintf(responseWriter, responseBody)
+	fprintDescriptionAndCodeAsJSON(responseWriter, "290003", message, args...)
+}
+
+func fprintDescriptionAndCodeAsJSON(responseWriter http.ResponseWriter, code string, description string, a ...interface{}) {
+	fmt.Fprintf(responseWriter, `{"description":"%v","code":%v}`, fmt.Sprintf(description, a...), code)
 }
