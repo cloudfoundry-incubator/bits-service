@@ -271,23 +271,33 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) bitsgo.NoRe
 	case "local":
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			local.NewBlobstore(*blobstoreConfig.LocalConfig))
+			decorator.ForBlobstoreWithPathPrefixing(
+				local.NewBlobstore(*blobstoreConfig.LocalConfig),
+				"app_bits_cache/"))
 	case "s3", "aws":
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			s3.NewBlobstore(*blobstoreConfig.S3Config))
+			decorator.ForBlobstoreWithPathPrefixing(
+				s3.NewBlobstore(*blobstoreConfig.S3Config),
+				"app_bits_cache/"))
 	case "gcp", "google":
 		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			gcp.NewBlobstore(*blobstoreConfig.GCPConfig))
+			decorator.ForBlobstoreWithPathPrefixing(
+				gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
+				"app_bits_cache/"))
 	case "azure":
 		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			azure.NewBlobstore(*blobstoreConfig.AzureConfig))
+			decorator.ForBlobstoreWithPathPrefixing(
+				azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+				"app_bits_cache/"))
 	case "openstack":
 		log.Log.Infow("Creating Openstack blobstore", "container", blobstoreConfig.OpenstackConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig))
+			decorator.ForBlobstoreWithPathPrefixing(
+				openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
+				"app_bits_cache/"))
 	case "webdav":
 		log.Log.Infow("Creating Webdav blobstore",
 			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
