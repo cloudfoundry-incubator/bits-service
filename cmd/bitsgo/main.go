@@ -37,7 +37,7 @@ func main() {
 	config, e := config.LoadConfig(*configPath)
 
 	if e != nil {
-		log.Log.Fatal("Could not load config.", "error", e)
+		log.Log.Fatalw("Could not load config.", "error", e)
 	}
 	log.Log.Infow("Logging level", "log-level", config.Logging.Level)
 	log.SetLogger(createLoggerWith(config.Logging.Level))
