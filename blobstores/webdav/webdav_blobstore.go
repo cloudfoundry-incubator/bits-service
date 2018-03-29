@@ -189,7 +189,13 @@ func (signer *Blobstore) Sign(resource string, method string, expirationTime tim
 
 	// TODO Is this really what we want to do?
 	signedUrl.Host = httputil.MustParse(signer.webdavPublicEndpoint).Host
-	signedUrl.Scheme = httputil.MustParse(signer.webdavPublicEndpoint).Scheme
+
+	// TODO: in the legacy bits-service, this is hard-coded to http, although it should probably be:
+	//       httputil.MustParse(signer.webdavPublicEndpoint).Scheme
+	//       However, certificates currently do not work out yet, when Stager (Rep) tries to access the URL.
+	//       It will then error, because it cannot verify the certificate. Hence, keeping the hard-coded value
+	//       for now to be functinally equivalent.
+	signedUrl.Scheme = "http"
 
 	return signedUrl.String()
 }
