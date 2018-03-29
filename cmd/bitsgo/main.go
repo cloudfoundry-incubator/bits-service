@@ -40,7 +40,8 @@ func main() {
 		log.Log.Fatalw("Could not load config.", "error", e)
 	}
 	log.Log.Infow("Logging level", "log-level", config.Logging.Level)
-	log.SetLogger(createLoggerWith(config.Logging.Level))
+	logger := createLoggerWith(config.Logging.Level)
+	log.SetLogger(logger)
 
 	appStashBlobstore := createAppStashBlobstore(config.AppStash)
 	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpointUrl(), config.Port, config.Secret, "packages")
@@ -74,6 +75,7 @@ func main() {
 		Addr:         fmt.Sprintf("0.0.0.0:%v", config.Port),
 		WriteTimeout: 60 * time.Minute,
 		ReadTimeout:  60 * time.Minute,
+		ErrorLog:     zap.NewStdLog(logger),
 	}
 	e = httpServer.ListenAndServeTLS(config.CertFile, config.KeyFile)
 	log.Log.Fatalw("http server crashed", "error", e)
