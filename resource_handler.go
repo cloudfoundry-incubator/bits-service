@@ -88,8 +88,15 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 
 func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWriter, request *http.Request, identifier string) {
 	file, _, e := request.FormFile(handler.resourceType)
+	if e == http.ErrMissingFile {
+		file, _, e = request.FormFile("bits")
+	}
 	if e != nil {
-		badRequest(responseWriter, "Could not retrieve '%s' form parameter", handler.resourceType)
+		if e == http.ErrMissingFile {
+			badRequest(responseWriter, "Could not retrieve form parameter '%s' or 'bits", handler.resourceType)
+		} else {
+			internalServerError(responseWriter, e)
+		}
 		return
 	}
 	defer file.Close()
@@ -98,7 +105,22 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	e = handler.blobstore.Put(identifier, file)
 	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
 
-	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, emptyReader)
+	// TODO use Clock instead:
+	respBody, marshallingErr := json.Marshal(responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()})
+
+	if marshallingErr != nil {
+		internalServerError(responseWriter, marshallingErr)
+		return
+	}
+
+	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, ioutil.NopCloser(bytes.NewReader(respBody)))
+}
+
+type responseBody struct {
+	Guid      string    `json:"guid"`
+	State     string    `json:"state"`
+	Type      string    `json:"type"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWriter, request *http.Request, identifier string) {
@@ -198,7 +220,7 @@ func internalServerError(responseWriter http.ResponseWriter, e error) {
 
 func badRequest(responseWriter http.ResponseWriter, message string, args ...interface{}) {
 	responseBody := fmt.Sprintf(message, args...)
-	logger.Log.Debugw("Bad request", "body", responseBody)
+	logger.Log.Infow("Bad request", "body", responseBody)
 	responseWriter.WriteHeader(http.StatusBadRequest)
 	fprintDescriptionAndCodeAsJSON(responseWriter, "290003", message, args...)
 }
