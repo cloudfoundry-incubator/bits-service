@@ -132,7 +132,7 @@ type WebdavBlobstoreConfig struct {
 func (config WebdavBlobstoreConfig) CACert() string {
 	caCert, e := ioutil.ReadFile(config.CACertPath)
 	if e != nil {
-		panic(e)
+		panic(errors.Wrapf(e, "Error while reading CA cert file \"%v\"", config.CACertPath))
 	}
 	return string(caCert)
 }

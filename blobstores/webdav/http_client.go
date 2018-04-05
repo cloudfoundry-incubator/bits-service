@@ -15,7 +15,7 @@ func NewHttpClient(pemCerts string, insecureSkipVerify bool) *http.Client {
 	caCertPool := x509.NewCertPool()
 	ok := caCertPool.AppendCertsFromPEM([]byte(pemCerts))
 	if !ok {
-		panic("Could not append pemCerts. pemCerts content:\n\n```\n" + pemCerts + "```")
+		panic("Could not append pemCerts. pemCerts content:\n\n```\n" + pemCerts + "\n```")
 	}
 
 	return &http.Client{
