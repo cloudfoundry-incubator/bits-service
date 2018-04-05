@@ -307,7 +307,7 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) bitsgo.NoRe
 		return decorator.ForBlobstoreWithPathPartitioning(
 			decorator.ForBlobstoreWithPathPrefixing(
 				webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
-				"app_stash/"))
+				"app_stash/app_bits_cache/"))
 	default:
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
 		return nil // satisfy compiler
