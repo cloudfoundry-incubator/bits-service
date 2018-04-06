@@ -108,7 +108,14 @@ var _ = Describe("routes", func() {
 
 				Expect(*responseWriter).To(HaveStatusCodeAndBody(
 					Equal(http.StatusCreated),
-					BeEmpty()))
+					// TODO: Use a proper json comparison.
+					SatisfyAll(
+						MatchRegexp("{.*}"),
+						MatchRegexp(`.*"guid" *: *"[A-Za-z0-9]*".*`),
+						MatchRegexp(`.*"state" *: *"READY".*`),
+						MatchRegexp(`.*"type" *: *"bits".*`),
+						MatchRegexp(`.*"created_at" *:.*`),
+					)))
 
 				Expect(blobstoreEntries).To(HaveKeyWithValue("th/eg/theguid", []byte("My test string")))
 			})
