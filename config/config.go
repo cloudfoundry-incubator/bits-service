@@ -14,10 +14,15 @@ import (
 )
 
 type Config struct {
-	Buildpacks      BlobstoreConfig
-	Droplets        BlobstoreConfig
-	Packages        BlobstoreConfig
-	AppStash        BlobstoreConfig `yaml:"app_stash"`
+	Buildpacks BlobstoreConfig
+	Droplets   BlobstoreConfig
+	Packages   BlobstoreConfig
+	AppStash   BlobstoreConfig `yaml:"app_stash"`
+
+	// BuildpackCache is a Pseudo blobstore, because in reality it is using the Droplets blobstore.
+	// However, we want to be able to control its max_body_size.
+	BuildpackCache BlobstoreConfig `yaml:"buildpack_cache"`
+
 	Logging         LoggingConfig
 	PublicEndpoint  string `yaml:"public_endpoint"`
 	PrivateEndpoint string `yaml:"private_endpoint"`
@@ -164,7 +169,19 @@ func LoadConfig(filename string) (config Config, err error) {
 	config.Packages.GlobalMaxBodySize = config.MaxBodySize
 	config.AppStash.GlobalMaxBodySize = config.MaxBodySize
 	config.Buildpacks.GlobalMaxBodySize = config.MaxBodySize
+	config.BuildpackCache.GlobalMaxBodySize = config.MaxBodySize
+
 	var errs []string
+
+	if config.BuildpackCache.AzureConfig != nil ||
+		config.BuildpackCache.GCPConfig != nil ||
+		config.BuildpackCache.LocalConfig != nil ||
+		config.BuildpackCache.OpenstackConfig != nil ||
+		config.BuildpackCache.S3Config != nil ||
+		config.BuildpackCache.WebdavConfig != nil {
+		errs = append(errs, "buildpack_cache must not have a blobstore configured, as it only exists to allow to configure max_body_size. "+
+			"As blobstore, the droplet blobstore is used.")
+	}
 	if config.Port == 0 {
 		errs = append(errs, "port must be an integer > 0")
 	}

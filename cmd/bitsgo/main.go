@@ -64,7 +64,7 @@ func main() {
 		bitsgo.NewResourceHandler(packageBlobstore, "package", metricsService, config.Packages.MaxBodySizeBytes()),
 		bitsgo.NewResourceHandler(buildpackBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes()),
 		bitsgo.NewResourceHandler(dropletBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes()),
-		bitsgo.NewResourceHandler(buildpackCacheBlobstore, "buildpack_cache", metricsService, config.Droplets.MaxBodySizeBytes()))
+		bitsgo.NewResourceHandler(buildpackCacheBlobstore, "buildpack_cache", metricsService, config.BuildpackCache.MaxBodySizeBytes()))
 
 	log.Log.Infow("Starting server", "port", config.Port)
 	httpServer := &http.Server{
