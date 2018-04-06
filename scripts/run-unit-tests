@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cd $(dirname $0)/..
+
+ginkgo -r --skipPackage=blobstores/contract_integ_test
