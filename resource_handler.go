@@ -24,6 +24,13 @@ type ResourceHandler struct {
 	maxBodySizeLimit uint64
 }
 
+type responseBody struct {
+	Guid      string    `json:"guid"`
+	State     string    `json:"state"`
+	Type      string    `json:"type"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 func NewResourceHandler(blobstore Blobstore, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64) *ResourceHandler {
 	return &ResourceHandler{
 		blobstore:        blobstore,
@@ -107,13 +114,6 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
 	// TODO use Clock instead:
 	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()})
-}
-
-type responseBody struct {
-	Guid      string    `json:"guid"`
-	State     string    `json:"state"`
-	Type      string    `json:"type"`
-	CreatedAt time.Time `json:"created_at"`
 }
 
 func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWriter, request *http.Request, identifier string) {
