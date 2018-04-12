@@ -35,7 +35,7 @@ func NewResourceHandler(blobstore Blobstore, resourceType string, metricsService
 
 // TODO: instead of params, we could use `identifier string` to make the interface more type-safe.
 //       Here and in the other methods.
-func (handler *ResourceHandler) PutNoMultiPart(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+func (handler *ResourceHandler) AddOrReplaceWithDigestInHeader(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
 	}
@@ -68,7 +68,8 @@ func (handler *ResourceHandler) PutNoMultiPart(responseWriter http.ResponseWrite
 		return
 	}
 	e = handler.blobstore.Put(params["identifier"]+"/"+value, bytes.NewReader(content))
-	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, emptyReader)
+	// TODO use Clock instead:
+	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()})
 }
 
 // TODO: instead of params, we could use `identifier string` to make the interface more type-safe.
@@ -104,16 +105,8 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	startTime := time.Now()
 	e = handler.blobstore.Put(identifier, file)
 	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
-
 	// TODO use Clock instead:
-	respBody, marshallingErr := json.Marshal(responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()})
-
-	if marshallingErr != nil {
-		internalServerError(responseWriter, marshallingErr)
-		return
-	}
-
-	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, ioutil.NopCloser(bytes.NewReader(respBody)))
+	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()})
 }
 
 type responseBody struct {
@@ -129,7 +122,8 @@ func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWrite
 		return // response is already handled in sourceGuidFrom
 	}
 	e := handler.blobstore.Copy(sourceGuid, identifier)
-	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, emptyReader)
+	// TODO use Clock instead:
+	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()})
 }
 
 func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) string {
@@ -151,12 +145,12 @@ func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) stri
 
 func (handler *ResourceHandler) HeadOrRedirectAsGet(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	redirectLocation, e := handler.blobstore.HeadOrRedirectAsGet(params["identifier"])
-	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, emptyReader)
+	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, nil, nil)
 }
 
 func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	body, redirectLocation, e := handler.blobstore.GetOrRedirect(params["identifier"])
-	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, body)
+	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, body, nil)
 }
 
 func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
@@ -172,7 +166,7 @@ func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, reque
 		return
 	}
 	e = handler.blobstore.Delete(params["identifier"])
-	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, emptyReader)
+	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, nil, nil)
 }
 
 func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
@@ -182,12 +176,12 @@ func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, re
 		responseWriter.WriteHeader(http.StatusNoContent)
 		return
 	}
-	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, emptyReader)
+	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, nil, nil)
 }
 
 var emptyReader = ioutil.NopCloser(bytes.NewReader(nil))
 
-func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.ResponseWriter, statusCode int, body io.ReadCloser) {
+func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.ResponseWriter, statusCode int, body io.ReadCloser, jsonBody *responseBody) {
 	switch e.(type) {
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
@@ -203,9 +197,23 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		redirect(responseWriter, redirectLocation)
 		return
 	}
-	defer body.Close()
-	responseWriter.WriteHeader(statusCode)
-	io.Copy(responseWriter, body)
+	if body != nil {
+		defer body.Close()
+		responseWriter.WriteHeader(statusCode)
+		io.Copy(responseWriter, body)
+	} else {
+		if jsonBody != nil {
+			respBody, marshallingErr := json.Marshal(jsonBody)
+			if marshallingErr != nil {
+				internalServerError(responseWriter, marshallingErr)
+				return
+			}
+			responseWriter.WriteHeader(statusCode)
+			responseWriter.Write(respBody)
+		} else {
+			responseWriter.WriteHeader(statusCode)
+		}
+	}
 }
 
 func redirect(responseWriter http.ResponseWriter, redirectLocation string) {

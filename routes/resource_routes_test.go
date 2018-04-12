@@ -57,18 +57,18 @@ var _ = Describe("routes", func() {
 		responseWriter = httptest.NewRecorder()
 	})
 
-	ItSupportsMethodsGetPutDeleteFor := func(routeName string, resourceType string) {
+	ItSupportsMethodsGetPutDeleteFor := func(path string, resourceType string, blobstoreKey string) {
 		Context("Method GET", func() {
 			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
-				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/"+routeName+"/theguid", nil))
+				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", path, nil))
 
 				Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
 			})
 
 			It("returns StatusOK and fills body with contents from file located at the partitioned path", func() {
-				blobstoreEntries["th/eg/theguid"] = []byte("thecontent")
+				blobstoreEntries[blobstoreKey] = []byte("thecontent")
 
-				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/"+routeName+"/theguid", nil))
+				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", path, nil))
 
 				Expect(*responseWriter).To(HaveStatusCodeAndBody(
 					Equal(http.StatusOK),
@@ -78,15 +78,15 @@ var _ = Describe("routes", func() {
 
 		Context("Method HEAD", func() {
 			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
-				router.ServeHTTP(responseWriter, httptest.NewRequest("HEAD", "/"+routeName+"/theguid", nil))
+				router.ServeHTTP(responseWriter, httptest.NewRequest("HEAD", path, nil))
 
 				Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
 			})
 
 			It("returns StatusOK and leaves body empty", func() {
-				blobstoreEntries["th/eg/theguid"] = []byte("thecontent")
+				blobstoreEntries[blobstoreKey] = []byte("thecontent")
 
-				router.ServeHTTP(responseWriter, httptest.NewRequest("HEAD", "/"+routeName+"/theguid", nil))
+				router.ServeHTTP(responseWriter, httptest.NewRequest("HEAD", path, nil))
 
 				Expect(*responseWriter).To(HaveStatusCodeAndBody(
 					Equal(http.StatusOK),
@@ -96,42 +96,41 @@ var _ = Describe("routes", func() {
 
 		Context("Method PUT", func() {
 			It("returns StatusBadRequest when "+resourceType+" form file field is missing in request body", func() {
-				router.ServeHTTP(responseWriter, httptest.NewRequest("PUT", "/"+routeName+"/theguid", nil))
+				router.ServeHTTP(responseWriter, httptest.NewRequest("PUT", path, nil))
 
 				Expect(responseWriter.Code).To(Equal(http.StatusBadRequest))
 			})
 
 			It("returns StatusOK and an empty body, and forwards the file reader to the blobstore", func() {
-				router.ServeHTTP(responseWriter, newHttpTestPutRequest("/"+routeName+"/theguid", map[string]map[string]io.Reader{
+				router.ServeHTTP(responseWriter, newHttpTestPutRequest(path, map[string]map[string]io.Reader{
 					resourceType: map[string]io.Reader{"somefilename": strings.NewReader("My test string")},
 				}))
-
 				Expect(*responseWriter).To(HaveStatusCodeAndBody(
 					Equal(http.StatusCreated),
 					// TODO: Use a proper json comparison.
 					SatisfyAll(
 						MatchRegexp("{.*}"),
-						MatchRegexp(`.*"guid" *: *"[A-Za-z0-9]*".*`),
+						MatchRegexp(`.*"guid" *: *"[A-Za-z0-9/]*".*`),
 						MatchRegexp(`.*"state" *: *"READY".*`),
 						MatchRegexp(`.*"type" *: *"bits".*`),
 						MatchRegexp(`.*"created_at" *:.*`),
 					)))
 
-				Expect(blobstoreEntries).To(HaveKeyWithValue("th/eg/theguid", []byte("My test string")))
+				Expect(blobstoreEntries).To(HaveKeyWithValue(blobstoreKey, []byte("My test string")))
 			})
 		})
 
 		Context("Method DELETE", func() {
 			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
-				router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", "/"+routeName+"/theguid", nil))
+				router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", path, nil))
 
 				Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
 			})
 
 			It("returns StatusOK", func() {
-				blobstoreEntries["th/eg/theguid"] = []byte("thecontent")
+				blobstoreEntries[blobstoreKey] = []byte("thecontent")
 
-				router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", "/"+routeName+"/theguid", nil))
+				router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", path, nil))
 
 				Expect(responseWriter.Code).To(Equal(http.StatusNoContent))
 			})
@@ -144,7 +143,7 @@ var _ = Describe("routes", func() {
 				router,
 				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), "package", statsd.NewMetricsService(), 0))
 		})
-		ItSupportsMethodsGetPutDeleteFor("packages", "package")
+		ItSupportsMethodsGetPutDeleteFor("/packages/theguid", "package", "th/eg/theguid")
 	})
 
 	Describe("/droplets/{guid}", func() {
@@ -153,7 +152,33 @@ var _ = Describe("routes", func() {
 				router,
 				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), "droplet", statsd.NewMetricsService(), 0))
 		})
-		ItSupportsMethodsGetPutDeleteFor("droplets", "droplet")
+
+		Context("With digest in URL (/droplets/{guid}/{checksum})", func() {
+			ItSupportsMethodsGetPutDeleteFor("/droplets/theguid/checksum", "droplet", "th/eg/theguid/checksum")
+		})
+
+		Context("With digest in Header (/droplets/{guid}/{digest}; Header: Digest: sha256={checksum})", func() {
+			It("reads the digest from the header", func() {
+				r, e := http.NewRequest("PUT", "/droplets/theguid", strings.NewReader("My test string"))
+				Expect(e).NotTo(HaveOccurred())
+				r.Header.Set("Digest", "sha256=checksum")
+
+				router.ServeHTTP(responseWriter, r)
+
+				Expect(*responseWriter).To(HaveStatusCodeAndBody(
+					Equal(http.StatusCreated),
+					// TODO: Use a proper json comparison.
+					SatisfyAll(
+						MatchRegexp("{.*}"),
+						MatchRegexp(`.*"guid" *: *"[A-Za-z0-9/]*".*`),
+						MatchRegexp(`.*"state" *: *"READY".*`),
+						MatchRegexp(`.*"type" *: *"bits".*`),
+						MatchRegexp(`.*"created_at" *:.*`),
+					)))
+
+				Expect(blobstoreEntries).To(HaveKeyWithValue("th/eg/theguid/checksum", []byte("My test string")))
+			})
+		})
 	})
 
 	Describe("/buildpacks/{guid}", func() {
@@ -162,7 +187,7 @@ var _ = Describe("routes", func() {
 				router,
 				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), "buildpack", statsd.NewMetricsService(), 0))
 		})
-		ItSupportsMethodsGetPutDeleteFor("buildpacks", "buildpack")
+		ItSupportsMethodsGetPutDeleteFor("/buildpacks/theguid", "buildpack", "th/eg/theguid")
 	})
 
 	Describe("/buildpack_cache/entries/{app_guid}/{stack_name}", func() {

@@ -26,7 +26,6 @@ func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlew
 	SetUpAppStashRoutes(internalRouter, appstashHandler)
 	SetUpPackageRoutes(internalRouter, packageHandler)
 	SetUpBuildpackRoutes(internalRouter, buildpackHandler)
-	SetUpDropletRoutePutNoMultipart(internalRouter, dropletHandler)
 	SetUpDropletRoutes(internalRouter, dropletHandler)
 	SetUpBuildpackCacheRoutes(internalRouter, buildpackCacheHandler)
 
@@ -37,7 +36,6 @@ func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlew
 	))
 	SetUpPackageRoutes(publicRouter, packageHandler)
 	SetUpBuildpackRoutes(publicRouter, buildpackHandler)
-	SetUpDropletRoutePutNoMultipart(publicRouter, dropletHandler)
 	SetUpDropletRoutes(publicRouter, dropletHandler)
 	SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheHandler)
 
@@ -62,11 +60,8 @@ func SetUpBuildpackRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHa
 	setUpDefaultMethodRoutes(router.Path("/buildpacks/{identifier}").Subrouter(), resourceHandler)
 }
 
-func SetUpDropletRoutePutNoMultipart(router *mux.Router, resourceHandler *bitsgo.ResourceHandler) {
-	router.Path("/droplets/{identifier:[a-z0-9\\-]+}").Methods("PUT").HandlerFunc(delegateTo(resourceHandler.PutNoMultiPart))
-}
-
 func SetUpDropletRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHandler) {
+	router.Path("/droplets/{identifier:[a-z0-9\\-]+}").Methods("PUT").HandlerFunc(delegateTo(resourceHandler.AddOrReplaceWithDigestInHeader))
 	setUpDefaultMethodRoutes(
 		router.Path("/droplets/{identifier:.*}").Subrouter(), // TODO we could probably be more specific in the regex
 		resourceHandler)
