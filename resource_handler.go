@@ -99,12 +99,12 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	if e == http.ErrMissingFile {
 		file, _, e = request.FormFile("bits")
 	}
+	if e == http.ErrMissingFile {
+		badRequest(responseWriter, "Could not retrieve form parameter '%s' or 'bits", handler.resourceType)
+		return
+	}
 	if e != nil {
-		if e == http.ErrMissingFile {
-			badRequest(responseWriter, "Could not retrieve form parameter '%s' or 'bits", handler.resourceType)
-		} else {
-			internalServerError(responseWriter, e)
-		}
+		internalServerError(responseWriter, e)
 		return
 	}
 	defer file.Close()
