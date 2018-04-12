@@ -238,7 +238,7 @@ testImports:
   - reporters/stenographer/support/go-isatty
   - types
 - name: github.com/petergtz/pegomock
-  version: c92d581608b11f1f674983f784def14927a1ce99
+  version: 22e6f2b05516e96e9a75ada571c8b18bce91899f
   subpackages:
   - internal/verify
 - name: golang.org/x/sys
