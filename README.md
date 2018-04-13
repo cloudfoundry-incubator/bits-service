@@ -38,3 +38,18 @@ Then run it:
 ```
 bitsgo --config my/path/to/config.yml
 ```
+
+To run tests:
+
+1. Install [ginkgo](https://onsi.github.io/ginkgo/#getting-ginkgo)
+1. Configure `$PATH`:
+
+   ```bash
+   export PATH=$GOPATH/bin:$PATH
+   ```
+
+1. Run tests with
+
+	 ```bash
+	 scripts/run-unit-tests
+	 ```
