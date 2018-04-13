@@ -8,6 +8,7 @@ import (
 
 type MetricsService struct {
 	statsdClient *statsd.Client
+	prefix       string
 }
 
 func NewMetricsService() *MetricsService {
@@ -15,12 +16,12 @@ func NewMetricsService() *MetricsService {
 	if e != nil {
 		panic(e)
 	}
-	return &MetricsService{statsdClient: statsdClient}
+	return &MetricsService{statsdClient: statsdClient, prefix: "bits."}
 }
 
 func (service *MetricsService) SendTimingMetric(name string, duration time.Duration) {
-	service.statsdClient.Timing(name, duration.Seconds()*1000)
+	service.statsdClient.Timing(service.prefix+name, duration.Seconds()*1000)
 }
 func (service *MetricsService) SendGaugeMetric(name string, value int64) {
-	service.statsdClient.Gauge(name, value)
+	service.statsdClient.Gauge(service.prefix+name, value)
 }
