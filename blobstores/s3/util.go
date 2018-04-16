@@ -8,10 +8,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-func newS3Client(region string, accessKeyID string, secretAccessKey string) *s3.S3 {
+func newS3Client(region string, accessKeyID string, secretAccessKey string, host string) *s3.S3 {
 	session, e := session.NewSession(&aws.Config{
 		Region:      aws.String(region),
 		Credentials: credentials.NewStaticCredentials(accessKeyID, secretAccessKey, ""),
+		Endpoint:    aws.String(host),
 	})
 	if e != nil {
 		panic(e)

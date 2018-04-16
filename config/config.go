@@ -91,6 +91,7 @@ type S3BlobstoreConfig struct {
 	AccessKeyID     string `yaml:"access_key_id"`
 	SecretAccessKey string `yaml:"secret_access_key"`
 	Region          string
+	Host            string
 }
 
 type GCPBlobstoreConfig struct {

@@ -21,7 +21,7 @@ func TestS3Blobstore(t *testing.T) {
 var _ = Describe("Signing URLs", func() {
 	It("Can create pre-signed URLs for S3", func() {
 		signer := decorator.ForResourceSignerWithPathPartitioning(NewBlobstore(
-			config.S3BlobstoreConfig{"mybucket", "MY-Key_ID", "dummy", "us-east-1"}))
+			config.S3BlobstoreConfig{"mybucket", "MY-Key_ID", "dummy", "us-east-1", ""}))
 
 		signedURL := signer.Sign("myresource", "get", time.Now())
 
