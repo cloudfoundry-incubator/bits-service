@@ -32,6 +32,8 @@ type Config struct {
 	MaxBodySize     string       `yaml:"max_body_size"`
 	CertFile        string       `yaml:"cert_file"`
 	KeyFile         string       `yaml:"key_file"`
+
+	CCUpdater *CCUpdaterConfig `yaml:"cc_updater"`
 }
 
 func (config *Config) PublicEndpointUrl() *url.URL {
@@ -151,6 +153,14 @@ type LoggingConfig struct {
 	Level string
 }
 
+type CCUpdaterConfig struct {
+	Endpoint       string
+	Method         string
+	ClientCertFile string `yaml:"client_cert_file"`
+	ClientKeyFile  string `yaml:"client_key_file"`
+	CACertFile     string `yaml:"ca_cert_file"`
+}
+
 func LoadConfig(filename string) (config Config, err error) {
 	file, e := os.Open(filename)
 	if e != nil {
@@ -227,6 +237,17 @@ func LoadConfig(filename string) (config Config, err error) {
 			errs = append(errs, "max_body_size is invalid. Caused by: "+e.Error())
 		}
 	}
+
+	if config.CCUpdater != nil {
+		config.CCUpdater.Method = "PATCH"
+		u, e := url.Parse(config.CCUpdater.Endpoint)
+		if e != nil {
+			errs = append(errs, "cc_updater.endpoint is invalid. Caused by:"+e.Error())
+		} else if u.Host == "" {
+			errs = append(errs, "cc_updater.endpoint host must not be empty")
+		}
+	}
+
 	// TODO validate CACertsPaths
 	if len(errs) > 0 {
 		return Config{}, errors.New("error in config values: " + strings.Join(errs, "; "))

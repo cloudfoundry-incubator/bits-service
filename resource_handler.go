@@ -2,6 +2,9 @@ package bitsgo
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,11 +20,32 @@ type MetricsService interface {
 	SendTimingMetric(name string, duration time.Duration)
 }
 
+type StateForbiddenError struct {
+	error
+}
+
+func NewStateForbiddenError() *StateForbiddenError {
+	return &StateForbiddenError{fmt.Errorf("StateForbiddenError")}
+}
+
+type Updater interface {
+	NotifyProcessingUpload(guid string) error
+	NotifyUploadSucceeded(guid string, sha1 string, sha2 string) error
+	NotifyUploadFailed(guid string, e error) error
+}
+
+type NullUpdater struct{}
+
+func (u *NullUpdater) NotifyProcessingUpload(guid string) error                          { return nil }
+func (u *NullUpdater) NotifyUploadSucceeded(guid string, sha1 string, sha2 string) error { return nil }
+func (u *NullUpdater) NotifyUploadFailed(guid string, e error) error                     { return nil }
+
 type ResourceHandler struct {
 	blobstore        Blobstore
 	resourceType     string
 	metricsService   MetricsService
 	maxBodySizeLimit uint64
+	updater          Updater
 }
 
 type responseBody struct {
@@ -37,6 +61,17 @@ func NewResourceHandler(blobstore Blobstore, resourceType string, metricsService
 		resourceType:     resourceType,
 		metricsService:   metricsService,
 		maxBodySizeLimit: maxBodySizeLimit,
+		updater:          &NullUpdater{},
+	}
+}
+
+func NewResourceHandlerWithUpdater(blobstore Blobstore, updater Updater, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64) *ResourceHandler {
+	return &ResourceHandler{
+		blobstore:        blobstore,
+		resourceType:     resourceType,
+		metricsService:   metricsService,
+		maxBodySizeLimit: maxBodySizeLimit,
+		updater:          updater,
 	}
 }
 
@@ -109,11 +144,58 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	}
 	defer file.Close()
 
+	e = handler.updater.NotifyProcessingUpload(identifier)
+	if handleNotificationError(e, responseWriter) {
+		return
+	}
+	buffer, e := ioutil.ReadAll(file)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+
 	startTime := time.Now()
-	e = handler.blobstore.Put(identifier, file)
+	e = handler.blobstore.Put(identifier, bytes.NewReader(buffer))
 	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
-	// TODO use Clock instead:
-	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()})
+
+	if e != nil {
+		logger.From(request).Infow("Failed to upload to blobstore.", "error", e)
+		notifyErr := handler.updater.NotifyUploadFailed(identifier, e)
+		if notifyErr != nil {
+			logger.From(request).Errorw("Failed to notifying CC about failed upload.", "error", notifyErr)
+		}
+		if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
+			responseWriter.WriteHeader(http.StatusInsufficientStorage)
+			return
+		}
+		internalServerError(responseWriter, e)
+		return
+	}
+	sha1, sha256 := sha1.Sum(buffer), sha256.Sum256(buffer)
+	e = handler.updater.NotifyUploadSucceeded(identifier, hex.EncodeToString(sha1[:]), hex.EncodeToString(sha256[:]))
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+
+	writeResponseBasedOn("", nil, responseWriter, http.StatusCreated, nil, &responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()})
+}
+
+func handleNotificationError(e error, responseWriter http.ResponseWriter) (wasError bool) {
+	switch e.(type) {
+	case *StateForbiddenError:
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		fprintDescriptionAndCodeAsJSON(responseWriter, "290008", "Cannot update an existing package.")
+		return true
+	case *NotFoundError:
+		responseWriter.WriteHeader(http.StatusNotFound)
+		fprintDescriptionAndCodeAsJSON(responseWriter, "10010", e.Error())
+		return true
+	case error:
+		internalServerError(responseWriter, e)
+		return true
+	}
+	return false
 }
 
 func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWriter, request *http.Request, identifier string) {

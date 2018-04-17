@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/petergtz/bitsgo/ccupdater"
+
 	"github.com/benbjohnson/clock"
 	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/blobstores/azure"
@@ -61,7 +63,12 @@ func main() {
 		signBuildpackURLHandler,
 		signBuildpackCacheURLHandler,
 		bitsgo.NewAppStashHandler(appStashBlobstore, config.AppStash.MaxBodySizeBytes()),
-		bitsgo.NewResourceHandler(packageBlobstore, "package", metricsService, config.Packages.MaxBodySizeBytes()),
+		bitsgo.NewResourceHandlerWithUpdater(
+			packageBlobstore,
+			createUpdater(config.CCUpdater),
+			"package",
+			metricsService,
+			config.Packages.MaxBodySizeBytes()),
 		bitsgo.NewResourceHandler(buildpackBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes()),
 		bitsgo.NewResourceHandler(dropletBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes()),
 		bitsgo.NewResourceHandler(buildpackCacheBlobstore, "buildpack_cache", metricsService, config.BuildpackCache.MaxBodySizeBytes()))
@@ -312,4 +319,16 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) bitsgo.NoRe
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
 		return nil // satisfy compiler
 	}
+}
+
+func createUpdater(ccUpdaterConfig *config.CCUpdaterConfig) bitsgo.Updater {
+	if ccUpdaterConfig == nil {
+		return &bitsgo.NullUpdater{}
+	}
+	return ccupdater.NewCCUpdater(
+		ccUpdaterConfig.Endpoint,
+		ccUpdaterConfig.Method,
+		ccUpdaterConfig.ClientCertFile,
+		ccUpdaterConfig.ClientKeyFile,
+		ccUpdaterConfig.CACertFile)
 }
