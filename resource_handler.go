@@ -111,7 +111,7 @@ func (handler *ResourceHandler) AddOrReplaceWithDigestInHeader(responseWriter ht
 	}
 	e = handler.blobstore.Put(params["identifier"]+"/"+value, bytes.NewReader(content))
 	// TODO use Clock instead:
-	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()})
+	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
 
 // TODO: instead of params, we could use `identifier string` to make the interface more type-safe.
@@ -178,7 +178,7 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 		return
 	}
 
-	writeResponseBasedOn("", nil, responseWriter, http.StatusCreated, nil, &responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()})
+	writeResponseBasedOn("", nil, responseWriter, http.StatusCreated, nil, &responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
 
 func handleNotificationError(e error, responseWriter http.ResponseWriter) (wasError bool) {
@@ -205,7 +205,7 @@ func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWrite
 	}
 	e := handler.blobstore.Copy(sourceGuid, identifier)
 	// TODO use Clock instead:
-	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()})
+	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
 
 func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) string {
@@ -227,12 +227,12 @@ func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) stri
 
 func (handler *ResourceHandler) HeadOrRedirectAsGet(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	redirectLocation, e := handler.blobstore.HeadOrRedirectAsGet(params["identifier"])
-	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, nil, nil)
+	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, nil, nil, "")
 }
 
 func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	body, redirectLocation, e := handler.blobstore.GetOrRedirect(params["identifier"])
-	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, body, nil)
+	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, body, nil, request.Header.Get("If-None-Modify"))
 }
 
 func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
@@ -248,7 +248,7 @@ func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, reque
 		return
 	}
 	e = handler.blobstore.Delete(params["identifier"])
-	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, nil, nil)
+	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, nil, nil, "")
 }
 
 func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
@@ -258,12 +258,12 @@ func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, re
 		responseWriter.WriteHeader(http.StatusNoContent)
 		return
 	}
-	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, nil, nil)
+	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, nil, nil, "")
 }
 
 var emptyReader = ioutil.NopCloser(bytes.NewReader(nil))
 
-func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.ResponseWriter, statusCode int, body io.ReadCloser, jsonBody *responseBody) {
+func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.ResponseWriter, statusCode int, body io.ReadCloser, jsonBody *responseBody, ifNoneModify string) {
 	switch e.(type) {
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
@@ -281,21 +281,36 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 	}
 	if body != nil {
 		defer body.Close()
-		responseWriter.WriteHeader(statusCode)
-		io.Copy(responseWriter, body)
-	} else {
-		if jsonBody != nil {
-			respBody, marshallingErr := json.Marshal(jsonBody)
-			if marshallingErr != nil {
-				internalServerError(responseWriter, marshallingErr)
-				return
-			}
-			responseWriter.WriteHeader(statusCode)
-			responseWriter.Write(respBody)
-		} else {
-			responseWriter.WriteHeader(statusCode)
+		var buffer bytes.Buffer
+		sha := sha1.New()
+		_, e := io.Copy(io.MultiWriter(&buffer, sha), body)
+		if e != nil {
+			internalServerError(responseWriter, e)
+			return
 		}
+		eTag := hex.EncodeToString(sha.Sum(nil))
+		logger.Log.Debugw("Cache check", "if-none-modify", ifNoneModify, "etag", eTag)
+		if ifNoneModify == eTag {
+			responseWriter.WriteHeader(http.StatusNotModified)
+			responseWriter.Header().Set("ETag", eTag)
+			return
+		}
+		responseWriter.WriteHeader(statusCode)
+		responseWriter.Header().Set("ETag", eTag)
+		io.Copy(responseWriter, &buffer)
+		return
 	}
+	if jsonBody != nil {
+		respBody, marshallingErr := json.Marshal(jsonBody)
+		if marshallingErr != nil {
+			internalServerError(responseWriter, marshallingErr)
+			return
+		}
+		responseWriter.WriteHeader(statusCode)
+		responseWriter.Write(respBody)
+		return
+	}
+	responseWriter.WriteHeader(statusCode)
 }
 
 func redirect(responseWriter http.ResponseWriter, redirectLocation string) {

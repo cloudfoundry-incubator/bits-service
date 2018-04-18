@@ -2,6 +2,7 @@ package bitsgo_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"reflect"
 
 	"github.com/petergtz/bitsgo"
@@ -45,6 +46,65 @@ var _ = Describe("ResourceHandler", func() {
 				map[string]string{})
 
 			Expect(responseWriter.Code).To(Equal(http.StatusInsufficientStorage))
+		})
+	})
+
+	Context("Get", func() {
+		Context("No If-None-Modify	 provided in request", func() {
+			It("returns a response with body and StatusOK", func() {
+				When(blobstore.GetOrRedirect(AnyString())).ThenReturn(ioutil.NopCloser(strings.NewReader("hello")), "", nil)
+
+				handler.Get(responseWriter, newGetRequestWithOptionalIfNoneModify(""), nil)
+
+				Expect(responseWriter.Code).To(Equal(http.StatusOK))
+				Expect(responseWriter.Body.String()).To(Equal("hello"))
+			})
+		})
+
+		Context("If-None-Modify provided in request", func() {
+			BeforeEach(func() {
+				When(blobstore.GetOrRedirect(AnyString())).ThenReturn(ioutil.NopCloser(strings.NewReader("hello")), "", nil)
+
+				handler.Get(responseWriter, newGetRequestWithOptionalIfNoneModify(""), nil)
+
+				Expect(responseWriter.Code).To(Equal(http.StatusOK))
+			})
+
+			Context("matches ETag", func() {
+				It("returns a response with empty body and StatusNotModified", func() {
+					When(blobstore.GetOrRedirect(AnyString())).ThenReturn(ioutil.NopCloser(strings.NewReader("hello")), "", nil)
+
+					responseWriterFollowUpRequest := httptest.NewRecorder()
+
+					handler.Get(
+						responseWriterFollowUpRequest,
+						newGetRequestWithOptionalIfNoneModify(responseWriter.HeaderMap.Get("ETag")),
+						nil)
+
+					Expect(responseWriterFollowUpRequest.Code).To(Equal(http.StatusNotModified))
+					Expect(responseWriterFollowUpRequest.Body.String()).To(BeEmpty())
+				})
+			})
+			Context("does not match ETag because content of blob has changed", func() {
+				It("returns a response with body and StatusOK", func() {
+					When(blobstore.GetOrRedirect(AnyString())).
+						ThenReturn(ioutil.NopCloser(strings.NewReader("hello - the content has changed")), "", nil)
+
+					r, e := http.NewRequest("GET", "irrelevant", nil)
+					Expect(e).NotTo(HaveOccurred())
+					r.Header.Set("If-None-Modify", responseWriter.HeaderMap.Get("ETag"))
+
+					responseWriterFollowUpRequest := httptest.NewRecorder()
+
+					handler.Get(
+						responseWriterFollowUpRequest,
+						newGetRequestWithOptionalIfNoneModify(responseWriter.HeaderMap.Get("ETag")),
+						nil)
+
+					Expect(responseWriter.Code).To(Equal(http.StatusOK))
+					Expect(responseWriter.Body.String()).To(Equal("hello"))
+				})
+			})
 		})
 	})
 
@@ -174,4 +234,13 @@ func newTestRequest(resource string, filename string, body string) *http.Request
 		})
 	Expect(e).NotTo(HaveOccurred())
 	return request
+}
+
+func newGetRequestWithOptionalIfNoneModify(ifNoneModify string) *http.Request {
+	r, e := http.NewRequest("GET", "irrelevant", nil)
+	Expect(e).NotTo(HaveOccurred())
+	if ifNoneModify != "" {
+		r.Header.Set("If-None-Modify", ifNoneModify)
+	}
+	return r
 }
