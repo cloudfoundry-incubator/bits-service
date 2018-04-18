@@ -290,13 +290,12 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		}
 		eTag := hex.EncodeToString(sha.Sum(nil))
 		logger.Log.Debugw("Cache check", "if-none-modify", ifNoneModify, "etag", eTag)
+		responseWriter.Header().Set("ETag", eTag)
 		if ifNoneModify == eTag {
 			responseWriter.WriteHeader(http.StatusNotModified)
-			responseWriter.Header().Set("ETag", eTag)
 			return
 		}
 		responseWriter.WriteHeader(statusCode)
-		responseWriter.Header().Set("ETag", eTag)
 		io.Copy(responseWriter, &buffer)
 		return
 	}
