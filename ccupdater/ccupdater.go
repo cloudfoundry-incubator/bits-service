@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/petergtz/bitsgo/logger"
 
@@ -114,7 +115,7 @@ func (updater *CCUpdater) update(guid string, p interface{}) error {
 			"error", e, "guid", guid, "payload", p)
 	}
 
-	r, e := http.NewRequest(updater.method, updater.endpoint+"/"+guid, bytes.NewReader(payload))
+	r, e := http.NewRequest(updater.method, strings.TrimRight(updater.endpoint, "/")+"/"+guid, bytes.NewReader(payload))
 	if e != nil {
 		logger.Log.Fatalw("Unexpected error in CC Updater update when creating new request",
 			"error", e, "guid", guid, "payload", p)
