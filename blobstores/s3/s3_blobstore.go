@@ -26,10 +26,6 @@ func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
 	validate.NotEmpty(config.Region)
 	validate.NotEmpty(config.SecretAccessKey)
 
-	if config.Host != "" {
-		validate.NotEmpty(config.Host)
-	}
-
 	return &Blobstore{
 		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey, config.Host),
 		bucket:   config.Bucket,
