@@ -26,10 +26,13 @@ func NewNoSpaceLeftError() *NoSpaceLeftError {
 }
 
 type Blobstore interface {
-	// returns a NotFoundError when the path doesn't exist.
 	Exists(path string) (bool, error)
 	HeadOrRedirectAsGet(path string) (redirectLocation string, err error)
+
+	// Implementers must return *NotFoundError when the resource cannot be found
 	GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error)
+
+	// Implementers must return *NoSpaceLeftError when there's no space left on device.
 	Put(path string, src io.ReadSeeker) error
 	Copy(src, dest string) error
 	Delete(path string) error
@@ -38,7 +41,11 @@ type Blobstore interface {
 
 type NoRedirectBlobstore interface {
 	Exists(path string) (bool, error)
+
+	// Implementers must return *NotFoundError when the resource cannot be found
 	Get(path string) (body io.ReadCloser, err error)
+
+	// Implementers must return *NoSpaceLeftError when there's no space left on device.
 	Put(path string, src io.ReadSeeker) error
 	Delete(path string) error
 	DeleteDir(prefix string) error

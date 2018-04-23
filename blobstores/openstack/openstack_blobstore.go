@@ -47,6 +47,7 @@ func NewBlobstore(config config.OpenstackBlobstoreConfig) *Blobstore {
 	if e != nil {
 		panic(e)
 	}
+	// https://docs.openstack.org/kilo/config-reference/content/object-storage-tempurl.html
 	e = swiftConn.AccountUpdate(map[string]string{"X-Account-Meta-Temp-URL-Key": config.AccountMetaTempURLKey})
 	if e != nil {
 		panic(e)
