@@ -25,3 +25,7 @@ func (service *MetricsService) SendTimingMetric(name string, duration time.Durat
 func (service *MetricsService) SendGaugeMetric(name string, value int64) {
 	service.statsdClient.Gauge(service.prefix+name, value)
 }
+
+func (service *MetricsService) SendCounterMetric(name string, value int64) {
+	service.statsdClient.Count(service.prefix+name, value)
+}

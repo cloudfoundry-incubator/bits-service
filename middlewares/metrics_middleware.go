@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/urfave/negroni"
 
@@ -13,6 +14,7 @@ import (
 type MetricsService interface {
 	SendTimingMetric(name string, duration time.Duration)
 	SendGaugeMetric(name string, value int64)
+	SendCounterMetric(name string, value int64)
 }
 
 type MetricsMiddleware struct {
@@ -33,8 +35,13 @@ func (middleware *MetricsMiddleware) ServeHTTP(responseWriter http.ResponseWrite
 	next(negroniResponseWriter, request)
 
 	resourceType := ResourceTypeFrom(request.URL.Path)
-	middleware.metricsService.SendTimingMetric(resourceType+"-time", time.Since(startTime))
-	middleware.metricsService.SendGaugeMetric(resourceType+"-size", int64(negroniResponseWriter.Size()))
+	duration := time.Since(startTime)
+	responseStatus := strconv.Itoa(negroniResponseWriter.Status())
+	middleware.metricsService.SendTimingMetric(request.Method+"-"+resourceType+"-time", duration)
+	middleware.metricsService.SendTimingMetric(request.Method+"-"+resourceType+"-"+responseStatus+"-time", duration)
+	middleware.metricsService.SendGaugeMetric(request.Method+"-"+resourceType+"-size", int64(negroniResponseWriter.Size()))
+	middleware.metricsService.SendGaugeMetric(request.Method+"-"+resourceType+"-request-size", int64(request.ContentLength))
+	middleware.metricsService.SendCounterMetric("status-"+responseStatus, 1)
 }
 
 var resourceURLPathPattern = regexp.MustCompile(`^/(\w+)/`)
