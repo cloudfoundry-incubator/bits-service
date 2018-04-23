@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
+	"github.com/Azure/go-autorest/autorest/azure"
 
 	"net/http"
 
@@ -34,10 +35,15 @@ func NewBlobstoreWithDetails(config config.AzureBlobstoreConfig, putBlockSize in
 	validate.NotEmpty(config.AccountKey)
 	validate.NotEmpty(config.AccountName)
 	validate.NotEmpty(config.ContainerName)
+	validate.NotEmpty(config.EnvironmentName())
 
-	client, e := storage.NewBasicClient(config.AccountName, config.AccountKey)
+	environment, e := azure.EnvironmentFromName(config.EnvironmentName())
 	if e != nil {
-		panic(e)
+		logger.Log.Fatalw("Could not get Azure Environment from Name", "error", e, "environment", config.EnvironmentName())
+	}
+	client, e := storage.NewBasicClientOnSovereignCloud(config.AccountName, config.AccountKey, environment)
+	if e != nil {
+		logger.Log.Fatalw("Could not instantiate Azure Basic Client", "error", e)
 	}
 	return &Blobstore{
 		client:         client.GetBlobService(),

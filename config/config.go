@@ -106,6 +106,14 @@ type AzureBlobstoreConfig struct {
 	ContainerName string `yaml:"container_name"`
 	AccountName   string `yaml:"account_name"`
 	AccountKey    string `yaml:"account_key"`
+	Environment   string
+}
+
+func (c *AzureBlobstoreConfig) EnvironmentName() string {
+	if c.Environment != "" {
+		return c.Environment
+	}
+	return "AzurePublicCloud"
 }
 
 type OpenstackBlobstoreConfig struct {
