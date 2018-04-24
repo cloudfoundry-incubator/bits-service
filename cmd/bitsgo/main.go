@@ -126,13 +126,13 @@ func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAu
 
 func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
 	localResourceSigner := createLocalResourceSigner(publicEndpoint, port, secret, resourceType)
-	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
-	case "local":
+	switch blobstoreConfig.BlobstoreType {
+	case config.Local:
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				local.NewBlobstore(*blobstoreConfig.LocalConfig)),
 			createLocalSignResourceHandler(publicEndpoint, port, secret, resourceType)
-	case "s3", "aws":
+	case config.AWS:
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				s3.NewBlobstore(*blobstoreConfig.S3Config)),
@@ -140,7 +140,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 				decorator.ForResourceSignerWithPathPartitioning(
 					s3.NewBlobstore(*blobstoreConfig.S3Config)),
 				localResourceSigner)
-	case "google", "gcp":
+	case config.Google:
 		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				gcp.NewBlobstore(*blobstoreConfig.GCPConfig)),
@@ -148,7 +148,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 				decorator.ForResourceSignerWithPathPartitioning(
 					gcp.NewBlobstore(*blobstoreConfig.GCPConfig)),
 				localResourceSigner)
-	case "azure":
+	case config.Azure:
 		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				azure.NewBlobstore(*blobstoreConfig.AzureConfig)),
@@ -156,7 +156,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 				decorator.ForResourceSignerWithPathPartitioning(
 					azure.NewBlobstore(*blobstoreConfig.AzureConfig)),
 				localResourceSigner)
-	case "openstack":
+	case config.OpenStack:
 		log.Log.Infow("Creating Openstack blobstore", "container", blobstoreConfig.OpenstackConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig)),
@@ -164,7 +164,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 				decorator.ForResourceSignerWithPathPartitioning(
 					openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig)),
 				localResourceSigner)
-	case "webdav":
+	case config.WebDAV:
 		log.Log.Infow("Creating Webdav blobstore",
 			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
 			"private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint)
@@ -186,15 +186,15 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 
 func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
 	localResourceSigner := createLocalResourceSigner(publicEndpoint, port, secret, resourceType)
-	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
-	case "local":
+	switch blobstoreConfig.BlobstoreType {
+	case config.Local:
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
 					local.NewBlobstore(*blobstoreConfig.LocalConfig),
 					"buildpack_cache/")),
 			createLocalSignResourceHandler(publicEndpoint, port, secret, resourceType)
-	case "s3", "aws":
+	case config.AWS:
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
@@ -206,7 +206,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 						s3.NewBlobstore(*blobstoreConfig.S3Config),
 						"buildpack_cache")),
 				localResourceSigner)
-	case "gcp", "google":
+	case config.Google:
 		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
@@ -218,7 +218,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 						gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
 						"buildpack_cache")),
 				localResourceSigner)
-	case "azure":
+	case config.Azure:
 		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
@@ -230,7 +230,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 						azure.NewBlobstore(*blobstoreConfig.AzureConfig),
 						"buildpack_cache")),
 				localResourceSigner)
-	case "openstack":
+	case config.OpenStack:
 		log.Log.Infow("Creating Openstack blobstore", "container", blobstoreConfig.OpenstackConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
@@ -242,7 +242,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 						openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
 						"buildpack_cache")),
 				localResourceSigner)
-	case "webdav":
+	case config.WebDAV:
 		log.Log.Infow("Creating Webdav blobstore",
 			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
 			"private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint)
@@ -276,38 +276,38 @@ func createLocalResourceSigner(publicEndpoint *url.URL, port int, secret string,
 }
 
 func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) bitsgo.NoRedirectBlobstore {
-	switch strings.ToLower(blobstoreConfig.BlobstoreType) {
-	case "local":
+	switch blobstoreConfig.BlobstoreType {
+	case config.Local:
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
 			decorator.ForBlobstoreWithPathPrefixing(
 				local.NewBlobstore(*blobstoreConfig.LocalConfig),
 				"app_bits_cache/"))
-	case "s3", "aws":
+	case config.AWS:
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 			decorator.ForBlobstoreWithPathPrefixing(
 				s3.NewBlobstore(*blobstoreConfig.S3Config),
 				"app_bits_cache/"))
-	case "gcp", "google":
+	case config.Google:
 		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 			decorator.ForBlobstoreWithPathPrefixing(
 				gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
 				"app_bits_cache/"))
-	case "azure":
+	case config.Azure:
 		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 			decorator.ForBlobstoreWithPathPrefixing(
 				azure.NewBlobstore(*blobstoreConfig.AzureConfig),
 				"app_bits_cache/"))
-	case "openstack":
+	case config.OpenStack:
 		log.Log.Infow("Creating Openstack blobstore", "container", blobstoreConfig.OpenstackConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 			decorator.ForBlobstoreWithPathPrefixing(
 				openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
 				"app_bits_cache/"))
-	case "webdav":
+	case config.WebDAV:
 		log.Log.Infow("Creating Webdav blobstore",
 			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
 			"private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint)

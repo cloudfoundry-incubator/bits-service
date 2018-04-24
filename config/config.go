@@ -53,7 +53,7 @@ func (config *Config) PrivateEndpointUrl() *url.URL {
 }
 
 type BlobstoreConfig struct {
-	BlobstoreType     string                    `yaml:"blobstore_type"`
+	BlobstoreType     BlobstoreType             `yaml:"blobstore_type"`
 	LocalConfig       *LocalBlobstoreConfig     `yaml:"local_config"`
 	S3Config          *S3BlobstoreConfig        `yaml:"s3_config"`
 	GCPConfig         *GCPBlobstoreConfig       `yaml:"gcp_config"`
@@ -62,6 +62,26 @@ type BlobstoreConfig struct {
 	WebdavConfig      *WebdavBlobstoreConfig    `yaml:"webdav_config"`
 	MaxBodySize       string                    `yaml:"max_body_size"`
 	GlobalMaxBodySize string                    // Not to be set by yaml
+}
+
+type BlobstoreType string
+
+const (
+	Local     BlobstoreType = "local"
+	AWS       BlobstoreType = "aws"
+	Google    BlobstoreType = "google"
+	Azure     BlobstoreType = "azure"
+	OpenStack BlobstoreType = "openstack"
+	WebDAV    BlobstoreType = "webdav"
+)
+
+var BlobstoreTypes = map[BlobstoreType]bool{
+	Local:     true,
+	AWS:       true,
+	Google:    true,
+	Azure:     true,
+	OpenStack: true,
+	WebDAV:    true,
 }
 
 func (config *BlobstoreConfig) MaxBodySizeBytes() uint64 {
@@ -190,7 +210,17 @@ func LoadConfig(filename string) (config Config, err error) {
 	config.Buildpacks.GlobalMaxBodySize = config.MaxBodySize
 	config.BuildpackCache.GlobalMaxBodySize = config.MaxBodySize
 
+	config.Droplets.BlobstoreType = BlobstoreType(strings.ToLower(string(config.Droplets.BlobstoreType)))
+	config.Packages.BlobstoreType = BlobstoreType(strings.ToLower(string(config.Packages.BlobstoreType)))
+	config.AppStash.BlobstoreType = BlobstoreType(strings.ToLower(string(config.AppStash.BlobstoreType)))
+	config.Buildpacks.BlobstoreType = BlobstoreType(strings.ToLower(string(config.Buildpacks.BlobstoreType)))
+
 	var errs []string
+
+	verifyBlobstoreType(config.Droplets.BlobstoreType, "droplets", errs)
+	verifyBlobstoreType(config.Packages.BlobstoreType, "packages", errs)
+	verifyBlobstoreType(config.AppStash.BlobstoreType, "app_stash", errs)
+	verifyBlobstoreType(config.Buildpacks.BlobstoreType, "buildpacks", errs)
 
 	if config.BuildpackCache.AzureConfig != nil ||
 		config.BuildpackCache.GCPConfig != nil ||
@@ -262,4 +292,14 @@ func LoadConfig(filename string) (config Config, err error) {
 		return Config{}, errors.New("error in config values: " + strings.Join(errs, "; "))
 	}
 	return
+}
+
+func verifyBlobstoreType(blobstoreType BlobstoreType, resourceType string, errs []string) {
+	if !BlobstoreTypes[blobstoreType] {
+		blobstoreKeys := make([]string, 0)
+		for key := range BlobstoreTypes {
+			blobstoreKeys = append(blobstoreKeys, string(key))
+		}
+		errs = append(errs, "Blobstore type '"+string(blobstoreType)+"' for "+resourceType+" is invalid. Valid blobstore types are: "+strings.Join(blobstoreKeys, ", "))
+	}
 }
