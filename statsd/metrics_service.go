@@ -21,6 +21,9 @@ func NewMetricsService() *MetricsService {
 
 func (service *MetricsService) SendTimingMetric(name string, duration time.Duration) {
 	service.statsdClient.Timing(service.prefix+name, duration.Seconds()*1000)
+	// we send this additional metric, because our test envs use metrics.ng.bluemix.net
+	// and for aggregation purposes this service needs this suffix.
+	service.statsdClient.Timing(service.prefix+name+".sparse-avg", duration.Seconds()*1000)
 }
 func (service *MetricsService) SendGaugeMetric(name string, value int64) {
 	service.statsdClient.Gauge(service.prefix+name, value)
