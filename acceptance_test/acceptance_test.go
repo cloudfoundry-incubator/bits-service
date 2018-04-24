@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"testing"
 	"time"
@@ -36,6 +37,7 @@ var _ = Describe("Accessing the bits-service", func() {
 		pathToWebserver, err := gexec.Build("github.com/petergtz/bitsgo/cmd/bitsgo")
 		Ω(err).ShouldNot(HaveOccurred())
 
+		os.Setenv("BITS_LISTEN_ADDR", "127.0.0.1")
 		session, err = gexec.Start(exec.Command(pathToWebserver, "--config", "config.yml"), GinkgoWriter, GinkgoWriter)
 		Ω(err).ShouldNot(HaveOccurred())
 		time.Sleep(200 * time.Millisecond)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -73,13 +74,18 @@ func main() {
 		bitsgo.NewResourceHandler(dropletBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes()),
 		bitsgo.NewResourceHandler(buildpackCacheBlobstore, "buildpack_cache", metricsService, config.BuildpackCache.MaxBodySizeBytes()))
 
+	address := os.Getenv("BITS_LISTEN_ADDR")
+	if address == "" {
+		address = "0.0.0.0"
+	}
+
 	log.Log.Infow("Starting server", "port", config.Port)
 	httpServer := &http.Server{
 		Handler: negroni.New(
 			middlewares.NewMetricsMiddleware(metricsService),
 			middlewares.NewZapLoggerMiddleware(log.Log),
 			negroni.Wrap(handler)),
-		Addr:         fmt.Sprintf("0.0.0.0:%v", config.Port),
+		Addr:         fmt.Sprintf("%v:%v", address, config.Port),
 		WriteTimeout: 60 * time.Minute,
 		ReadTimeout:  60 * time.Minute,
 		ErrorLog:     zap.NewStdLog(logger),
