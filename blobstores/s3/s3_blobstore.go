@@ -29,7 +29,6 @@ type S3Signer interface {
 func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
 	validate.NotEmpty(config.AccessKeyID)
 	validate.NotEmpty(config.Bucket)
-	validate.NotEmpty(config.Region)
 	validate.NotEmpty(config.SecretAccessKey)
 
 	var s3Signer S3Signer = &signer.Default{}
@@ -37,6 +36,9 @@ func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
 		s3Signer = &signer.Google{
 			AccessID:        config.AccessKeyID,
 			SecretAccessKey: config.SecretAccessKey,
+		}
+		if config.Region == "" { // make SDK happy
+			config.Region = "dummy-region"
 		}
 	}
 
