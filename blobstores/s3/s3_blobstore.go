@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/blobstores/s3/signer"
 	"github.com/petergtz/bitsgo/blobstores/validate"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/logger"
@@ -18,6 +19,11 @@ import (
 type Blobstore struct {
 	s3Client *s3.S3
 	bucket   string
+	signer   S3Signer
+}
+
+type S3Signer interface {
+	Sign(req *request.Request, bucket, path string, expires time.Time) (string, error)
 }
 
 func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
@@ -26,9 +32,18 @@ func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
 	validate.NotEmpty(config.Region)
 	validate.NotEmpty(config.SecretAccessKey)
 
+	var s3Signer S3Signer = &signer.Default{}
+	if config.Host == "storage.googleapis.com" {
+		s3Signer = &signer.Google{
+			AccessID:        config.AccessKeyID,
+			SecretAccessKey: config.SecretAccessKey,
+		}
+	}
+
 	return &Blobstore{
 		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey, config.Host),
 		bucket:   config.Bucket,
+		signer:   s3Signer,
 	}
 }
 
@@ -51,7 +66,7 @@ func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation s
 		Bucket: &blobstore.bucket,
 		Key:    &path,
 	})
-	return signedURLFrom(request, blobstore.bucket, path)
+	return blobstore.signer.Sign(request, blobstore.bucket, path, time.Now().Add(time.Hour))
 }
 
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
@@ -74,7 +89,7 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 		Bucket: &blobstore.bucket,
 		Key:    &path,
 	})
-	signedUrl, e := signedURLFrom(request, blobstore.bucket, path)
+	signedUrl, e := blobstore.signer.Sign(request, blobstore.bucket, path, time.Now().Add(time.Hour))
 	return nil, signedUrl, e
 }
 
@@ -89,15 +104,6 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 		return errors.Wrapf(e, "Path %v", path)
 	}
 	return nil
-}
-
-func signedURLFrom(req *request.Request, bucket, path string) (string, error) {
-	signedURL, e := req.Presign(time.Hour)
-	if e != nil {
-		return "", errors.Wrapf(e, "Bucket/Path %v/%v", bucket, path)
-	}
-	return signedURL, nil
-
 }
 
 func (blobstore *Blobstore) Copy(src, dest string) error {
@@ -174,7 +180,7 @@ func (signer *Blobstore) Sign(resource string, method string, expirationTime tim
 		panic("The only supported methods are 'put' and 'get'. But got '" + method + "'")
 	}
 	// TODO use clock
-	signedURL, e := request.Presign(expirationTime.Sub(time.Now()))
+	signedURL, e := signer.signer.Sign(request, signer.bucket, resource, expirationTime)
 	if e != nil {
 		panic(e)
 	}
