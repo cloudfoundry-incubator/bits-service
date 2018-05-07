@@ -26,6 +26,7 @@ import:
   - storage
 - package: github.com/Azure/azure-sdk-for-go
 - package: github.com/ncw/swift
+- package: github.com/cenkalti/backoff
 testImport:
 - package: github.com/onsi/ginkgo
 - package: github.com/petergtz/pegomock

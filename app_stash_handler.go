@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/cenkalti/backoff"
 	"github.com/petergtz/bitsgo/logger"
 	"github.com/pkg/errors"
 )
@@ -211,7 +212,7 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 		return
 	}
 
-	tempZipFilename, e := handler.createTempZipFileFrom(bundlesPayload)
+	tempZipFilename, e := handler.CreateTempZipFileFrom(bundlesPayload)
 	if e != nil {
 		if notFoundError, ok := e.(*NotFoundError); ok {
 			responseWriter.WriteHeader(http.StatusNotFound)
@@ -253,7 +254,7 @@ func anyKeyMissingIn(bundlesPayload []BundlesPayload) (bool, string) {
 	return false, ""
 }
 
-func (handler *AppStashHandler) createTempZipFileFrom(bundlesPayload []BundlesPayload) (tempFilename string, err error) {
+func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []BundlesPayload) (tempFilename string, err error) {
 	tempFile, e := ioutil.TempFile("", "bundles")
 	if e != nil {
 		return "", e
@@ -266,16 +267,24 @@ func (handler *AppStashHandler) createTempZipFileFrom(bundlesPayload []BundlesPa
 			return "", e
 		}
 
-		b, e := handler.blobstore.Get(entry.Sha1)
-		if e != nil {
-			if _, ok := e.(*NotFoundError); ok {
-				return "", NewNotFoundErrorWithMessage(entry.Sha1)
+		e = backoff.Retry(func() error {
+			b, e := handler.blobstore.Get(entry.Sha1)
+			if e != nil {
+				if _, ok := e.(*NotFoundError); ok {
+					return backoff.Permanent(NewNotFoundErrorWithMessage(entry.Sha1))
+				}
+				return e
 			}
-			return "", e
-		}
-		defer b.Close()
+			defer b.Close()
 
-		_, e = io.Copy(zipEntry, b)
+			_, e = io.Copy(zipEntry, b)
+			if e != nil {
+				return e
+			}
+			return nil
+		},
+			backoff.NewExponentialBackOff(),
+		)
 		if e != nil {
 			return "", e
 		}

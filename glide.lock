@@ -1,5 +1,5 @@
-hash: 28f1226ab83e63a496df249a03d14bb1b4812004d03f8ddb8e1685a10dc3aa80
-updated: 2017-06-30T00:11:45.666771593+02:00
+hash: 745bba7ce3b4a25ed5f8b2c058dcd515ca91935010e9793df0752549f7d41e73
+updated: 2018-05-07T13:37:37.594283+02:00
 imports:
 - name: cloud.google.com/go
   version: 7c205da84d8d024a8200be93ab042357c9a70177
@@ -51,7 +51,7 @@ imports:
   subpackages:
   - storage
 - name: github.com/Azure/go-autorest
-  version: 10791a4516e77c53ab10f198f144804cca3d5b43
+  version: f6e08fe5e4d45c9a66e40196d3fed5f37331d224
   subpackages:
   - autorest
   - autorest/adal
@@ -60,6 +60,8 @@ imports:
   - autorest/to
 - name: github.com/benbjohnson/clock
   version: 7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19
+- name: github.com/cenkalti/backoff
+  version: 2ea60e5f094469f9e65adb9cd103795b73ae743e
 - name: github.com/dgrijalva/jwt-go
   version: a539ee1a749a2b895533f979515ac7e6e0f5b650
 - name: github.com/go-ini/ini
@@ -98,6 +100,10 @@ imports:
   - matchers/support/goraph/node
   - matchers/support/goraph/util
   - types
+- name: github.com/petergtz/pegomock
+  version: 22e6f2b05516e96e9a75ada571c8b18bce91899f
+  subpackages:
+  - internal/verify
 - name: github.com/pkg/errors
   version: c605e284fe17294bda444b34710735b29d1a9d90
 - name: github.com/satori/uuid
@@ -107,9 +113,9 @@ imports:
 - name: github.com/urfave/negroni
   version: 460c5567329bbad8917f126d2b386787f48e343b
 - name: go.uber.org/atomic
-  version: 4e336646b2ef9fc6e47be8e21594178f98e5ebcf
+  version: 1ea20fb1cbb1cc08cbd0d913a96dead89aa18289
 - name: go.uber.org/multierr
-  version: ef109dc7f883f3a99db2d89edc701c25cac40571
+  version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
 - name: go.uber.org/zap
   version: e15639dab1b6ca5a651fe7ebfd8d682683b7d6a8
   subpackages:
@@ -237,10 +243,6 @@ testImports:
   - reporters/stenographer/support/go-colorable
   - reporters/stenographer/support/go-isatty
   - types
-- name: github.com/petergtz/pegomock
-  version: 22e6f2b05516e96e9a75ada571c8b18bce91899f
-  subpackages:
-  - internal/verify
 - name: golang.org/x/sys
   version: 90796e5a05ce440b41c768bd9af257005e470461
   subpackages:
