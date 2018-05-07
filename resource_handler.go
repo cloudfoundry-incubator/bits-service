@@ -165,7 +165,7 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 			logger.From(request).Errorw("Failed to notifying CC about failed upload.", "error", notifyErr)
 		}
 		if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
-			responseWriter.WriteHeader(http.StatusInsufficientStorage)
+			http.Error(responseWriter, "Request Entity Too Large", http.StatusInsufficientStorage)
 			return
 		}
 		internalServerError(responseWriter, e)
