@@ -67,22 +67,25 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	e := os.MkdirAll(filepath.Dir(filepath.Join(blobstore.pathPrefix, path)), os.ModeDir|0755)
+	if e.(*os.PathError).Err == syscall.ENOSPC {
+		return bitsgo.NewNoSpaceLeftError()
+	}
 	if e != nil {
 		return fmt.Errorf("Error while creating directories for %v. Caused by: %v", path, e)
 	}
 	file, e := os.Create(filepath.Join(blobstore.pathPrefix, path))
+	if e.(*os.PathError).Err == syscall.ENOSPC {
+		return bitsgo.NewNoSpaceLeftError()
+	}
 	if e != nil {
-		if e.(*os.PathError).Err == syscall.ENOSPC {
-			return bitsgo.NewNoSpaceLeftError()
-		}
 		return fmt.Errorf("Error while creating file %v. Caused by: %v", path, e)
 	}
 	defer file.Close()
 	_, e = io.Copy(file, src)
+	if e.(*os.PathError).Err == syscall.ENOSPC {
+		return bitsgo.NewNoSpaceLeftError()
+	}
 	if e != nil {
-		if e.(*os.PathError).Err == syscall.ENOSPC {
-			return bitsgo.NewNoSpaceLeftError()
-		}
 		return fmt.Errorf("Error while writing file %v. Caused by: %v", path, e)
 	}
 	return nil
@@ -93,26 +96,38 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 	destFull := filepath.Join(blobstore.pathPrefix, dest)
 
 	srcFile, e := os.Open(srcFull)
+	if e.(*os.PathError).Err == syscall.ENOSPC {
+		return bitsgo.NewNoSpaceLeftError()
+	}
+	if os.IsNotExist(e) {
+		return bitsgo.NewNotFoundError()
+	}
 	if e != nil {
-		if os.IsNotExist(e) {
-			return bitsgo.NewNotFoundError()
-		}
 		return errors.Wrapf(e, "Opening src failed. (src=%v, dest=%v)", srcFull, destFull)
 	}
 	defer srcFile.Close()
 
 	e = os.MkdirAll(filepath.Dir(destFull), 0755)
+	if e.(*os.PathError).Err == syscall.ENOSPC {
+		return bitsgo.NewNoSpaceLeftError()
+	}
 	if e != nil {
 		return errors.Wrapf(e, "Make dir failed. (src=%v, dest=%v)", srcFull, destFull)
 	}
 
 	destFile, e := os.Create(destFull)
+	if e.(*os.PathError).Err == syscall.ENOSPC {
+		return bitsgo.NewNoSpaceLeftError()
+	}
 	if e != nil {
 		return errors.Wrapf(e, "Creating dest failed. (src=%v, dest=%v)", srcFull, destFull)
 	}
 	defer destFile.Close()
 
 	_, e = io.Copy(destFile, srcFile)
+	if e.(*os.PathError).Err == syscall.ENOSPC {
+		return bitsgo.NewNoSpaceLeftError()
+	}
 	if e != nil {
 		return errors.Wrapf(e, "Copying failed. (src=%v, dest=%v)", srcFull, destFull)
 	}
@@ -122,10 +137,16 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 
 func (blobstore *Blobstore) Delete(path string) error {
 	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
+	if e.(*os.PathError).Err == syscall.ENOSPC {
+		return bitsgo.NewNoSpaceLeftError()
+	}
 	if os.IsNotExist(e) {
 		return bitsgo.NewNotFoundError()
 	}
 	e = os.RemoveAll(filepath.Join(blobstore.pathPrefix, path))
+	if e.(*os.PathError).Err == syscall.ENOSPC {
+		return bitsgo.NewNoSpaceLeftError()
+	}
 	if e != nil {
 		return fmt.Errorf("Error while deleting file %v. Caused by: %v", path, e)
 	}
@@ -134,6 +155,9 @@ func (blobstore *Blobstore) Delete(path string) error {
 
 func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	e := os.RemoveAll(filepath.Join(blobstore.pathPrefix, prefix))
+	if e.(*os.PathError).Err == syscall.ENOSPC {
+		return bitsgo.NewNoSpaceLeftError()
+	}
 	if e != nil {
 		return errors.Wrapf(e, "Failed to delete path %v", filepath.Join(blobstore.pathPrefix, prefix))
 	}
