@@ -266,7 +266,7 @@ var emptyReader = ioutil.NopCloser(bytes.NewReader(nil))
 func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.ResponseWriter, statusCode int, body io.ReadCloser, jsonBody *responseBody, ifNoneModify string) {
 	switch e.(type) {
 	case *NotFoundError:
-		responseWriter.WriteHeader(http.StatusNotFound)
+		http.NotFound(responseWriter, nil)
 		return
 	case *NoSpaceLeftError:
 		http.Error(responseWriter, "Request Entity Too Large", http.StatusInsufficientStorage)
@@ -276,7 +276,7 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		return
 	}
 	if redirectLocation != "" {
-		redirect(responseWriter, redirectLocation)
+		http.Redirect(responseWriter, nil, redirectLocation, http.StatusFound)
 		return
 	}
 	if body != nil {
@@ -312,14 +312,9 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 	responseWriter.WriteHeader(statusCode)
 }
 
-func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
-	responseWriter.Header().Set("Location", redirectLocation)
-	responseWriter.WriteHeader(http.StatusFound)
-}
-
 func internalServerError(responseWriter http.ResponseWriter, e error) {
 	logger.Log.Errorw("Internal Server Error.", "error", fmt.Sprintf("%+v", e))
-	responseWriter.WriteHeader(http.StatusInternalServerError)
+	http.Error(responseWriter, "Internal Server Error.", http.StatusInternalServerError)
 }
 
 func badRequest(responseWriter http.ResponseWriter, message string, args ...interface{}) {
