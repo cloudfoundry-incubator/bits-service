@@ -113,15 +113,15 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 			continue
 		}
 		sha, e := copyTo(handler.blobstore, zipFileEntry)
+		if _, isNoSpaceLeftError := e.(*NoSpaceLeftError); isNoSpaceLeftError {
+			responseWriter.WriteHeader(http.StatusInsufficientStorage)
+			return
+		}
 		if e != nil {
 			internalServerError(responseWriter, e)
 			return
 		}
 		logger.Log.Debugw("Filemode in zip File Entry", "filemode", zipFileEntry.FileInfo().Mode().String())
-		if e != nil {
-			internalServerError(responseWriter, e)
-			return
-		}
 		bundlesPayload = append(bundlesPayload, BundlesPayload{
 			Sha1: sha,
 			Fn:   zipFileEntry.Name,
