@@ -9,15 +9,11 @@ import (
 )
 
 func newS3Client(region string, accessKeyID string, secretAccessKey string, host string) *s3.S3 {
-	session, e := session.NewSession(&aws.Config{
+	return s3.New(session.Must(session.NewSession(&aws.Config{
 		Region:      aws.String(region),
 		Credentials: credentials.NewStaticCredentials(accessKeyID, secretAccessKey, ""),
 		Endpoint:    aws.String(host),
-	})
-	if e != nil {
-		panic(e)
-	}
-	return s3.New(session)
+	})))
 }
 
 func isS3NotFoundError(e error) bool {
