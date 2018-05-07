@@ -269,7 +269,7 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	case *NoSpaceLeftError:
-		responseWriter.WriteHeader(http.StatusInsufficientStorage)
+		http.Error(responseWriter, "Request Entity Too Large", http.StatusInsufficientStorage)
 		return
 	case error:
 		internalServerError(responseWriter, e)
