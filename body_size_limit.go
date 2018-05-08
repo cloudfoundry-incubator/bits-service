@@ -4,11 +4,14 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/petergtz/bitsgo/logger"
 )
 
 // Note: this changes the request under certain conditions
 func HandleBodySizeLimits(responseWriter http.ResponseWriter, request *http.Request, maxBodySizeLimit uint64) (shouldContinue bool) {
 	if maxBodySizeLimit != 0 {
+		logger.From(request).Debugw("max-body-size is enabled", "max-body-size", maxBodySizeLimit)
 		if request.ContentLength == -1 {
 			badRequest(responseWriter, "HTTP header does not contain Content-Length")
 			return
