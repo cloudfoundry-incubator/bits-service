@@ -24,7 +24,7 @@ type PathSignerValidator struct {
 }
 
 func (signer *PathSignerValidator) Sign(path string, expires time.Time) string {
-	return fmt.Sprintf("%s?md5=%x&expires=%v", path, md5.Sum([]byte(path+signer.Secret)), expires.Unix())
+	return fmt.Sprintf("%s?md5=%x&expires=%v", path, signatureFor(path, signer.Secret, expires), expires.Unix())
 }
 
 func (signer *PathSignerValidator) SignatureValid(u *url.URL) bool {
@@ -36,8 +36,12 @@ func (signer *PathSignerValidator) SignatureValid(u *url.URL) bool {
 		return false
 	}
 
-	if u.Query().Get("md5") != fmt.Sprintf("%x", md5.Sum([]byte(u.Path+signer.Secret))) {
+	if u.Query().Get("md5") != fmt.Sprintf("%x", signatureFor(u.Path, signer.Secret, time.Unix(expires, 0))) {
 		return false
 	}
 	return true
+}
+
+func signatureFor(path string, secret string, expires time.Time) [16]byte {
+	return md5.Sum([]byte(fmt.Sprintf("%v%v %v", expires.Unix(), path, secret)))
 }
