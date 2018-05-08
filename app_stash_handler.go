@@ -114,7 +114,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 		}
 		sha, e := copyTo(handler.blobstore, zipFileEntry)
 		if _, isNoSpaceLeftError := e.(*NoSpaceLeftError); isNoSpaceLeftError {
-			http.Error(responseWriter, "Request Entity Too Large", http.StatusInsufficientStorage)
+			http.Error(responseWriter, descriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
 			return
 		}
 		if e != nil {

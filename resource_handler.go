@@ -165,7 +165,7 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 			logger.From(request).Errorw("Failed to notifying CC about failed upload.", "error", notifyErr)
 		}
 		if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
-			http.Error(responseWriter, "Request Entity Too Large", http.StatusInsufficientStorage)
+			http.Error(responseWriter, descriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
 			return
 		}
 		internalServerError(responseWriter, e)
@@ -269,7 +269,7 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	case *NoSpaceLeftError:
-		http.Error(responseWriter, "Request Entity Too Large", http.StatusInsufficientStorage)
+		http.Error(responseWriter, descriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
 		return
 	case error:
 		internalServerError(responseWriter, e)
@@ -330,5 +330,9 @@ func badRequest(responseWriter http.ResponseWriter, message string, args ...inte
 }
 
 func fprintDescriptionAndCodeAsJSON(responseWriter http.ResponseWriter, code string, description string, a ...interface{}) {
-	fmt.Fprintf(responseWriter, `{"description":"%v","code":%v}`, fmt.Sprintf(description, a...), code)
+	fmt.Fprintf(responseWriter, descriptionAndCodeAsJSON(code, description, a...))
+}
+
+func descriptionAndCodeAsJSON(code string, description string, a ...interface{}) string {
+	return fmt.Sprintf(`{"description":"%v","code":%v}`, fmt.Sprintf(description, a...), code)
 }
