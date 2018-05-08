@@ -137,7 +137,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				local.NewBlobstore(*blobstoreConfig.LocalConfig)),
-			createLocalSignResourceHandler(publicEndpoint, port, secret, resourceType)
+			bitsgo.NewSignResourceHandler(localResourceSigner, localResourceSigner)
 	case config.AWS:
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
@@ -199,7 +199,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 				decorator.ForBlobstoreWithPathPrefixing(
 					local.NewBlobstore(*blobstoreConfig.LocalConfig),
 					"buildpack_cache/")),
-			createLocalSignResourceHandler(publicEndpoint, port, secret, resourceType)
+			bitsgo.NewSignResourceHandler(localResourceSigner, localResourceSigner)
 	case config.AWS:
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
@@ -266,11 +266,6 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
 		return nil, nil // satisfy compiler
 	}
-}
-
-func createLocalSignResourceHandler(publicEndpoint *url.URL, port int, secret string, resourceType string) *bitsgo.SignResourceHandler {
-	signer := createLocalResourceSigner(publicEndpoint, port, secret, resourceType)
-	return bitsgo.NewSignResourceHandler(signer, signer)
 }
 
 func createLocalResourceSigner(publicEndpoint *url.URL, port int, secret string, resourceType string) bitsgo.ResourceSigner {
