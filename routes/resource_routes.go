@@ -74,7 +74,8 @@ func SetUpBuildpackCacheRoutes(router *mux.Router, resourceHandler *bitsgo.Resou
 }
 
 func setUpDefaultMethodRoutes(router *mux.Router, handler *bitsgo.ResourceHandler) {
-	router.Methods("PUT").HandlerFunc(delegateTo(handler.AddOrReplace))
+	router.Methods("PUT").HeadersRegexp("Content-Type", "multipart/form-data").HandlerFunc(delegateTo(handler.AddOrReplace))
+	router.Methods("PUT").HandlerFunc(delegateTo(handler.CopySourceGuid))
 	router.Methods("HEAD").HandlerFunc(delegateTo(handler.HeadOrRedirectAsGet))
 	router.Methods("GET").HandlerFunc(delegateTo(handler.Get))
 	router.Methods("DELETE").HandlerFunc(delegateTo(handler.Delete))

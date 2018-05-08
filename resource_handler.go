@@ -120,16 +120,6 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
 	}
-	if strings.Contains(request.Header.Get("Content-Type"), "multipart/form-data") {
-		logger.From(request).Debugw("Multipart upload")
-		handler.uploadMultipart(responseWriter, request, params["identifier"])
-	} else {
-		logger.From(request).Debugw("Copy source guid")
-		handler.copySourceGuid(responseWriter, request, params["identifier"])
-	}
-}
-
-func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWriter, request *http.Request, identifier string) {
 	file, _, e := request.FormFile(handler.resourceType)
 	if e == http.ErrMissingFile {
 		file, _, e = request.FormFile("bits")
@@ -144,7 +134,7 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	}
 	defer file.Close()
 
-	e = handler.updater.NotifyProcessingUpload(identifier)
+	e = handler.updater.NotifyProcessingUpload(params["identifier"])
 	if handleNotificationError(e, responseWriter) {
 		return
 	}
@@ -155,12 +145,12 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 	}
 
 	startTime := time.Now()
-	e = handler.blobstore.Put(identifier, bytes.NewReader(buffer))
+	e = handler.blobstore.Put(params["identifier"], bytes.NewReader(buffer))
 	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
 
 	if e != nil {
 		logger.From(request).Infow("Failed to upload to blobstore.", "error", e)
-		notifyErr := handler.updater.NotifyUploadFailed(identifier, e)
+		notifyErr := handler.updater.NotifyUploadFailed(params["identifier"], e)
 		if notifyErr != nil {
 			logger.From(request).Errorw("Failed to notifying CC about failed upload.", "error", notifyErr)
 		}
@@ -172,13 +162,13 @@ func (handler *ResourceHandler) uploadMultipart(responseWriter http.ResponseWrit
 		return
 	}
 	sha1, sha256 := sha1.Sum(buffer), sha256.Sum256(buffer)
-	e = handler.updater.NotifyUploadSucceeded(identifier, hex.EncodeToString(sha1[:]), hex.EncodeToString(sha256[:]))
+	e = handler.updater.NotifyUploadSucceeded(params["identifier"], hex.EncodeToString(sha1[:]), hex.EncodeToString(sha256[:]))
 	if e != nil {
 		internalServerError(responseWriter, e)
 		return
 	}
 
-	writeResponseBasedOn("", nil, responseWriter, http.StatusCreated, nil, &responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+	writeResponseBasedOn("", nil, responseWriter, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
 
 func handleNotificationError(e error, responseWriter http.ResponseWriter) (wasError bool) {
@@ -198,14 +188,17 @@ func handleNotificationError(e error, responseWriter http.ResponseWriter) (wasEr
 	return false
 }
 
-func (handler *ResourceHandler) copySourceGuid(responseWriter http.ResponseWriter, request *http.Request, identifier string) {
+func (handler *ResourceHandler) CopySourceGuid(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
+		return
+	}
 	sourceGuid := sourceGuidFrom(request.Body, responseWriter)
 	if sourceGuid == "" {
 		return // response is already handled in sourceGuidFrom
 	}
-	e := handler.blobstore.Copy(sourceGuid, identifier)
+	e := handler.blobstore.Copy(sourceGuid, params["identifier"])
 	// TODO use Clock instead:
-	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: identifier, State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
 
 func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) string {
