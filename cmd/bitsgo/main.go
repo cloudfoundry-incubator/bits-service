@@ -177,11 +177,12 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
 					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
-					resourceType+"/")),
+					blobstoreConfig.WebdavConfig.DirectoryKey+"/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					decorator.ForResourceSignerWithPathPrefixing(
-						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig), resourceType+"/")),
+						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
+						blobstoreConfig.WebdavConfig.DirectoryKey+"/")),
 				localResourceSigner)
 
 	default:
@@ -255,12 +256,12 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
 					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
-					resourceType+"/buildpack_cache/")),
+					blobstoreConfig.WebdavConfig.DirectoryKey+"/buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					decorator.ForResourceSignerWithPathPrefixing(
 						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
-						"buildpack_cache")),
+						blobstoreConfig.WebdavConfig.DirectoryKey+"/buildpack_cache/")),
 				localResourceSigner)
 	default:
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)

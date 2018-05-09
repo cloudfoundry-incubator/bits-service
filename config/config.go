@@ -157,6 +157,7 @@ type OpenstackBlobstoreConfig struct {
 }
 
 type WebdavBlobstoreConfig struct {
+	DirectoryKey    string `yaml:"directory_key"`
 	PrivateEndpoint string `yaml:"private_endpoint"`
 	PublicEndpoint  string `yaml:"public_endpoint"`
 	CACertPath      string `yaml:"ca_cert_path"`
@@ -231,6 +232,20 @@ func LoadConfig(filename string) (config Config, err error) {
 		errs = append(errs, "buildpack_cache must not have a blobstore configured, as it only exists to allow to configure max_body_size. "+
 			"As blobstore, the droplet blobstore is used.")
 	}
+
+	if config.Packages.BlobstoreType == WebDAV && config.Packages.WebdavConfig.DirectoryKey == "" {
+		errs = append(errs, "Packages WebDAV blobstore must have a directory_key configured.")
+	}
+	if config.Droplets.BlobstoreType == WebDAV && config.Droplets.WebdavConfig.DirectoryKey == "" {
+		errs = append(errs, "Droplets WebDAV blobstore must have a directory_key configured.")
+	}
+	if config.Buildpacks.BlobstoreType == WebDAV && config.Buildpacks.WebdavConfig.DirectoryKey == "" {
+		errs = append(errs, "Buildpacks WebDAV blobstore must have a directory_key configured.")
+	}
+	if config.AppStash.BlobstoreType == WebDAV && config.AppStash.WebdavConfig.DirectoryKey == "" {
+		errs = append(errs, "AppStash WebDAV blobstore must have a directory_key configured.")
+	}
+
 	if config.Port == 0 {
 		errs = append(errs, "port must be an integer > 0")
 	}
