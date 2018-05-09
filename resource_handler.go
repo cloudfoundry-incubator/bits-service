@@ -10,10 +10,12 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/petergtz/bitsgo/logger"
+	"github.com/pkg/errors"
 )
 
 type MetricsService interface {
@@ -138,14 +140,25 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 	if handleNotificationError(e, responseWriter) {
 		return
 	}
-	buffer, e := ioutil.ReadAll(file)
+
+	tempFilename, e := CreateTempFileWithContent(file)
 	if e != nil {
 		internalServerError(responseWriter, e)
 		return
 	}
 
+	// Should go into (Go-)Routine
+	defer os.Remove(tempFilename)
+
+	tempFile, e := os.Open(tempFilename)
+	if e != nil {
+		internalServerError(responseWriter, e)
+		return
+	}
+	defer tempFile.Close()
+
 	startTime := time.Now()
-	e = handler.blobstore.Put(params["identifier"], bytes.NewReader(buffer))
+	e = handler.blobstore.Put(params["identifier"], tempFile)
 	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
 
 	if e != nil {
@@ -161,14 +174,52 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 		internalServerError(responseWriter, e)
 		return
 	}
-	sha1, sha256 := sha1.Sum(buffer), sha256.Sum256(buffer)
-	e = handler.updater.NotifyUploadSucceeded(params["identifier"], hex.EncodeToString(sha1[:]), hex.EncodeToString(sha256[:]))
+	sha1, sha256, e := ShaSums(tempFilename)
+	if e != nil {
+		notifyErr := handler.updater.NotifyUploadFailed(params["identifier"], e)
+		if notifyErr != nil {
+			logger.From(request).Errorw("Failed to notifying CC about failed upload.", "error", notifyErr)
+		}
+		internalServerError(responseWriter, e)
+		return
+	}
+	e = handler.updater.NotifyUploadSucceeded(params["identifier"], hex.EncodeToString(sha1), hex.EncodeToString(sha256))
 	if e != nil {
 		internalServerError(responseWriter, e)
 		return
 	}
 
 	writeResponseBasedOn("", nil, responseWriter, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+}
+
+func CreateTempFileWithContent(reader io.Reader) (string, error) {
+	uploadedFile, e := ioutil.TempFile("", "bits")
+	if e != nil {
+		return "", errors.WithStack(e)
+	}
+	_, e = io.Copy(uploadedFile, reader)
+	if e != nil {
+		uploadedFile.Close()
+		return "", errors.WithStack(e)
+	}
+	uploadedFile.Close()
+
+	return uploadedFile.Name(), nil
+}
+
+func ShaSums(filename string) (sha1Sum []byte, sha256Sum []byte, e error) {
+	file, e := os.Open(filename)
+	if e != nil {
+		return nil, nil, errors.WithStack(e)
+	}
+	defer file.Close()
+	sha1Hash := sha1.New()
+	sha256Hash := sha256.New()
+	_, e = io.Copy(io.MultiWriter(sha1Hash, sha256Hash), file)
+	if e != nil {
+		return nil, nil, errors.WithStack(e)
+	}
+	return sha1Hash.Sum(nil), sha256Hash.Sum(nil), nil
 }
 
 func handleNotificationError(e error, responseWriter http.ResponseWriter) (wasError bool) {
