@@ -136,60 +136,20 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 	}
 	defer file.Close()
 
-	e = handler.updater.NotifyProcessingUpload(params["identifier"])
-	if handleNotificationError(e, responseWriter) {
-		return
-	}
-
 	tempFilename, e := CreateTempFileWithContent(file)
 	if e != nil {
 		internalServerError(responseWriter, e)
 		return
 	}
 
-	// Should go into (Go-)Routine
-	defer os.Remove(tempFilename)
-
-	tempFile, e := os.Open(tempFilename)
-	if e != nil {
-		internalServerError(responseWriter, e)
-		return
-	}
-	defer tempFile.Close()
-
-	startTime := time.Now()
-	e = handler.blobstore.Put(params["identifier"], tempFile)
-	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
-
-	if e != nil {
-		logger.From(request).Infow("Failed to upload to blobstore.", "error", e)
-		notifyErr := handler.updater.NotifyUploadFailed(params["identifier"], e)
-		if notifyErr != nil {
-			logger.From(request).Errorw("Failed to notifying CC about failed upload.", "error", notifyErr)
-		}
-		if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
-			http.Error(responseWriter, descriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
-			return
-		}
-		internalServerError(responseWriter, e)
-		return
-	}
-	sha1, sha256, e := ShaSums(tempFilename)
-	if e != nil {
-		notifyErr := handler.updater.NotifyUploadFailed(params["identifier"], e)
-		if notifyErr != nil {
-			logger.From(request).Errorw("Failed to notifying CC about failed upload.", "error", notifyErr)
-		}
-		internalServerError(responseWriter, e)
-		return
-	}
-	e = handler.updater.NotifyUploadSucceeded(params["identifier"], hex.EncodeToString(sha1), hex.EncodeToString(sha256))
-	if e != nil {
-		internalServerError(responseWriter, e)
+	e = handler.updater.NotifyProcessingUpload(params["identifier"])
+	if handleNotificationError(e, responseWriter) {
 		return
 	}
 
-	writeResponseBasedOn("", nil, responseWriter, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+	e = handler.uploadResource(tempFilename, request, params["identifier"])
+
+	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
 
 func CreateTempFileWithContent(reader io.Reader) (string, error) {
@@ -205,6 +165,45 @@ func CreateTempFileWithContent(reader io.Reader) (string, error) {
 	uploadedFile.Close()
 
 	return uploadedFile.Name(), nil
+}
+
+func (handler *ResourceHandler) uploadResource(tempFilename string, request *http.Request, identifier string) error {
+	defer os.Remove(tempFilename)
+
+	tempFile, e := os.Open(tempFilename)
+	if e != nil {
+		return errors.Wrapf(e, "Could not open temporary file '%v'", tempFilename)
+	}
+	defer tempFile.Close()
+
+	startTime := time.Now()
+	e = handler.blobstore.Put(identifier, tempFile)
+	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
+
+	if e != nil {
+		handler.notifyUploadFailed(identifier, e, request)
+		if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
+			return e
+		}
+		return errors.Wrapf(e, "Could not upload temporary file to blobstore")
+	}
+	sha1, sha256, e := ShaSums(tempFilename)
+	if e != nil {
+		handler.notifyUploadFailed(identifier, e, request)
+		return errors.Wrapf(e, "Could not build sha sums of temporary file '%v'", tempFilename)
+	}
+	e = handler.updater.NotifyUploadSucceeded(identifier, hex.EncodeToString(sha1), hex.EncodeToString(sha256))
+	if e != nil {
+		return errors.Wrapf(e, "Could not notify Cloud Controller about successful upload")
+	}
+	return nil
+}
+
+func (handler *ResourceHandler) notifyUploadFailed(identifier string, e error, request *http.Request) {
+	notifyErr := handler.updater.NotifyUploadFailed(identifier, e)
+	if notifyErr != nil {
+		logger.From(request).Errorw("Failed to notifying CC about failed upload.", "error", notifyErr)
+	}
 }
 
 func ShaSums(filename string) (sha1Sum []byte, sha256Sum []byte, e error) {
