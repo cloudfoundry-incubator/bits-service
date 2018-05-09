@@ -163,6 +163,9 @@ func copyTo(blobstore NoRedirectBlobstore, zipFileEntry *zip.File) (sha string, 
 	defer entryFileRead.Close()
 
 	e = blobstore.Put(sha, entryFileRead)
+	if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
+		return "", e
+	}
 	if e != nil {
 		return "", errors.WithStack(e)
 	}
