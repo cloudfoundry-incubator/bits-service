@@ -148,7 +148,7 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 		return
 	}
 
-	e = handler.uploadResource(tempFilename, request, params["identifier"])
+	e = handler.uploadResource(tempFilename, request, params["identifier"], false)
 
 	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
@@ -168,13 +168,13 @@ func CreateTempFileWithContent(reader io.Reader) (string, error) {
 	return uploadedFile.Name(), nil
 }
 
-func (handler *ResourceHandler) uploadResource(tempFilename string, request *http.Request, identifier string) error {
+func (handler *ResourceHandler) uploadResource(tempFilename string, request *http.Request, identifier string, async bool) error {
 	defer os.Remove(tempFilename)
 
 	tempFile, e := os.Open(tempFilename)
 	if e != nil {
 		handler.notifyUploadFailed(identifier, e, request)
-		return errors.Wrapf(e, "Could not open temporary file '%v'", tempFilename)
+		return handle(errors.Wrapf(e, "Could not open temporary file '%v'", tempFilename), async, request)
 	}
 	defer tempFile.Close()
 
@@ -185,20 +185,29 @@ func (handler *ResourceHandler) uploadResource(tempFilename string, request *htt
 	if e != nil {
 		handler.notifyUploadFailed(identifier, e, request)
 		if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
-			return e
+			return handle(e, async, request)
 		}
-		return errors.Wrapf(e, "Could not upload temporary file to blobstore")
+		return handle(errors.Wrapf(e, "Could not upload temporary file to blobstore"), async, request)
 	}
 	sha1, sha256, e := ShaSums(tempFilename)
 	if e != nil {
 		handler.notifyUploadFailed(identifier, e, request)
-		return errors.Wrapf(e, "Could not build sha sums of temporary file '%v'", tempFilename)
+		return handle(errors.Wrapf(e, "Could not build sha sums of temporary file '%v'", tempFilename), async, request)
 	}
 	e = handler.updater.NotifyUploadSucceeded(identifier, hex.EncodeToString(sha1), hex.EncodeToString(sha256))
 	if e != nil {
-		return errors.Wrapf(e, "Could not notify Cloud Controller about successful upload")
+		return handle(errors.Wrapf(e, "Could not notify Cloud Controller about successful upload"), async, request)
 	}
 	return nil
+}
+
+// TODO(pego): find better name for this function
+func handle(e error, async bool, request *http.Request) error {
+	if async {
+		logger.From(request).Errorw("Failure during upload", "error", e)
+		return nil
+	}
+	return e
 }
 
 func (handler *ResourceHandler) notifyUploadFailed(identifier string, e error, request *http.Request) {
