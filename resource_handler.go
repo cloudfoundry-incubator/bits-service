@@ -172,6 +172,7 @@ func (handler *ResourceHandler) uploadResource(tempFilename string, request *htt
 
 	tempFile, e := os.Open(tempFilename)
 	if e != nil {
+		handler.notifyUploadFailed(identifier, e, request)
 		return errors.Wrapf(e, "Could not open temporary file '%v'", tempFilename)
 	}
 	defer tempFile.Close()
