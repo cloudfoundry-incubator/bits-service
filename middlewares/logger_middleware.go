@@ -23,7 +23,9 @@ func NewZapLoggerMiddleware(logger *zap.SugaredLogger) *ZapLoggerMiddleware {
 func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
 	startTime := time.Now()
 
-	requestLogger := middleware.logger.With("request-id", rand.Int63())
+	requestLogger := middleware.logger.With(
+		"request-id", rand.Int63(),
+		"vcap-request-id", request.Header.Get("X-Vcap-Request-Id"))
 
 	requestLogger.Infow(
 		"HTTP Request started",
