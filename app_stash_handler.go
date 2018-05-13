@@ -36,7 +36,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	}
 	body, e := ioutil.ReadAll(request.Body)
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 	var sha1s []struct {
@@ -45,13 +45,13 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	}
 	e = json.Unmarshal(body, &sha1s)
 	if e != nil {
-		logger.Log.Debugw("Invalid body", "body", string(body), "error", e)
+		logger.From(request).Debugw("Invalid body", "body", string(body), "error", e)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 		fmt.Fprintf(responseWriter, "Invalid body %s", body)
 		return
 	}
 	if len(sha1s) == 0 {
-		logger.Log.Debugw("Empty list", "body", string(body), "error", e)
+		logger.From(request).Debugw("Empty list", "body", string(body), "error", e)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 		fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: must be a non-empty array.")
 		return
@@ -60,7 +60,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	for _, entry := range sha1s {
 		exists, e := handler.blobstore.Exists(entry.Sha1)
 		if e != nil {
-			internalServerError(responseWriter, e)
+			internalServerError(responseWriter, request, e)
 			return
 		}
 		if exists {
@@ -69,7 +69,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	}
 	response, e := json.Marshal(&responseSha1)
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 	responseWriter.Write(response)
@@ -81,14 +81,14 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 	}
 	uploadedFile, _, e := request.FormFile("application")
 	if e != nil {
-		badRequest(responseWriter, "Could not retrieve 'application' form parameter")
+		badRequest(responseWriter, request, "Could not retrieve 'application' form parameter")
 		return
 	}
 	defer uploadedFile.Close()
 
 	tempZipFile, e := ioutil.TempFile("", "")
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 	defer os.Remove(tempZipFile.Name())
@@ -96,13 +96,13 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 
 	_, e = io.Copy(tempZipFile, uploadedFile)
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 
 	openZipFile, e := zip.OpenReader(tempZipFile.Name())
 	if e != nil {
-		badRequest(responseWriter, "Bad Request: Not a valid zip file")
+		badRequest(responseWriter, request, "Bad Request: Not a valid zip file")
 		return
 	}
 	defer openZipFile.Close()
@@ -118,10 +118,10 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 			return
 		}
 		if e != nil {
-			internalServerError(responseWriter, e)
+			internalServerError(responseWriter, request, e)
 			return
 		}
-		logger.Log.Debugw("Filemode in zip File Entry", "filemode", zipFileEntry.FileInfo().Mode().String())
+		logger.From(request).Debugw("Filemode in zip File Entry", "filemode", zipFileEntry.FileInfo().Mode().String())
 		bundlesPayload = append(bundlesPayload, BundlesPayload{
 			Sha1: sha,
 			Fn:   zipFileEntry.Name,
@@ -130,7 +130,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 	}
 	receipt, e := json.Marshal(bundlesPayload)
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 	responseWriter.WriteHeader(http.StatusCreated)
@@ -196,7 +196,7 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 	}
 	body, e := ioutil.ReadAll(request.Body)
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 
@@ -222,21 +222,21 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 			fprintDescriptionAsJSON(responseWriter, "%v not found", notFoundError.Error())
 			return
 		}
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 	defer os.Remove(tempZipFilename)
 
 	tempZipFile, e := os.Open(tempZipFilename)
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 	defer tempZipFile.Close()
 
 	_, e = io.Copy(responseWriter, tempZipFile)
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 }

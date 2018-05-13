@@ -13,7 +13,7 @@ func HandleBodySizeLimits(responseWriter http.ResponseWriter, request *http.Requ
 	if maxBodySizeLimit != 0 {
 		logger.From(request).Debugw("max-body-size is enabled", "max-body-size", maxBodySizeLimit)
 		if request.ContentLength == -1 {
-			badRequest(responseWriter, "HTTP header does not contain Content-Length")
+			badRequest(responseWriter, request, "HTTP header does not contain Content-Length")
 			return
 		}
 		if uint64(request.ContentLength) > maxBodySizeLimit {

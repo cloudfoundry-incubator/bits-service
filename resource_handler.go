@@ -87,33 +87,33 @@ func (handler *ResourceHandler) AddOrReplaceWithDigestInHeader(responseWriter ht
 
 	digest := request.Header.Get("Digest")
 	if digest == "" {
-		badRequest(responseWriter, "No Digest header")
+		badRequest(responseWriter, request, "No Digest header")
 		return
 	}
 	parts := strings.Split(digest, "=")
 	if len(parts) != 2 {
-		badRequest(responseWriter, "Digest must have format sha256=value, but is "+digest)
+		badRequest(responseWriter, request, "Digest must have format sha256=value, but is "+digest)
 		return
 	}
 	alg, value := strings.ToLower(parts[0]), parts[1]
 	if alg != "sha256" {
-		badRequest(responseWriter, "Digest must have format sha256=value, but is "+digest)
+		badRequest(responseWriter, request, "Digest must have format sha256=value, but is "+digest)
 		return
 	}
 	if value == "" {
-		badRequest(responseWriter, "Digest must have format sha256=value. Value cannot be empty")
+		badRequest(responseWriter, request, "Digest must have format sha256=value. Value cannot be empty")
 		return
 	}
 
 	// TODO this can cause an out of memory panic. Should be smart about writing big files to disk instead.
 	content, e := ioutil.ReadAll(request.Body)
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 	e = handler.blobstore.Put(params["identifier"]+"/"+value, bytes.NewReader(content))
 	// TODO use Clock instead:
-	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
 
 // TODO: instead of params, we could use `identifier string` to make the interface more type-safe.
@@ -127,29 +127,29 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 		file, _, e = request.FormFile("bits")
 	}
 	if e == http.ErrMissingFile {
-		badRequest(responseWriter, "Could not retrieve form parameter '%s' or 'bits", handler.resourceType)
+		badRequest(responseWriter, request, "Could not retrieve form parameter '%s' or 'bits", handler.resourceType)
 		return
 	}
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 	defer file.Close()
 
 	tempFilename, e := CreateTempFileWithContent(file)
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 
 	e = handler.updater.NotifyProcessingUpload(params["identifier"])
-	if handleNotificationError(e, responseWriter) {
+	if handleNotificationError(e, responseWriter, request) {
 		return
 	}
 
 	e = handler.uploadResource(tempFilename, request, params["identifier"])
 
-	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
 
 func CreateTempFileWithContent(reader io.Reader) (string, error) {
@@ -222,7 +222,7 @@ func ShaSums(filename string) (sha1Sum []byte, sha256Sum []byte, e error) {
 	return sha1Hash.Sum(nil), sha256Hash.Sum(nil), nil
 }
 
-func handleNotificationError(e error, responseWriter http.ResponseWriter) (wasError bool) {
+func handleNotificationError(e error, responseWriter http.ResponseWriter, request *http.Request) (wasError bool) {
 	switch e.(type) {
 	case *StateForbiddenError:
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -233,7 +233,7 @@ func handleNotificationError(e error, responseWriter http.ResponseWriter) (wasEr
 		fprintDescriptionAndCodeAsJSON(responseWriter, "10010", e.Error())
 		return true
 	case error:
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return true
 	}
 	return false
@@ -243,19 +243,19 @@ func (handler *ResourceHandler) CopySourceGuid(responseWriter http.ResponseWrite
 	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
 	}
-	sourceGuid := sourceGuidFrom(request.Body, responseWriter)
+	sourceGuid := sourceGuidFrom(request, responseWriter)
 	if sourceGuid == "" {
 		return // response is already handled in sourceGuidFrom
 	}
 	e := handler.blobstore.Copy(sourceGuid, params["identifier"])
 	// TODO use Clock instead:
-	writeResponseBasedOn("", e, responseWriter, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
 
-func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) string {
-	content, e := ioutil.ReadAll(body)
+func sourceGuidFrom(request *http.Request, responseWriter http.ResponseWriter) string {
+	content, e := ioutil.ReadAll(request.Body)
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return ""
 	}
 	var payload struct {
@@ -263,7 +263,7 @@ func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) stri
 	}
 	e = json.Unmarshal(content, &payload)
 	if e != nil {
-		badRequest(responseWriter, "Body must be valid JSON when request is not multipart/form-data. %+v", e)
+		badRequest(responseWriter, request, "Body must be valid JSON when request is not multipart/form-data. %+v", e)
 		return ""
 	}
 	return payload.SourceGuid
@@ -271,12 +271,12 @@ func sourceGuidFrom(body io.ReadCloser, responseWriter http.ResponseWriter) stri
 
 func (handler *ResourceHandler) HeadOrRedirectAsGet(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	redirectLocation, e := handler.blobstore.HeadOrRedirectAsGet(params["identifier"])
-	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, nil, nil, "")
+	writeResponseBasedOn(redirectLocation, e, responseWriter, request, http.StatusOK, nil, nil, "")
 }
 
 func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	body, redirectLocation, e := handler.blobstore.GetOrRedirect(params["identifier"])
-	writeResponseBasedOn(redirectLocation, e, responseWriter, http.StatusOK, body, nil, request.Header.Get("If-None-Modify"))
+	writeResponseBasedOn(redirectLocation, e, responseWriter, request, http.StatusOK, body, nil, request.Header.Get("If-None-Modify"))
 }
 
 func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
@@ -284,7 +284,7 @@ func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, reque
 	// this check is needed, because S3 does not return a NotFound on a Delete request:
 	exists, e := handler.blobstore.Exists(params["identifier"])
 	if e != nil {
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 	if !exists {
@@ -292,7 +292,7 @@ func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, reque
 		return
 	}
 	e = handler.blobstore.Delete(params["identifier"])
-	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, nil, nil, "")
+	writeResponseBasedOn("", e, responseWriter, request, http.StatusNoContent, nil, nil, "")
 }
 
 func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
@@ -302,12 +302,12 @@ func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, re
 		responseWriter.WriteHeader(http.StatusNoContent)
 		return
 	}
-	writeResponseBasedOn("", e, responseWriter, http.StatusNoContent, nil, nil, "")
+	writeResponseBasedOn("", e, responseWriter, request, http.StatusNoContent, nil, nil, "")
 }
 
 var emptyReader = ioutil.NopCloser(bytes.NewReader(nil))
 
-func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.ResponseWriter, statusCode int, body io.ReadCloser, jsonBody *responseBody, ifNoneModify string) {
+func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.ResponseWriter, request *http.Request, statusCode int, body io.ReadCloser, jsonBody *responseBody, ifNoneModify string) {
 	switch e.(type) {
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
@@ -316,7 +316,7 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		http.Error(responseWriter, descriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
 		return
 	case error:
-		internalServerError(responseWriter, e)
+		internalServerError(responseWriter, request, e)
 		return
 	}
 	if redirectLocation != "" {
@@ -329,11 +329,11 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		sha := sha1.New()
 		_, e := io.Copy(io.MultiWriter(&buffer, sha), body)
 		if e != nil {
-			internalServerError(responseWriter, e)
+			internalServerError(responseWriter, request, e)
 			return
 		}
 		eTag := hex.EncodeToString(sha.Sum(nil))
-		logger.Log.Debugw("Cache check", "if-none-modify", ifNoneModify, "etag", eTag)
+		logger.From(request).Debugw("Cache check", "if-none-modify", ifNoneModify, "etag", eTag)
 		responseWriter.Header().Set("ETag", eTag)
 		if ifNoneModify == eTag {
 			responseWriter.WriteHeader(http.StatusNotModified)
@@ -346,7 +346,7 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 	if jsonBody != nil {
 		respBody, marshallingErr := json.Marshal(jsonBody)
 		if marshallingErr != nil {
-			internalServerError(responseWriter, marshallingErr)
+			internalServerError(responseWriter, request, marshallingErr)
 			return
 		}
 		responseWriter.WriteHeader(statusCode)
@@ -361,14 +361,14 @@ func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
 	responseWriter.WriteHeader(http.StatusFound)
 }
 
-func internalServerError(responseWriter http.ResponseWriter, e error) {
-	logger.Log.Errorw("Internal Server Error.", "error", fmt.Sprintf("%+v", e))
+func internalServerError(responseWriter http.ResponseWriter, request *http.Request, e error) {
+	logger.From(request).Errorw("Internal Server Error.", "error", fmt.Sprintf("%+v", e))
 	responseWriter.WriteHeader(http.StatusInternalServerError)
 }
 
-func badRequest(responseWriter http.ResponseWriter, message string, args ...interface{}) {
+func badRequest(responseWriter http.ResponseWriter, request *http.Request, message string, args ...interface{}) {
 	responseBody := fmt.Sprintf(message, args...)
-	logger.Log.Infow("Bad request", "body", responseBody)
+	logger.From(request).Infow("Bad request", "body", responseBody)
 	responseWriter.WriteHeader(http.StatusBadRequest)
 	fprintDescriptionAndCodeAsJSON(responseWriter, "290003", message, args...)
 }
