@@ -13,8 +13,10 @@ type RemoveTempFilesMiddleware struct{}
 func (m *RemoveTempFilesMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
 	next(responseWriter, request)
 
-	e := request.MultipartForm.RemoveAll()
-	if e != nil {
-		logger.From(request).Errorw("Could not delete multipart temporary files", "error", e)
+	if request.MultipartForm != nil {
+		e := request.MultipartForm.RemoveAll()
+		if e != nil {
+			logger.From(request).Errorw("Could not delete multipart temporary files", "error", e)
+		}
 	}
 }
