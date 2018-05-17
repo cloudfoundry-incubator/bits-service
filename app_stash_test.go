@@ -2,13 +2,21 @@ package bitsgo_test
 
 import (
 	"archive/zip"
+	"bytes"
 	"errors"
+	"io"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/httputil"
 	. "github.com/petergtz/bitsgo/matchers"
 	. "github.com/petergtz/pegomock"
 )
@@ -17,11 +25,106 @@ var _ = Describe("AppStash", func() {
 	var (
 		blobstore       *MockNoRedirectBlobstore
 		appStashHandler *bitsgo.AppStashHandler
+		responseWriter  *httptest.ResponseRecorder
 	)
 
 	BeforeEach(func() {
 		blobstore = NewMockNoRedirectBlobstore()
 		appStashHandler = bitsgo.NewAppStashHandler(blobstore, 0)
+		responseWriter = httptest.NewRecorder()
+	})
+
+	Describe("PostBundles", func() {
+
+		BeforeEach(func() {
+			When(blobstore.Get(AnyString())).ThenReturn(nil, bitsgo.NewNotFoundError())
+			When(blobstore.Get("shaA")).ThenReturn(ioutil.NopCloser(strings.NewReader("cached content")), nil)
+		})
+
+		Context("non-multipart/form-data request", func() {
+			It("bundles all files from blobstore into zip bundle", func() {
+
+				// TODO this should be a POST request, but it doesn't really matter
+				r := httptest.NewRequest("POST", "http://example.com", strings.NewReader(`[
+						{
+							"sha1":"shaA",
+							"fn":"filenameA"
+						}
+					]`))
+
+				appStashHandler.PostBundles(responseWriter, r)
+
+				Expect(responseWriter.Code).To(Equal(http.StatusOK), responseWriter.Body.String())
+				zipReader, e := zip.NewReader(bytes.NewReader(responseWriter.Body.Bytes()), int64(responseWriter.Body.Len()))
+				Expect(e).NotTo(HaveOccurred())
+
+				Expect(zipReader.File[0].FileInfo().Name()).To(Equal("filenameA"))
+				zipContent, e := zipReader.File[0].Open()
+				Expect(e).NotTo(HaveOccurred())
+				Expect(ioutil.ReadAll(zipContent)).To(MatchRegexp("cached content"))
+			})
+		})
+
+		Context("multipart/form-data request", func() {
+			It("bundles all files from blobstore and from uploaded zip into zip bundle", func() {
+				_, filename, _, _ := runtime.Caller(0)
+
+				zipFile, e := os.Open(filepath.Join(filepath.Dir(filename), "asset", "test-file.zip"))
+				Expect(e).NotTo(HaveOccurred())
+				defer zipFile.Close()
+
+				// TODO this should be a POST request, but it doesn't really matter
+				r, e := httputil.NewPutRequest("some url", map[string]map[string]io.Reader{
+					"resources": map[string]io.Reader{"irrelevant": strings.NewReader(`[
+						{
+							"sha1":"shaA",
+							"fn":"filenameA"
+						}
+						]`)},
+					"application": map[string]io.Reader{"irrelevant": zipFile},
+				})
+
+				Expect(e).NotTo(HaveOccurred())
+
+				appStashHandler.PostBundles(responseWriter, r)
+
+				Expect(responseWriter.Code).To(Equal(http.StatusOK), responseWriter.Body.String())
+				zipReader, e := zip.NewReader(bytes.NewReader(responseWriter.Body.Bytes()), int64(responseWriter.Body.Len()))
+				Expect(e).NotTo(HaveOccurred())
+
+				Expect(zipReader.File[0].FileInfo().Name()).To(Equal("filenameB"))
+				zipContent, e := zipReader.File[0].Open()
+				Expect(e).NotTo(HaveOccurred())
+				Expect(ioutil.ReadAll(zipContent)).To(MatchRegexp("test-content"))
+
+				Expect(zipReader.File[1].FileInfo().Name()).To(Equal("filenameA"))
+				zipContent, e = zipReader.File[1].Open()
+				Expect(e).NotTo(HaveOccurred())
+				Expect(ioutil.ReadAll(zipContent)).To(MatchRegexp("cached content"))
+			})
+
+			Context("application form parameter is missing", func() {
+				It("returns StatusBadRequest", func() {
+					r, e := httputil.NewPutRequest("some url", map[string]map[string]io.Reader{
+						"resources": map[string]io.Reader{"irrelevant": strings.NewReader(`[
+							{
+								"sha1":"shaA",
+								"fn":"filenameA"
+							},
+							{
+								"sha1":"shaB",
+								"fn":"filenameB"
+							}
+						]`)}})
+					Expect(e).NotTo(HaveOccurred())
+
+					appStashHandler.PostBundles(responseWriter, r)
+
+					Expect(responseWriter.Code).To(Equal(http.StatusBadRequest), responseWriter.Body.String())
+				})
+			})
+		})
+
 	})
 
 	Describe("CreateTempZipFileFrom", func() {
@@ -34,7 +137,7 @@ var _ = Describe("AppStash", func() {
 					Fn:   "filename1",
 					Mode: "644",
 				},
-			})
+			}, nil)
 			Expect(e).NotTo(HaveOccurred())
 
 			reader, e := zip.OpenReader(tempFileName)
@@ -56,7 +159,7 @@ var _ = Describe("AppStash", func() {
 							Fn:   "filename1",
 							Mode: "644",
 						},
-					})
+					}, nil)
 					Expect(e).NotTo(HaveOccurred())
 
 					reader, e := zip.OpenReader(tempFileName)
@@ -90,7 +193,7 @@ var _ = Describe("AppStash", func() {
 							Fn:   "filename2",
 							Mode: "644",
 						},
-					})
+					}, nil)
 					Expect(e).NotTo(HaveOccurred())
 
 					reader, e := zip.OpenReader(tempFileName)

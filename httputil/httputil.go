@@ -38,9 +38,6 @@ func (request *Request) WithHeader(key, value string) *Request {
 }
 
 func NewPutRequest(url string, formFiles map[string]map[string]io.Reader) (*http.Request, error) {
-	if len(formFiles) > 1 {
-		panic("More than one formFile is not supported yet")
-	}
 	bodyBuf := &bytes.Buffer{}
 	contentType, e := AddFormFileTo(bodyBuf, formFiles)
 	if e != nil {

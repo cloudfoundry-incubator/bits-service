@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/cenkalti/backoff"
 	"github.com/petergtz/bitsgo/logger"
@@ -194,7 +195,42 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
 	}
-	body, e := ioutil.ReadAll(request.Body)
+
+	var (
+		resources io.Reader
+		e         error
+	)
+	var zipReader *zip.Reader
+	if strings.Contains(request.Header.Get("Content-Type"), "multipart/form-data") {
+		resources, _, e = request.FormFile("resources")
+		if e == http.ErrMissingFile {
+			badRequest(responseWriter, request, "Could not retrieve form parameter 'resources")
+			return
+		}
+		if e != nil {
+			internalServerError(responseWriter, request, e)
+			return
+		}
+		zipFile, fi, e := request.FormFile("application")
+		if e == http.ErrMissingFile {
+			badRequest(responseWriter, request, "Could not retrieve form parameter 'application")
+			return
+		}
+		if e != nil {
+			internalServerError(responseWriter, request, e)
+			return
+		}
+		defer zipFile.Close()
+		zipReader, e = zip.NewReader(zipFile, fi.Size)
+		if e != nil {
+			internalServerError(responseWriter, request, e)
+			return
+		}
+	} else {
+		resources = request.Body
+	}
+
+	body, e := ioutil.ReadAll(resources)
 	if e != nil {
 		internalServerError(responseWriter, request, e)
 		return
@@ -215,7 +251,7 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 		return
 	}
 
-	tempZipFilename, e := handler.CreateTempZipFileFrom(bundlesPayload)
+	tempZipFilename, e := handler.CreateTempZipFileFrom(bundlesPayload, zipReader)
 	if e != nil {
 		if notFoundError, ok := e.(*NotFoundError); ok {
 			responseWriter.WriteHeader(http.StatusNotFound)
@@ -257,13 +293,35 @@ func anyKeyMissingIn(bundlesPayload []BundlesPayload) (bool, string) {
 	return false, ""
 }
 
-func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []BundlesPayload) (tempFilename string, err error) {
+func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []BundlesPayload, zipReader *zip.Reader) (tempFilename string, err error) {
 	tempFile, e := ioutil.TempFile("", "bundles")
 	if e != nil {
 		return "", e
 	}
 	defer tempFile.Close()
 	zipWriter := zip.NewWriter(tempFile)
+
+	if zipReader != nil {
+		for _, zipInputFileEntry := range zipReader.File {
+			if !zipInputFileEntry.FileInfo().Mode().IsRegular() {
+				continue
+			}
+			zipFileEntryWriter, e := zipWriter.CreateHeader(zipEntryHeader(zipInputFileEntry.FileInfo().Name(), zipInputFileEntry.FileInfo().Mode()))
+			if e != nil {
+				return "", e
+			}
+			zipEntryReader, e := zipInputFileEntry.Open()
+			if e != nil {
+				return "", e
+			}
+			defer zipEntryReader.Close()
+			_, e = io.Copy(zipFileEntryWriter, zipEntryReader)
+			if e != nil {
+				return "", e
+			}
+		}
+	}
+
 	for _, entry := range bundlesPayload {
 		zipEntry, e := zipWriter.CreateHeader(zipEntryHeader(entry.Fn, fileModeFrom(entry.Mode)))
 		if e != nil {
