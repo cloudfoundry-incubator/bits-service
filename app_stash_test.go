@@ -83,8 +83,14 @@ var _ = Describe("AppStash", func() {
 						]`)},
 					"application": map[string]io.Reader{"irrelevant": zipFile},
 				})
-
 				Expect(e).NotTo(HaveOccurred())
+
+				var uploadContent []byte
+				When(blobstore.Put(AnyString(), anyReadSeeker())).Then(func(params []Param) ReturnValues {
+					uploadContent, e = ioutil.ReadAll(params[1].(io.ReadSeeker))
+					Expect(e).NotTo(HaveOccurred())
+					return []ReturnValue{nil}
+				})
 
 				appStashHandler.PostBundles(responseWriter, r)
 
@@ -102,10 +108,8 @@ var _ = Describe("AppStash", func() {
 				Expect(e).NotTo(HaveOccurred())
 				Expect(ioutil.ReadAll(zipContent)).To(MatchRegexp("cached content"))
 
-				_, uploadContent := blobstore.VerifyWasCalledOnce().Put(
-					EqString("b971c6ef19b1d70ae8f0feb989b106c319b36230"), anyReadSeeker()).
-					GetCapturedArguments()
-				Expect(ioutil.ReadAll(uploadContent)).To(MatchRegexp("test-content"))
+				blobstore.VerifyWasCalledOnce().Put(EqString("b971c6ef19b1d70ae8f0feb989b106c319b36230"), anyReadSeeker())
+				Expect(uploadContent).To(MatchRegexp("test-content"))
 			})
 
 			Context("application form parameter is missing", func() {
