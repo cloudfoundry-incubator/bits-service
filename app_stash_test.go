@@ -101,6 +101,11 @@ var _ = Describe("AppStash", func() {
 				zipContent, e = zipReader.File[1].Open()
 				Expect(e).NotTo(HaveOccurred())
 				Expect(ioutil.ReadAll(zipContent)).To(MatchRegexp("cached content"))
+
+				_, uploadContent := blobstore.VerifyWasCalledOnce().Put(
+					EqString("b971c6ef19b1d70ae8f0feb989b106c319b36230"), anyReadSeeker()).
+					GetCapturedArguments()
+				Expect(ioutil.ReadAll(uploadContent)).To(MatchRegexp("test-content"))
 			})
 
 			Context("application form parameter is missing", func() {

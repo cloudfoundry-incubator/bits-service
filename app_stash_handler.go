@@ -3,6 +3,7 @@ package bitsgo
 import (
 	"archive/zip"
 	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -315,7 +316,33 @@ func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []BundlesPa
 				return "", e
 			}
 			defer zipEntryReader.Close()
-			_, e = io.Copy(zipFileEntryWriter, zipEntryReader)
+
+			tempFile, e := ioutil.TempFile("", "app-stash")
+			if e != nil {
+				return "", e
+			}
+			defer os.Remove(tempFile.Name())
+			defer tempFile.Close()
+
+			sha := sha1.New()
+			_, e = io.Copy(io.MultiWriter(zipFileEntryWriter, tempFile, sha), zipEntryReader)
+			if e != nil {
+				return "", e
+			}
+			e = tempFile.Close()
+			if e != nil {
+				return "", e
+			}
+			e = zipEntryReader.Close()
+			if e != nil {
+				return "", e
+			}
+			tempFile, e = os.Open(tempFile.Name())
+			if e != nil {
+				return "", e
+			}
+			defer tempFile.Close()
+			e = handler.blobstore.Put(hex.EncodeToString(sha.Sum(nil)), tempFile)
 			if e != nil {
 				return "", e
 			}
