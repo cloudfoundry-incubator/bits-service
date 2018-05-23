@@ -16,6 +16,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/petergtz/bitsgo"
+	inmemory "github.com/petergtz/bitsgo/blobstores/inmemory"
 	"github.com/petergtz/bitsgo/httputil"
 	. "github.com/petergtz/bitsgo/matchers"
 	. "github.com/petergtz/pegomock"
@@ -23,13 +24,13 @@ import (
 
 var _ = Describe("AppStash", func() {
 	var (
-		blobstore       *MockNoRedirectBlobstore
+		blobstore       *inmemory.Blobstore
 		appStashHandler *bitsgo.AppStashHandler
 		responseWriter  *httptest.ResponseRecorder
 	)
 
 	BeforeEach(func() {
-		blobstore = NewMockNoRedirectBlobstore()
+		blobstore = inmemory.NewBlobstore()
 		appStashHandler = bitsgo.NewAppStashHandler(blobstore, 0)
 		responseWriter = httptest.NewRecorder()
 	})
@@ -37,9 +38,8 @@ var _ = Describe("AppStash", func() {
 	Describe("PostBundles", func() {
 
 		BeforeEach(func() {
-			When(blobstore.Get(AnyString())).ThenReturn(nil, bitsgo.NewNotFoundError())
-			When(blobstore.Get("shaA")).ThenReturn(ioutil.NopCloser(strings.NewReader("cached content")), nil)
-			When(blobstore.Get("shaC")).ThenReturn(ioutil.NopCloser(strings.NewReader("another cached content")), nil)
+			Expect(blobstore.Put("shaA", strings.NewReader("cached content"))).To(Succeed())
+			Expect(blobstore.Put("shaC", strings.NewReader("another cached content"))).To(Succeed())
 		})
 
 		Context("non-multipart/form-data request", func() {
@@ -90,14 +90,6 @@ var _ = Describe("AppStash", func() {
 				})
 				Expect(e).NotTo(HaveOccurred())
 
-				var uploadContents []string
-				When(blobstore.Put(AnyString(), anyReadSeeker())).Then(func(params []Param) ReturnValues {
-					uploadContent, e := ioutil.ReadAll(params[1].(io.ReadSeeker))
-					Expect(e).NotTo(HaveOccurred())
-					uploadContents = append(uploadContents, string(uploadContent))
-					return []ReturnValue{nil}
-				})
-
 				appStashHandler.PostBundles(responseWriter, r)
 
 				Expect(responseWriter.Code).To(Equal(http.StatusOK), responseWriter.Body.String())
@@ -110,11 +102,12 @@ var _ = Describe("AppStash", func() {
 				verifyZipFileEntry(zipReader, "folder/filenameC", "another cached content")
 				verifyZipFileEntry(zipReader, "zip-folder/file-in-folder", "folder file content")
 
-				blobstore.VerifyWasCalledOnce().Put(EqString("b971c6ef19b1d70ae8f0feb989b106c319b36230"), anyReadSeeker())
-				blobstore.VerifyWasCalledOnce().Put(EqString("e04c62ab0e87c29f862ee7c4e85c9fed51531dae"), anyReadSeeker())
-				Expect(uploadContents).To(ConsistOf(
-					"test-content\n",
-					"folder file content\n"))
+				content, e := blobstore.Get("b971c6ef19b1d70ae8f0feb989b106c319b36230")
+				Expect(e).NotTo(HaveOccurred())
+				Expect(ioutil.ReadAll(content)).To(MatchRegexp("test-content\n"))
+				content, e = blobstore.Get("e04c62ab0e87c29f862ee7c4e85c9fed51531dae")
+				Expect(e).NotTo(HaveOccurred())
+				Expect(ioutil.ReadAll(content)).To(MatchRegexp("folder file content\n"))
 			})
 
 			Context("application form parameter is missing", func() {
@@ -143,7 +136,7 @@ var _ = Describe("AppStash", func() {
 
 	Describe("CreateTempZipFileFrom", func() {
 		It("Creates a zip", func() {
-			When(blobstore.Get("abc")).ThenReturn(ioutil.NopCloser(strings.NewReader("filename1 content")), nil)
+			Expect(blobstore.Put("abc", strings.NewReader("filename1 content"))).To(Succeed())
 
 			tempFileName, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.BundlesPayload{
 				bitsgo.BundlesPayload{
@@ -161,6 +154,13 @@ var _ = Describe("AppStash", func() {
 		})
 
 		Context("One error from blobstore", func() {
+			var blobstore *MockNoRedirectBlobstore
+
+			BeforeEach(func() {
+				blobstore = NewMockNoRedirectBlobstore()
+				appStashHandler = bitsgo.NewAppStashHandler(blobstore, 0)
+			})
+
 			Context("Error in Blobstore.Get", func() {
 				It("Retries and creates the zip successfully", func() {
 					When(blobstore.Get("abc")).
