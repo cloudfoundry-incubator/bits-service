@@ -110,6 +110,52 @@ var _ = Describe("AppStash", func() {
 				Expect(ioutil.ReadAll(content)).To(MatchRegexp("folder file content\n"))
 			})
 
+			Describe("App-stash caching round-trip", func() {
+				It("can re-use cached files from previous bundles", func() {
+					_, filename, _, _ := runtime.Caller(0)
+
+					zipFile, e := os.Open(filepath.Join(filepath.Dir(filename), "asset", "test-file.zip"))
+					Expect(e).NotTo(HaveOccurred())
+					defer zipFile.Close()
+
+					r, e := httputil.NewPutRequest("some url", map[string]map[string]io.Reader{
+						"resources":   map[string]io.Reader{"irrelevant": strings.NewReader(`[]`)},
+						"application": map[string]io.Reader{"irrelevant": zipFile},
+					})
+					Expect(e).NotTo(HaveOccurred())
+
+					appStashHandler.PostBundles(responseWriter, r)
+
+					Expect(responseWriter.Code).To(Equal(http.StatusOK), responseWriter.Body.String())
+					zipReader, e := zip.NewReader(bytes.NewReader(responseWriter.Body.Bytes()), int64(responseWriter.Body.Len()))
+					Expect(e).NotTo(HaveOccurred())
+
+					Expect(zipReader.File).To(HaveLen(2))
+					verifyZipFileEntry(zipReader, "filenameB", "test-content")
+					verifyZipFileEntry(zipReader, "zip-folder/file-in-folder", "folder file content")
+
+					responseWriter = httptest.NewRecorder()
+					appStashHandler.PostBundles(responseWriter, httptest.NewRequest("POST", "http://example.com", strings.NewReader(`[
+						{
+							"sha1":"b971c6ef19b1d70ae8f0feb989b106c319b36230",
+							"fn":"anotherFilenameB"
+						},
+						{
+							"sha1":"e04c62ab0e87c29f862ee7c4e85c9fed51531dae",
+							"fn":"zip-folder/another-file-in-folder"
+						}
+					]`)))
+
+					Expect(responseWriter.Code).To(Equal(http.StatusOK), responseWriter.Body.String())
+					zipReader, e = zip.NewReader(bytes.NewReader(responseWriter.Body.Bytes()), int64(responseWriter.Body.Len()))
+					Expect(e).NotTo(HaveOccurred())
+
+					Expect(zipReader.File).To(HaveLen(2))
+					verifyZipFileEntry(zipReader, "anotherFilenameB", "test-content")
+					verifyZipFileEntry(zipReader, "zip-folder/another-file-in-folder", "folder file content")
+				})
+			})
+
 			Context("application form parameter is missing", func() {
 				It("returns StatusBadRequest", func() {
 					r, e := httputil.NewPutRequest("some url", map[string]map[string]io.Reader{
@@ -222,6 +268,7 @@ var _ = Describe("AppStash", func() {
 })
 
 func verifyZipFileEntry(reader *zip.Reader, expectedFilename string, expectedContent string) {
+	var foundEntries []string
 	for _, entry := range reader.File {
 		if entry.Name == expectedFilename {
 			content, e := entry.Open()
@@ -229,6 +276,7 @@ func verifyZipFileEntry(reader *zip.Reader, expectedFilename string, expectedCon
 			Expect(ioutil.ReadAll(content)).To(MatchRegexp(expectedContent), "for filename "+expectedFilename)
 			return
 		}
+		foundEntries = append(foundEntries, entry.Name)
 	}
-	Fail("Did not find entry with name " + expectedFilename)
+	Fail("Did not find entry with name " + expectedFilename + ". Found only: " + strings.Join(foundEntries, ", "))
 }
