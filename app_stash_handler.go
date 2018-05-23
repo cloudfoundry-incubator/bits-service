@@ -307,7 +307,7 @@ func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []BundlesPa
 			if !zipInputFileEntry.FileInfo().Mode().IsRegular() {
 				continue
 			}
-			zipFileEntryWriter, e := zipWriter.CreateHeader(zipEntryHeader(zipInputFileEntry.FileInfo().Name(), zipInputFileEntry.FileInfo().Mode()))
+			zipFileEntryWriter, e := zipWriter.CreateHeader(zipEntryHeader(zipInputFileEntry.Name, zipInputFileEntry.FileInfo().Mode()))
 			if e != nil {
 				return "", e
 			}

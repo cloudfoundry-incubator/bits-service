@@ -39,6 +39,7 @@ var _ = Describe("AppStash", func() {
 		BeforeEach(func() {
 			When(blobstore.Get(AnyString())).ThenReturn(nil, bitsgo.NewNotFoundError())
 			When(blobstore.Get("shaA")).ThenReturn(ioutil.NopCloser(strings.NewReader("cached content")), nil)
+			When(blobstore.Get("shaC")).ThenReturn(ioutil.NopCloser(strings.NewReader("another cached content")), nil)
 		})
 
 		Context("non-multipart/form-data request", func() {
@@ -58,7 +59,7 @@ var _ = Describe("AppStash", func() {
 				zipReader, e := zip.NewReader(bytes.NewReader(responseWriter.Body.Bytes()), int64(responseWriter.Body.Len()))
 				Expect(e).NotTo(HaveOccurred())
 
-				Expect(zipReader.File[0].FileInfo().Name()).To(Equal("filenameA"))
+				Expect(zipReader.File[0].Name).To(Equal("filenameA"))
 				zipContent, e := zipReader.File[0].Open()
 				Expect(e).NotTo(HaveOccurred())
 				Expect(ioutil.ReadAll(zipContent)).To(MatchRegexp("cached content"))
@@ -79,16 +80,21 @@ var _ = Describe("AppStash", func() {
 						{
 							"sha1":"shaA",
 							"fn":"filenameA"
+						},
+						{
+							"sha1":"shaC",
+							"fn":"folder/filenameC"
 						}
 						]`)},
 					"application": map[string]io.Reader{"irrelevant": zipFile},
 				})
 				Expect(e).NotTo(HaveOccurred())
 
-				var uploadContent []byte
+				var uploadContents []string
 				When(blobstore.Put(AnyString(), anyReadSeeker())).Then(func(params []Param) ReturnValues {
-					uploadContent, e = ioutil.ReadAll(params[1].(io.ReadSeeker))
+					uploadContent, e := ioutil.ReadAll(params[1].(io.ReadSeeker))
 					Expect(e).NotTo(HaveOccurred())
+					uploadContents = append(uploadContents, string(uploadContent))
 					return []ReturnValue{nil}
 				})
 
@@ -98,18 +104,17 @@ var _ = Describe("AppStash", func() {
 				zipReader, e := zip.NewReader(bytes.NewReader(responseWriter.Body.Bytes()), int64(responseWriter.Body.Len()))
 				Expect(e).NotTo(HaveOccurred())
 
-				Expect(zipReader.File[0].FileInfo().Name()).To(Equal("filenameB"))
-				zipContent, e := zipReader.File[0].Open()
-				Expect(e).NotTo(HaveOccurred())
-				Expect(ioutil.ReadAll(zipContent)).To(MatchRegexp("test-content"))
-
-				Expect(zipReader.File[1].FileInfo().Name()).To(Equal("filenameA"))
-				zipContent, e = zipReader.File[1].Open()
-				Expect(e).NotTo(HaveOccurred())
-				Expect(ioutil.ReadAll(zipContent)).To(MatchRegexp("cached content"))
+				Expect(zipReader.File).To(HaveLen(4))
+				verifyZipFileEntry(zipReader, "filenameA", "cached content")
+				verifyZipFileEntry(zipReader, "filenameB", "test-content")
+				verifyZipFileEntry(zipReader, "folder/filenameC", "another cached content")
+				verifyZipFileEntry(zipReader, "zip-folder/file-in-folder", "folder file content")
 
 				blobstore.VerifyWasCalledOnce().Put(EqString("b971c6ef19b1d70ae8f0feb989b106c319b36230"), anyReadSeeker())
-				Expect(uploadContent).To(MatchRegexp("test-content"))
+				blobstore.VerifyWasCalledOnce().Put(EqString("e04c62ab0e87c29f862ee7c4e85c9fed51531dae"), anyReadSeeker())
+				Expect(uploadContents).To(ConsistOf(
+					"test-content\n",
+					"folder file content\n"))
 			})
 
 			Context("application form parameter is missing", func() {
@@ -152,7 +157,7 @@ var _ = Describe("AppStash", func() {
 			reader, e := zip.OpenReader(tempFileName)
 			Expect(e).NotTo(HaveOccurred())
 			Expect(reader.File).To(HaveLen(1))
-			verifyZipFileEntry(reader, 0, "filename1", "filename1 content")
+			verifyZipFileEntry(&reader.Reader, "filename1", "filename1 content")
 		})
 
 		Context("One error from blobstore", func() {
@@ -174,7 +179,7 @@ var _ = Describe("AppStash", func() {
 					reader, e := zip.OpenReader(tempFileName)
 					Expect(e).NotTo(HaveOccurred())
 					Expect(reader.File).To(HaveLen(1))
-					verifyZipFileEntry(reader, 0, "filename1", "filename1 content")
+					verifyZipFileEntry(&reader.Reader, "filename1", "filename1 content")
 				})
 			})
 
@@ -208,17 +213,22 @@ var _ = Describe("AppStash", func() {
 					reader, e := zip.OpenReader(tempFileName)
 					Expect(e).NotTo(HaveOccurred())
 					Expect(reader.File).To(HaveLen(2))
-					verifyZipFileEntry(reader, 0, "filename1", "filename1 content")
-					verifyZipFileEntry(reader, 1, "filename2", "filename2 content")
+					verifyZipFileEntry(&reader.Reader, "filename1", "filename1 content")
+					verifyZipFileEntry(&reader.Reader, "filename2", "filename2 content")
 				})
 			})
 		})
 	})
 })
 
-func verifyZipFileEntry(reader *zip.ReadCloser, index int, expectedFilename string, expectedContent string) {
-	Expect(reader.File[index].Name).To(Equal(expectedFilename))
-	content, e := reader.File[index].Open()
-	Expect(e).NotTo(HaveOccurred())
-	Expect(ioutil.ReadAll(content)).To(MatchRegexp(expectedContent))
+func verifyZipFileEntry(reader *zip.Reader, expectedFilename string, expectedContent string) {
+	for _, entry := range reader.File {
+		if entry.Name == expectedFilename {
+			content, e := entry.Open()
+			Expect(e).NotTo(HaveOccurred())
+			Expect(ioutil.ReadAll(content)).To(MatchRegexp(expectedContent), "for filename "+expectedFilename)
+			return
+		}
+	}
+	Fail("Did not find entry with name " + expectedFilename)
 }
