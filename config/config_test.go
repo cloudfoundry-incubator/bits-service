@@ -142,20 +142,9 @@ cert_file: /some/path
 	Context("can read limits for resources match ", func() {
 		It("value: MinimumSize", func() {
 			fmt.Fprintf(configFile, "%s", `
-privatebuildpacks:
-droplets:
-packages:
-  max_body_size: 20MB
-app_stash:
-logging:
-  file: /tmp/bits-service.log
-  syslog: vcap.bits-service
-  level: debug
 public_endpoint: https://public.127.0.0.1.xip.io
 private_endpoint: https://internal.127.0.0.1.xip.io
-secret: geheim
 port: 8000
-max_body_size: 13M
 key_file: /some/path
 cert_file: /some/path
 app_stash_config:
@@ -172,20 +161,9 @@ app_stash_config:
 
 			It("returns an error", func() {
 				fmt.Fprintf(configFile, "%s", `
-privatebuildpacks:
-droplets:
-packages:
-  max_body_size: 20MB
-app_stash:
-logging:
-  file: /tmp/bits-service.log
-  syslog: vcap.bits-service
-  level: debug
 public_endpoint: https://public.127.0.0.1.xip.io
 private_endpoint: https://internal.127.0.0.1.xip.io
-secret: geheim
 port: 8000
-max_body_size: 13M
 key_file: /some/path
 cert_file: /some/path
 app_stash_config:
@@ -193,7 +171,7 @@ app_stash_config:
   maximum_size: 60K
 `)
 				_, e := LoadConfig(configFile.Name())
-				Expect(e).To(HaveOccurred())
+				Expect(e).To(MatchError(ContainSubstring("app_stash_config.maximum_size must be greater than app_stash_config.minimum_size")))
 			})
 
 		})
