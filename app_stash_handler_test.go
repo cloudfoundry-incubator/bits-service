@@ -264,6 +264,31 @@ var _ = Describe("AppStash", func() {
 				})
 			})
 		})
+
+		Context("maximumSize and minimumSize provided", func() {
+			BeforeEach(func() {
+				appStashHandler = bitsgo.NewAppStashHandlerWithSizeThresholds(blobstore, 0, 15, 30)
+			})
+
+			It("only stores the file which is within range of thresholds", func() {
+				_, filename, _, _ := runtime.Caller(0)
+
+				zipFile, e := os.Open(filepath.Join(filepath.Dir(filename), "asset", "test-file.zip"))
+				Expect(e).NotTo(HaveOccurred())
+				defer zipFile.Close()
+
+				openZipFile, e := zip.OpenReader(zipFile.Name())
+				Expect(e).NotTo(HaveOccurred())
+				defer openZipFile.Close()
+
+				tempFilename, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.BundlesPayload{}, &openZipFile.Reader)
+				Expect(e).NotTo(HaveOccurred())
+				os.Remove(tempFilename)
+
+				Expect(blobstore.Entries).To(HaveLen(1))
+				Expect(blobstore.Entries).To(HaveKeyWithValue("e04c62ab0e87c29f862ee7c4e85c9fed51531dae", []byte("folder file content\n")))
+			})
+		})
 	})
 })
 

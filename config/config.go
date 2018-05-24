@@ -2,6 +2,7 @@ package config
 
 import (
 	"io/ioutil"
+	"math"
 	"net/url"
 	"os"
 	"strings"
@@ -34,6 +35,8 @@ type Config struct {
 	KeyFile         string       `yaml:"key_file"`
 
 	CCUpdater *CCUpdaterConfig `yaml:"cc_updater"`
+
+	AppStashConfig AppStashConfig `yaml:"app_stash_config"`
 }
 
 func (config *Config) PublicEndpointUrl() *url.URL {
@@ -191,6 +194,29 @@ type CCUpdaterConfig struct {
 	CACertFile     string `yaml:"ca_cert_file"`
 }
 
+type AppStashConfig struct {
+	MinimumSize string `yaml:"minimum_size"`
+	MaximumSize string `yaml:"maximum_size"`
+}
+
+func (config *AppStashConfig) MinimumSizeBytes() uint64 {
+	return parseSizeProperty(config.MinimumSize, 0)
+}
+func (config *AppStashConfig) MaximumSizeBytes() uint64 {
+	return parseSizeProperty(config.MaximumSize, math.MaxUint64)
+}
+
+func parseSizeProperty(size string, defaultValue uint64) uint64 {
+	if size == "" {
+		return defaultValue
+	}
+	bytes, e := bytefmt.ToBytes(size)
+	if e != nil {
+		panic("Unexpected error: " + e.Error())
+	}
+	return bytes
+}
+
 func LoadConfig(filename string) (config Config, err error) {
 	file, e := os.Open(filename)
 	if e != nil {
@@ -300,6 +326,10 @@ func LoadConfig(filename string) (config Config, err error) {
 		} else if u.Host == "" {
 			errs = append(errs, "cc_updater.endpoint host must not be empty")
 		}
+	}
+
+	if config.AppStashConfig.MinimumSizeBytes() > config.AppStashConfig.MaximumSizeBytes() {
+		errs = append(errs, "app_stash_config.maximum_size must be greater than app_stash_config.minimum_size")
 	}
 
 	// TODO validate CACertsPaths

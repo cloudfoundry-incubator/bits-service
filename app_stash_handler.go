@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -23,12 +24,20 @@ import (
 type AppStashHandler struct {
 	blobstore        NoRedirectBlobstore
 	maxBodySizeLimit uint64
+	minimumSize      uint64
+	maximumSize      uint64
 }
 
 func NewAppStashHandler(blobstore NoRedirectBlobstore, maxBodySizeLimit uint64) *AppStashHandler {
+	return NewAppStashHandlerWithSizeThresholds(blobstore, maxBodySizeLimit, 0, math.MaxUint64)
+}
+
+func NewAppStashHandlerWithSizeThresholds(blobstore NoRedirectBlobstore, maxBodySizeLimit uint64, minimumSize uint64, maximumSize uint64) *AppStashHandler {
 	return &AppStashHandler{
 		blobstore:        blobstore,
 		maxBodySizeLimit: maxBodySizeLimit,
+		minimumSize:      minimumSize,
+		maximumSize:      maximumSize,
 	}
 }
 
@@ -325,7 +334,7 @@ func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []BundlesPa
 			defer tempFile.Close()
 
 			sha := sha1.New()
-			_, e = io.Copy(io.MultiWriter(zipFileEntryWriter, tempFile, sha), zipEntryReader)
+			tempFileSize, e := io.Copy(io.MultiWriter(zipFileEntryWriter, tempFile, sha), zipEntryReader)
 			if e != nil {
 				return "", e
 			}
@@ -342,9 +351,11 @@ func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []BundlesPa
 				return "", e
 			}
 			defer tempFile.Close()
-			e = handler.blobstore.Put(hex.EncodeToString(sha.Sum(nil)), tempFile)
-			if e != nil {
-				return "", e
+			if uint64(tempFileSize) >= handler.minimumSize && uint64(tempFileSize) <= handler.maximumSize {
+				e = handler.blobstore.Put(hex.EncodeToString(sha.Sum(nil)), tempFile)
+				if e != nil {
+					return "", e
+				}
 			}
 		}
 	}
