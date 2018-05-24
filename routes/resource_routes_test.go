@@ -231,12 +231,12 @@ var _ = Describe("routes", func() {
 				}))
 
 				Expect(responseWriter.Code).To(Equal(http.StatusCreated), responseWriter.Body.String())
-				Expect(responseWriter.Body.String()).To(ContainSubstring(
-					`{"sha1":"971555ab39d1dfe8dff8b78c2b20e85e01c06595","fn":"one","mode":"664"}`))
-				Expect(responseWriter.Body.String()).To(ContainSubstring(
-					`{"sha1":"bbd33de01c17b165b4ce00308e8a19a942023ab8","fn":"two","mode":"664"}`))
-				Expect(responseWriter.Body.String()).To(ContainSubstring(
-					`{"sha1":"27cc6f77ee63df90ab3285f9d5fc4ebcb2448c12","fn":"test folder/three","mode":"664"}`))
+				Expect(responseWriter.Body.String()).To(MatchJSON(
+					`[
+						{"sha1":"27cc6f77ee63df90ab3285f9d5fc4ebcb2448c12","fn":"test folder/three","size":3,"mode":"664"},
+						{"sha1":"971555ab39d1dfe8dff8b78c2b20e85e01c06595","fn":"one","size":3,"mode":"664"},
+						{"sha1":"bbd33de01c17b165b4ce00308e8a19a942023ab8","fn":"two","size":3,"mode":"664"}
+					]`))
 				Expect(blobstoreEntries).To(HaveKeyWithValue("971555ab39d1dfe8dff8b78c2b20e85e01c06595", []byte("1\n\n")))
 				Expect(blobstoreEntries).To(HaveKeyWithValue("bbd33de01c17b165b4ce00308e8a19a942023ab8", []byte("2\n\n")))
 				Expect(blobstoreEntries).To(HaveKeyWithValue("27cc6f77ee63df90ab3285f9d5fc4ebcb2448c12", []byte("3\n\n")))
@@ -255,11 +255,14 @@ var _ = Describe("routes", func() {
 				blobstoreEntries["abc"] = []byte("not relevant")
 
 				router.ServeHTTP(responseWriter, httptest.NewRequest(
-					"POST", "/app_stash/matches", strings.NewReader(`[{"sha1":"abc","size":123}, {"sha1":"def","size":456}]`)))
+					"POST", "/app_stash/matches", strings.NewReader(`[
+						{"sha1":"abc","size":123, "fn":"some-file", "mode":"644"},
+						{"sha1":"def","size":456, "fn":"some-other-file", "mode":"644"}
+					]`)))
 
 				Expect(*responseWriter).To(HaveStatusCodeAndBody(
 					Equal(http.StatusOK),
-					Equal("[{\"sha1\":\"abc\"}]")))
+					MatchJSON(`[{"sha1":"abc","size":123, "fn":"some-file", "mode":"644"}]`)))
 			})
 
 			It("returns StatusOK and an empty list when none of the entries match", func() {

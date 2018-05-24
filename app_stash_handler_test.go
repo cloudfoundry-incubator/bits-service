@@ -184,8 +184,8 @@ var _ = Describe("AppStash", func() {
 		It("Creates a zip", func() {
 			Expect(blobstore.Put("abc", strings.NewReader("filename1 content"))).To(Succeed())
 
-			tempFileName, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.BundlesPayload{
-				bitsgo.BundlesPayload{
+			tempFileName, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.Fingerprint{
+				bitsgo.Fingerprint{
 					Sha1: "abc",
 					Fn:   "filename1",
 					Mode: "644",
@@ -213,8 +213,8 @@ var _ = Describe("AppStash", func() {
 						ThenReturn(nil, errors.New("Some error")).
 						ThenReturn(ioutil.NopCloser(strings.NewReader("filename1 content")), nil)
 
-					tempFileName, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.BundlesPayload{
-						bitsgo.BundlesPayload{
+					tempFileName, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.Fingerprint{
+						bitsgo.Fingerprint{
 							Sha1: "abc",
 							Fn:   "filename1",
 							Mode: "644",
@@ -242,13 +242,13 @@ var _ = Describe("AppStash", func() {
 						ThenReturn(readClose, nil).
 						ThenReturn(ioutil.NopCloser(strings.NewReader("filename2 content")), nil)
 
-					tempFileName, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.BundlesPayload{
-						bitsgo.BundlesPayload{
+					tempFileName, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.Fingerprint{
+						bitsgo.Fingerprint{
 							Sha1: "abc",
 							Fn:   "filename1",
 							Mode: "644",
 						},
-						bitsgo.BundlesPayload{
+						bitsgo.Fingerprint{
 							Sha1: "def",
 							Fn:   "filename2",
 							Mode: "644",
@@ -281,7 +281,7 @@ var _ = Describe("AppStash", func() {
 				Expect(e).NotTo(HaveOccurred())
 				defer openZipFile.Close()
 
-				tempFilename, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.BundlesPayload{}, &openZipFile.Reader)
+				tempFilename, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.Fingerprint{}, &openZipFile.Reader)
 				Expect(e).NotTo(HaveOccurred())
 				os.Remove(tempFilename)
 

@@ -50,35 +50,32 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 		internalServerError(responseWriter, request, e)
 		return
 	}
-	var sha1s []struct {
-		Sha1 string
-		Size int
-	}
-	e = json.Unmarshal(body, &sha1s)
+	var fingerprints []Fingerprint
+	e = json.Unmarshal(body, &fingerprints)
 	if e != nil {
 		logger.From(request).Debugw("Invalid body", "body", string(body), "error", e)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 		fmt.Fprintf(responseWriter, "Invalid body %s", body)
 		return
 	}
-	if len(sha1s) == 0 {
+	if len(fingerprints) == 0 {
 		logger.From(request).Debugw("Empty list", "body", string(body), "error", e)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 		fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: must be a non-empty array.")
 		return
 	}
-	responseSha1 := []map[string]string{}
-	for _, entry := range sha1s {
+	matchedFingerprints := []Fingerprint{} // this must not be nil, because the JSON marshaller will not marshal it correctly in case of []
+	for _, entry := range fingerprints {
 		exists, e := handler.blobstore.Exists(entry.Sha1)
 		if e != nil {
 			internalServerError(responseWriter, request, e)
 			return
 		}
 		if exists {
-			responseSha1 = append(responseSha1, map[string]string{"sha1": entry.Sha1})
+			matchedFingerprints = append(matchedFingerprints, entry)
 		}
 	}
-	response, e := json.Marshal(&responseSha1)
+	response, e := json.Marshal(&matchedFingerprints)
 	if e != nil {
 		internalServerError(responseWriter, request, e)
 		return
@@ -118,7 +115,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 	}
 	defer openZipFile.Close()
 
-	bundlesPayload := []BundlesPayload{}
+	fingerprints := []Fingerprint{} // this must not be nil, because the JSON marshaller will not marshal it correctly in case of []
 	for _, zipFileEntry := range openZipFile.File {
 		if !zipFileEntry.FileInfo().Mode().IsRegular() {
 			continue
@@ -133,13 +130,14 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 			return
 		}
 		logger.From(request).Debugw("Filemode in zip File Entry", "filemode", zipFileEntry.FileInfo().Mode().String())
-		bundlesPayload = append(bundlesPayload, BundlesPayload{
+		fingerprints = append(fingerprints, Fingerprint{
 			Sha1: sha,
 			Fn:   zipFileEntry.Name,
 			Mode: strconv.FormatInt(int64(zipFileEntry.FileInfo().Mode()), 8),
+			Size: zipFileEntry.UncompressedSize64,
 		})
 	}
-	receipt, e := json.Marshal(bundlesPayload)
+	receipt, e := json.Marshal(fingerprints)
 	if e != nil {
 		internalServerError(responseWriter, request, e)
 		return
@@ -195,9 +193,10 @@ func copyCalculatingSha(writer io.Writer, reader io.Reader) (sha string, e error
 	return fmt.Sprintf("%x", checkSum.Sum(nil)), nil
 }
 
-type BundlesPayload struct {
-	Sha1 string `json:"sha1"`
+type Fingerprint struct {
 	Fn   string `json:"fn"`
+	Sha1 string `json:"sha1"`
+	Size uint64 `json:"size"`
 	Mode string `json:"mode"`
 }
 
@@ -246,7 +245,7 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 		return
 	}
 
-	var bundlesPayload []BundlesPayload
+	var bundlesPayload []Fingerprint
 	e = json.Unmarshal(body, &bundlesPayload)
 	if e != nil {
 		log.Printf("Invalid body %s", body)
@@ -291,7 +290,7 @@ func fprintDescriptionAsJSON(responseWriter http.ResponseWriter, description str
 	fmt.Fprintf(responseWriter, `{"description":"%v"}`, fmt.Sprintf(description, a...))
 }
 
-func anyKeyMissingIn(bundlesPayload []BundlesPayload) (bool, string) {
+func anyKeyMissingIn(bundlesPayload []Fingerprint) (bool, string) {
 	for _, entry := range bundlesPayload {
 		if entry.Sha1 == "" {
 			return true, "sha1"
@@ -303,7 +302,7 @@ func anyKeyMissingIn(bundlesPayload []BundlesPayload) (bool, string) {
 	return false, ""
 }
 
-func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []BundlesPayload, zipReader *zip.Reader) (tempFilename string, err error) {
+func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []Fingerprint, zipReader *zip.Reader) (tempFilename string, err error) {
 	tempFile, e := ioutil.TempFile("", "bundles")
 	if e != nil {
 		return "", e
