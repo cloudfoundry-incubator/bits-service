@@ -18,6 +18,7 @@ import (
 
 	"github.com/cenkalti/backoff"
 	"github.com/petergtz/bitsgo/logger"
+	"github.com/petergtz/bitsgo/util"
 	"github.com/pkg/errors"
 )
 
@@ -122,7 +123,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 		}
 		sha, e := copyTo(handler.blobstore, zipFileEntry)
 		if _, isNoSpaceLeftError := e.(*NoSpaceLeftError); isNoSpaceLeftError {
-			http.Error(responseWriter, descriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
+			http.Error(responseWriter, util.DescriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
 			return
 		}
 		if e != nil {

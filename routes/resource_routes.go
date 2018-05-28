@@ -7,6 +7,7 @@ import (
 	"github.com/petergtz/bitsgo"
 	"github.com/petergtz/bitsgo/blobstores/local"
 	"github.com/petergtz/bitsgo/middlewares"
+	"github.com/petergtz/bitsgo/util"
 	"github.com/urfave/negroni"
 )
 
@@ -41,6 +42,7 @@ func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlew
 
 	rootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
+		util.FprintDescriptionAsJSON(w, "Invalid host '%v'. External clients should use hostname '%v.'", r.Host, publicHost)
 	})
 
 	return rootRouter

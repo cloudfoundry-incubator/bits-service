@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/petergtz/bitsgo/logger"
+	"github.com/petergtz/bitsgo/util"
 	"github.com/pkg/errors"
 )
 
@@ -226,11 +227,11 @@ func handleNotificationError(e error, responseWriter http.ResponseWriter, reques
 	switch e.(type) {
 	case *StateForbiddenError:
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		fprintDescriptionAndCodeAsJSON(responseWriter, "290008", "Cannot update an existing package.")
+		util.FprintDescriptionAndCodeAsJSON(responseWriter, "290008", "Cannot update an existing package.")
 		return true
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
-		fprintDescriptionAndCodeAsJSON(responseWriter, "10010", e.Error())
+		util.FprintDescriptionAndCodeAsJSON(responseWriter, "10010", e.Error())
 		return true
 	case error:
 		internalServerError(responseWriter, request, e)
@@ -313,7 +314,7 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	case *NoSpaceLeftError:
-		http.Error(responseWriter, descriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
+		http.Error(responseWriter, util.DescriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
 		return
 	case error:
 		internalServerError(responseWriter, request, e)
@@ -370,13 +371,5 @@ func badRequest(responseWriter http.ResponseWriter, request *http.Request, messa
 	responseBody := fmt.Sprintf(message, args...)
 	logger.From(request).Infow("Bad request", "body", responseBody)
 	responseWriter.WriteHeader(http.StatusBadRequest)
-	fprintDescriptionAndCodeAsJSON(responseWriter, "290003", message, args...)
-}
-
-func fprintDescriptionAndCodeAsJSON(responseWriter http.ResponseWriter, code string, description string, a ...interface{}) {
-	fmt.Fprintf(responseWriter, descriptionAndCodeAsJSON(code, description, a...))
-}
-
-func descriptionAndCodeAsJSON(code string, description string, a ...interface{}) string {
-	return fmt.Sprintf(`{"description":"%v","code":%v}`, fmt.Sprintf(description, a...), code)
+	util.FprintDescriptionAndCodeAsJSON(responseWriter, "290003", message, args...)
 }
