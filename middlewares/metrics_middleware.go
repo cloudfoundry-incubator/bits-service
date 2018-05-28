@@ -44,8 +44,12 @@ func (middleware *MetricsMiddleware) ServeHTTP(responseWriter http.ResponseWrite
 	middleware.metricsService.SendCounterMetric("status-"+responseStatus, 1)
 }
 
-var resourceURLPathPattern = regexp.MustCompile(`^/(\w+)/`)
+var resourceURLPathPattern = regexp.MustCompile(`^/(packages|droplets|app_stash|buildpacks|buildpack_cache)/`)
 
 func ResourceTypeFrom(path string) string {
-	return strings.Trim(resourceURLPathPattern.FindString(path), "/")
+	resourceType := strings.Trim(resourceURLPathPattern.FindString(path), "/")
+	if resourceType == "" {
+		return "invalid"
+	}
+	return resourceType
 }
