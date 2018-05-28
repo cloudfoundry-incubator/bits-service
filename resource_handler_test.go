@@ -52,7 +52,7 @@ var _ = Describe("ResourceHandler", func() {
 		})
 
 		Context("async=true", func() {
-			FIt("upload asynchronously", func() {
+			It("upload asynchronously", func() {
 
 				synchronization := make(chan bool)
 
