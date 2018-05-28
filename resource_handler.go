@@ -148,9 +148,13 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 		return
 	}
 
-	e = handler.uploadResource(tempFilename, request, params["identifier"], false)
-
-	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+	if request.URL.Query().Get("async") == "true" {
+		go handler.uploadResource(tempFilename, request, params["identifier"], true)
+		writeResponseBasedOn("", nil, responseWriter, request, http.StatusAccepted, nil, &responseBody{Guid: params["identifier"], State: "PROCESSING_UPLOAD", Type: "bits", CreatedAt: time.Now()}, "")
+	} else {
+		e = handler.uploadResource(tempFilename, request, params["identifier"], false)
+		writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+	}
 }
 
 func CreateTempFileWithContent(reader io.Reader) (string, error) {
@@ -178,9 +182,11 @@ func (handler *ResourceHandler) uploadResource(tempFilename string, request *htt
 	}
 	defer tempFile.Close()
 
+	logger.From(request).Debugw("Starting upload to blobstore", "identifier", identifier)
 	startTime := time.Now()
 	e = handler.blobstore.Put(identifier, tempFile)
 	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
+	logger.From(request).Debugw("Completed upload to blobstore", "identifier", identifier)
 
 	if e != nil {
 		handler.notifyUploadFailed(identifier, e, request)

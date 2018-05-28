@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"reflect"
 
+	"github.com/petergtz/pegomock"
+
 	"github.com/petergtz/bitsgo"
 
 	. "github.com/petergtz/bitsgo"
@@ -12,6 +14,7 @@ import (
 
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
@@ -46,6 +49,42 @@ var _ = Describe("ResourceHandler", func() {
 				map[string]string{})
 
 			Expect(responseWriter.Code).To(Equal(http.StatusInsufficientStorage))
+		})
+
+		Context("async=true", func() {
+			FIt("upload asynchronously", func() {
+
+				synchronization := make(chan bool)
+
+				When(blobstore.Put(AnyString(), anyReadSeeker())).Then(func(params []Param) ReturnValues {
+					<-synchronization
+					return nil
+				})
+
+				req := newTestRequest("test-resource", "some-filename", "some body")
+				q, e := url.ParseQuery("async=true")
+				Expect(e).NotTo(HaveOccurred())
+				req.URL.RawQuery = q.Encode()
+				handler.AddOrReplace(responseWriter,
+					req,
+					map[string]string{})
+
+				updater.VerifyWasCalledOnce().NotifyProcessingUpload(AnyString())
+
+				updater.VerifyWasCalled(Never()).NotifyUploadFailed(AnyString(), anyError())
+				updater.VerifyWasCalled(Never()).NotifyUploadSucceeded(AnyString(), AnyString(), AnyString())
+				synchronization <- true
+
+				Eventually(func() []string {
+					// TODO can this be done better?
+					return interceptPegomockFailures(func() {
+						updater.VerifyWasCalled(Never()).NotifyUploadFailed(AnyString(), anyError())
+						updater.VerifyWasCalledOnce().NotifyUploadSucceeded(AnyString(), AnyString(), AnyString())
+					})
+				}, "2s").Should(BeEmpty())
+
+				Expect(responseWriter.Code).To(Equal(http.StatusAccepted))
+			})
 		})
 	})
 
@@ -243,4 +282,15 @@ func newGetRequestWithOptionalIfNoneModify(ifNoneModify string) *http.Request {
 		r.Header.Set("If-None-Modify", ifNoneModify)
 	}
 	return r
+}
+
+func interceptPegomockFailures(f func()) []string {
+	originalHandler := pegomock.GlobalFailHandler
+	failures := []string{}
+	RegisterMockFailHandler(func(message string, callerSkip ...int) {
+		failures = append(failures, message)
+	})
+	f()
+	pegomock.RegisterMockFailHandler(originalHandler)
+	return failures
 }
