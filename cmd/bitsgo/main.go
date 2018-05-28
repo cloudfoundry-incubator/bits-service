@@ -79,7 +79,11 @@ func main() {
 		address = "0.0.0.0"
 	}
 
-	log.Log.Infow("Starting server", "port", config.Port)
+	log.Log.Infow("Starting server",
+		"ip-address", address,
+		"port", config.Port,
+		"public-endpoint", config.PublicEndpointUrl().Host,
+		"private-endpoint", config.PrivateEndpointUrl().Host)
 	httpServer := &http.Server{
 		Handler: negroni.New(
 			middlewares.NewMetricsMiddleware(metricsService),
