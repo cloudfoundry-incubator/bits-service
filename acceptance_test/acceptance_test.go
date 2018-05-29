@@ -107,6 +107,30 @@ var _ = Describe("Accessing the bits-service", func() {
 		})
 	})
 
+	Describe("/packages", func() {
+		Describe("PUT", func() {
+			Context("async=true", func() {
+				It("returns StatusAccepted", func() {
+					response, e := client.Do(
+						newGetRequest("https://internal.127.0.0.1.xip.io:4443/sign/packages/myguid?verb=put", "the-username", "the-password"))
+					Expect(e).NotTo(HaveOccurred())
+					Expect(response.StatusCode).To(Equal(http.StatusOK))
+
+					signedUrl, e := ioutil.ReadAll(response.Body)
+					Expect(e).NotTo(HaveOccurred())
+
+					r, e := httputil.NewPutRequest(string(signedUrl)+"&async=true", map[string]map[string]io.Reader{
+						"package": map[string]io.Reader{"somefilename": strings.NewReader("lalala\n\n")},
+					})
+					Expect(e).NotTo(HaveOccurred())
+					response, e = client.Do(r)
+
+					Expect(e).NotTo(HaveOccurred())
+					Expect(response.StatusCode).To(Equal(http.StatusAccepted))
+				})
+			})
+		})
+	})
 })
 
 func newGetRequest(url string, username string, password string) *http.Request {
