@@ -67,6 +67,9 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	}
 	matchedFingerprints := []Fingerprint{} // this must not be nil, because the JSON marshaller will not marshal it correctly in case of []
 	for _, entry := range fingerprints {
+		if entry.Size < handler.minimumSize || entry.Size > handler.maximumSize {
+			continue
+		}
 		exists, e := handler.blobstore.Exists(entry.Sha1)
 		if e != nil {
 			internalServerError(responseWriter, request, e)

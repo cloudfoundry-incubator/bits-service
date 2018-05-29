@@ -35,6 +35,61 @@ var _ = Describe("AppStash", func() {
 		responseWriter = httptest.NewRecorder()
 	})
 
+	Describe("PostMatches", func() {
+		Context("maximumSize and minimumSize provided", func() {
+
+			const (
+				minimumSize          = 15
+				maximumSize          = 30
+				sizeWithinThresholds = "20"
+				sizeAboveThreshold   = "999"
+				sizeBelowThreshold   = "1"
+			)
+
+			BeforeEach(func() {
+				appStashHandler = bitsgo.NewAppStashHandlerWithSizeThresholds(blobstore, 0, minimumSize, maximumSize)
+				Expect(blobstore.Put("shaA", strings.NewReader("cached content"))).To(Succeed())
+				Expect(blobstore.Put("shaB", strings.NewReader("another cached content"))).To(Succeed())
+				Expect(blobstore.Put("shaC", strings.NewReader("yet another cached content"))).To(Succeed())
+			})
+
+			It("matches only files where sizes are within thresholds", func() {
+				appStashHandler.PostMatches(responseWriter, httptest.NewRequest(
+					"POST", "http://example.com",
+					strings.NewReader(`[
+						{
+							"sha1":"shaA",
+							"fn":"filenameA",
+							"size": `+sizeWithinThresholds+`,
+							"mode": "644"
+						},
+						{
+							"sha1":"shaB",
+							"fn":"filenameB",
+							"size": `+sizeAboveThreshold+`,
+							"mode": "644"
+						},
+						{
+							"sha1":"shaC",
+							"fn":"filenameC",
+							"size": `+sizeBelowThreshold+`,
+							"mode": "644"
+						}
+					]`)))
+
+				Expect(responseWriter.Code).To(Equal(http.StatusOK), responseWriter.Body.String())
+				Expect(responseWriter.Body.String()).To(MatchJSON(`[
+					{
+						"sha1":"shaA",
+						"fn":"filenameA",
+						"size": ` + sizeWithinThresholds + `,
+						"mode": "644"
+					}
+					]`))
+			})
+		})
+	})
+
 	Describe("PostBundles", func() {
 
 		BeforeEach(func() {
