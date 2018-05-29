@@ -66,10 +66,10 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	}
 
 	_, _, e := blobstore.swiftConn.Object(blobstore.containerName, path)
+	if e == swift.ObjectNotFound {
+		return false, nil
+	}
 	if e != nil {
-		if e == swift.ObjectNotFound {
-			return false, nil
-		}
 		return false, errors.Wrapf(e, "Failed to check for %v/%v", blobstore.containerName, path)
 	}
 	return true, nil
@@ -92,10 +92,10 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	}
 
 	buf, e := blobstore.swiftConn.ObjectGetBytes(blobstore.containerName, path)
+	if e == swift.ObjectNotFound {
+		return nil, bitsgo.NewNotFoundError()
+	}
 	if e != nil {
-		if e == swift.ObjectNotFound {
-			return nil, bitsgo.NewNotFoundError()
-		}
 		return nil, errors.Wrapf(e, "Container: '%v', path: '%v'", blobstore.containerName, path)
 	}
 	return ioutil.NopCloser(bytes.NewBuffer(buf)), nil
@@ -128,10 +128,10 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 	}
 
 	_, e := blobstore.swiftConn.ObjectCopy(blobstore.containerName, src, blobstore.containerName, dest, nil)
+	if e == swift.ObjectNotFound {
+		return bitsgo.NewNotFoundError()
+	}
 	if e != nil {
-		if e == swift.ObjectNotFound {
-			return bitsgo.NewNotFoundError()
-		}
 		return errors.Wrapf(e, "Container: '%v', src: '%v', dst: '%v'", blobstore.containerName, src, dest)
 	}
 	return nil
@@ -143,10 +143,10 @@ func (blobstore *Blobstore) Delete(path string) error {
 	}
 
 	e := blobstore.swiftConn.ObjectDelete(blobstore.containerName, path)
+	if e == swift.ObjectNotFound {
+		return bitsgo.NewNotFoundError()
+	}
 	if e != nil {
-		if e == swift.ObjectNotFound {
-			return bitsgo.NewNotFoundError()
-		}
 		return errors.Wrapf(e, "Container: '%v', path: '%v'", blobstore.containerName, path)
 	}
 	return nil
@@ -164,10 +164,8 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	deletionErrs := []error{}
 	for _, name := range names {
 		e = blobstore.Delete(name)
-		if e != nil {
-			if _, isNotFoundError := e.(*bitsgo.NotFoundError); !isNotFoundError {
-				deletionErrs = append(deletionErrs, e)
-			}
+		if _, isNotFoundError := e.(*bitsgo.NotFoundError); !isNotFoundError {
+			deletionErrs = append(deletionErrs, e)
 		}
 	}
 	if len(deletionErrs) != 0 {
