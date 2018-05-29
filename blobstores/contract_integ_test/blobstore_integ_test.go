@@ -78,24 +78,32 @@ var _ = Describe("Non-local blobstores", func() {
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
 		})
 
-		It("Can delete a prefix", func() {
-			Expect(blobstore.Exists("one")).To(BeFalse())
-			Expect(blobstore.Exists("two")).To(BeFalse())
+		Describe("DeleteDir", func() {
+			BeforeEach(func() {
+				e := blobstore.Put("one", strings.NewReader("the file content"))
+				Expect(e).NotTo(HaveOccurred())
 
-			e := blobstore.Put("one", strings.NewReader("the file content"))
-			Expect(e).NotTo(HaveOccurred())
+				e = blobstore.Put("two", strings.NewReader("the file content"))
+				Expect(e).NotTo(HaveOccurred())
 
-			e = blobstore.Put("two", strings.NewReader("the file content"))
-			Expect(e).NotTo(HaveOccurred())
+				Expect(blobstore.Exists("one")).To(BeTrue())
+				Expect(blobstore.Exists("two")).To(BeTrue())
+			})
 
-			Expect(blobstore.Exists("one")).To(BeTrue())
-			Expect(blobstore.Exists("two")).To(BeTrue())
+			AfterEach(func() {
+				blobstore.Delete("one")
+				blobstore.Delete("two")
+				Expect(blobstore.Exists("one")).To(BeFalse())
+				Expect(blobstore.Exists("two")).To(BeFalse())
+			})
 
-			e = blobstore.DeleteDir("")
-			Expect(e).NotTo(HaveOccurred())
+			It("Can delete a prefix", func() {
+				e := blobstore.DeleteDir("")
+				Expect(e).NotTo(HaveOccurred())
 
-			Expect(blobstore.Exists("one")).To(BeFalse())
-			Expect(blobstore.Exists("two")).To(BeFalse())
+				Expect(blobstore.Exists("one")).To(BeFalse())
+				Expect(blobstore.Exists("two")).To(BeFalse())
+			})
 		})
 
 		It("Can delete a prefix like in a file tree", func() {
