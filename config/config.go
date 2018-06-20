@@ -63,6 +63,7 @@ type BlobstoreConfig struct {
 	AzureConfig       *AzureBlobstoreConfig     `yaml:"azure_config"`
 	OpenstackConfig   *OpenstackBlobstoreConfig `yaml:"openstack_config"`
 	WebdavConfig      *WebdavBlobstoreConfig    `yaml:"webdav_config"`
+	AlibabaConfig     *AlibabaBlobstoreConfig   `yaml:"alibaba_config"`
 	MaxBodySize       string                    `yaml:"max_body_size"`
 	GlobalMaxBodySize string                    // Not to be set by yaml
 }
@@ -76,6 +77,7 @@ const (
 	Azure     BlobstoreType = "azure"
 	OpenStack BlobstoreType = "openstack"
 	WebDAV    BlobstoreType = "webdav"
+	Alibaba   BlobstoreType = "alibaba"
 )
 
 var BlobstoreTypes = map[BlobstoreType]bool{
@@ -85,6 +87,7 @@ var BlobstoreTypes = map[BlobstoreType]bool{
 	Azure:     true,
 	OpenStack: true,
 	WebDAV:    true,
+	Alibaba:   true,
 }
 
 func (config *BlobstoreConfig) MaxBodySizeBytes() uint64 {
@@ -167,6 +170,13 @@ type WebdavBlobstoreConfig struct {
 	SkipCertVerify  bool   `yaml:"skip_cert_verify"`
 	Username        string
 	Password        string
+}
+
+type AlibabaBlobstoreConfig struct {
+	BucketName string `yaml:"bucket_name"`
+	ApiKey     string `yaml:"access_key_id"`
+	ApiSecret  string `yaml:"access_key_secret"`
+	Endpoint   string
 }
 
 func (config WebdavBlobstoreConfig) CACert() string {
@@ -320,6 +330,7 @@ func LoadConfig(filename string) (config Config, err error) {
 		config.BuildpackCache.LocalConfig != nil ||
 		config.BuildpackCache.OpenstackConfig != nil ||
 		config.BuildpackCache.S3Config != nil ||
+		config.BuildpackCache.AlibabaConfig != nil ||
 		config.BuildpackCache.WebdavConfig != nil {
 		errs = append(errs, "buildpack_cache must not have a blobstore configured, as it only exists to allow to configure max_body_size. "+
 			"As blobstore, the droplet blobstore is used.")

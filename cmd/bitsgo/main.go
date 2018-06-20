@@ -12,6 +12,7 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/blobstores/alibaba"
 	"github.com/petergtz/bitsgo/blobstores/azure"
 	"github.com/petergtz/bitsgo/blobstores/decorator"
 	"github.com/petergtz/bitsgo/blobstores/gcp"
@@ -27,7 +28,7 @@ import (
 	"github.com/petergtz/bitsgo/statsd"
 	"github.com/urfave/negroni"
 	"go.uber.org/zap"
-	"gopkg.in/alecthomas/kingpin.v2"
+	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
@@ -195,7 +196,14 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
 						blobstoreConfig.WebdavConfig.DirectoryKey+"/")),
 				localResourceSigner)
-
+	case config.Alibaba:
+		log.Log.Infow("Creating Alibaba blobstore", "bucket", blobstoreConfig.AlibabaConfig.BucketName)
+		return decorator.ForBlobstoreWithPathPartitioning(
+				alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig)),
+			bitsgo.NewSignResourceHandler(
+				decorator.ForResourceSignerWithPathPartitioning(
+					alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig)),
+				localResourceSigner)
 	default:
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
 		return nil, nil // satisfy compiler
@@ -274,6 +282,18 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
 						blobstoreConfig.WebdavConfig.DirectoryKey+"/buildpack_cache/")),
 				localResourceSigner)
+	case config.Alibaba:
+		log.Log.Infow("Creating Alibaba blobstore", "bucket", blobstoreConfig.AlibabaConfig.BucketName)
+		return decorator.ForBlobstoreWithPathPartitioning(
+				decorator.ForBlobstoreWithPathPrefixing(
+					alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig),
+					"buildpack_cache/")),
+			bitsgo.NewSignResourceHandler(
+				decorator.ForResourceSignerWithPathPartitioning(
+					decorator.ForResourceSignerWithPathPrefixing(
+						alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig),
+						"buildpack_cache")),
+				localResourceSigner)
 	default:
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
 		return nil, nil // satisfy compiler
@@ -341,6 +361,13 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpo
 				decorator.ForBlobstoreWithPathPrefixing(
 					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
 					blobstoreConfig.WebdavConfig.DirectoryKey+"/app_bits_cache/")),
+			signAppStashMatchesHandler
+	case config.Alibaba:
+		log.Log.Infow("Creating Alibaba blobstore", "bucket-name", blobstoreConfig.AlibabaConfig.BucketName)
+		return decorator.ForBlobstoreWithPathPartitioning(
+				decorator.ForBlobstoreWithPathPrefixing(
+					alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig),
+					"app_bits_cache/")),
 			signAppStashMatchesHandler
 	default:
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)

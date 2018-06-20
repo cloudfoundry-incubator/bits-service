@@ -1,5 +1,5 @@
-hash: 745bba7ce3b4a25ed5f8b2c058dcd515ca91935010e9793df0752549f7d41e73
-updated: 2018-05-07T13:37:37.594283+02:00
+hash: 5b7fadbf002237878872a861923f64c8601fdefc3cf43fffc15a8461ca78279c
+updated: 2018-06-25T10:22:32.742225+02:00
 imports:
 - name: cloud.google.com/go
   version: 7c205da84d8d024a8200be93ab042357c9a70177
@@ -18,6 +18,10 @@ imports:
   - parse
 - name: github.com/alecthomas/units
   version: 2efee857e7cfd4f3d0138cc3cbb1b4966962b93a
+- name: github.com/aliyun/aliyun-oss-go-sdk
+  version: 36bf7aa2f916f274137aedd05d1d36f6a3c0f4a6
+  subpackages:
+  - oss
 - name: github.com/aws/aws-sdk-go
   version: 87aa1287b67f86a66c22477c9c730568c9b5977a
   subpackages:

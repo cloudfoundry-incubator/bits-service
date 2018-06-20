@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/petergtz/bitsgo"
+	"github.com/petergtz/bitsgo/blobstores/alibaba"
 	"github.com/petergtz/bitsgo/blobstores/azure"
 	"github.com/petergtz/bitsgo/blobstores/gcp"
 	"github.com/petergtz/bitsgo/blobstores/openstack"
@@ -25,8 +26,10 @@ import (
 var _ = Describe("Non-local blobstores", func() {
 
 	var (
-		filepath  string
-		blobstore blobstore
+		filepath     string
+		srcFilepath  string
+		destFilepath string
+		blobstore    blobstore
 	)
 
 	itCanPutAndGetAResourceThere := func() {
@@ -106,6 +109,36 @@ var _ = Describe("Non-local blobstores", func() {
 			})
 		})
 
+		Context("Can copy", func() {
+
+			BeforeEach(func() {
+				srcFilepath = fmt.Sprintf("src-testfile")
+				destFilepath = fmt.Sprintf("dest-testfile")
+				body, e := blobstore.Get(srcFilepath)
+				Expect(e).To(BeAssignableToTypeOf(&bitsgo.NotFoundError{}))
+				Expect(body).To(BeNil())
+				e = blobstore.Put(srcFilepath, strings.NewReader("the file content"))
+				Expect(e).NotTo(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				//teardown
+				e := blobstore.Delete(srcFilepath)
+				Expect(e).NotTo(HaveOccurred())
+				e = blobstore.Delete(destFilepath)
+				Expect(e).NotTo(HaveOccurred())
+			})
+			It("a resource from src to dest", func() {
+				e := blobstore.Copy(srcFilepath, destFilepath)
+				Expect(e).NotTo(HaveOccurred())
+
+				body, e := blobstore.Get(destFilepath)
+				Expect(e).NotTo(HaveOccurred())
+				Expect(body).NotTo(BeNil())
+
+			})
+		})
+
 		It("Can delete a prefix like in a file tree", func() {
 			Expect(blobstore.Exists("dir/one")).To(BeFalse())
 			Expect(blobstore.Exists("dir/two")).To(BeFalse())
@@ -151,7 +184,6 @@ var _ = Describe("Non-local blobstores", func() {
 			_, e := blobstore.Get("irrelevant-path")
 			Expect(e).NotTo(BeAssignableToTypeOf(&bitsgo.NotFoundError{}))
 		})
-
 	}
 
 	var configFileContent []byte
@@ -229,6 +261,20 @@ var _ = Describe("Non-local blobstores", func() {
 
 		Context("With non-existing bucket", func() {
 			BeforeEach(func() { openstackConfig.ContainerName += "non-existing" })
+
+			ItDoesNotReturnNotFoundError()
+		})
+
+	})
+	FContext("alibaba", func() {
+		var alibabaConfig config.AlibabaBlobstoreConfig
+		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &alibabaConfig)).To(Succeed()) })
+		JustBeforeEach(func() { blobstore = alibaba.NewBlobstore(alibabaConfig) })
+
+		itCanPutAndGetAResourceThere()
+
+		Context("With non-existing bucket", func() {
+			BeforeEach(func() { alibabaConfig.BucketName += "non-existing" })
 
 			ItDoesNotReturnNotFoundError()
 		})

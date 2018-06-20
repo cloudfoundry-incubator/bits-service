@@ -1,6 +1,7 @@
 #!/bin/bash -xe
 
-pushd $(dirname $0)/..
+pushd $(dirname $0)/../cmd/bitsgo
+echo `pwd`
 go install
 popd
 

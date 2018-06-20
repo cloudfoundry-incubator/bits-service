@@ -27,6 +27,9 @@ import:
 - package: github.com/Azure/azure-sdk-for-go
 - package: github.com/ncw/swift
 - package: github.com/cenkalti/backoff
+- package: github.com/aliyun/aliyun-oss-go-sdk
+  subpackages:
+  - oss
 testImport:
 - package: github.com/onsi/ginkgo
 - package: github.com/petergtz/pegomock
