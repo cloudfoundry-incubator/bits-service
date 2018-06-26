@@ -34,22 +34,20 @@ func (middleware *MetricsMiddleware) ServeHTTP(responseWriter http.ResponseWrite
 
 	next(negroniResponseWriter, request)
 
-	resourceType := ResourceTypeFrom(request.URL.Path)
-	duration := time.Since(startTime)
 	responseStatus := strconv.Itoa(negroniResponseWriter.Status())
-	middleware.metricsService.SendTimingMetric(request.Method+"-"+resourceType+"-time", duration)
-	middleware.metricsService.SendTimingMetric(request.Method+"-"+resourceType+"-"+responseStatus+"-time", duration)
-	middleware.metricsService.SendGaugeMetric(request.Method+"-"+resourceType+"-size", int64(negroniResponseWriter.Size()))
-	middleware.metricsService.SendGaugeMetric(request.Method+"-"+resourceType+"-request-size", int64(request.ContentLength))
 	middleware.metricsService.SendCounterMetric("status-"+responseStatus, 1)
+	resourceType := ResourceTypeFrom(request.URL.Path)
+	if resourceType != "" {
+		duration := time.Since(startTime)
+		middleware.metricsService.SendTimingMetric(request.Method+"-"+resourceType+"-time", duration)
+		middleware.metricsService.SendTimingMetric(request.Method+"-"+resourceType+"-"+responseStatus+"-time", duration)
+		middleware.metricsService.SendGaugeMetric(request.Method+"-"+resourceType+"-size", int64(negroniResponseWriter.Size()))
+		middleware.metricsService.SendGaugeMetric(request.Method+"-"+resourceType+"-request-size", int64(request.ContentLength))
+	}
 }
 
 var resourceURLPathPattern = regexp.MustCompile(`^/(packages|droplets|app_stash|buildpacks|buildpack_cache)/`)
 
 func ResourceTypeFrom(path string) string {
-	resourceType := strings.Trim(resourceURLPathPattern.FindString(path), "/")
-	if resourceType == "" {
-		return "invalid"
-	}
-	return resourceType
+	return strings.Trim(resourceURLPathPattern.FindString(path), "/")
 }
