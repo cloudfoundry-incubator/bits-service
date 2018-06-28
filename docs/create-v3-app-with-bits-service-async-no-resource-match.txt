@@ -1,0 +1,33 @@
+title Create App (V3) with bits-service (async, no resource matching)
+
+cf->CC: POST /v3/apps
+CC-->cf: APP_GUID
+note over Bits-Service,Bits-Service-Upload-Queue: This is one process
+cf->CC: POST /v3/apps/$APP_GUID/packages
+CC-->CC: Generate\nPACKAGE_GUID
+CC->Bits-Service: GET /sign/packages/$PACKAGE_GUID
+activate Bits-Service
+Bits-Service-->CC: UPLOAD_URL (signed)
+deactivate Bits-Service
+CC-->cf: 201\n$UPLOAD_URL\n$PACKAGE_SELF_URL (for package state polling)
+
+cf->cf: create package.zip
+cf->Bits-Service: PUT $UPLOAD_URL package.zip
+activate Bits-Service
+Bits-Service->Bits-Service: extract PACKAGE_GUID\n from $UPLOAD_URL
+Bits-Service->Bits-Service-Upload-Queue: enqueue package upload job
+Bits-Service->CC: package PROCESSING $PACKAGE_GUID
+Bits-Service-->cf: 201
+deactivate Bits-Service
+cf->CC: GET $PACKAGE_SELF_URL
+CC-->cf: 200 package PROCESSING_UPLOAD
+note over cf,CC: loop until\npackage is READY
+activate Bits-Service-Upload-Queue
+Bits-Service-Upload-Queue->Bits-Service-Upload-Queue: dequeue package upload job
+Bits-Service-Upload-Queue->Bits-Service-Upload-Queue: calc SHA1_PACKAGE_HASH,\nSHA256_PACKAGE_HASH
+Bits-Service-Upload-Queue->Blobstore: PUT package.zip
+Blobstore-->Bits-Service-Upload-Queue: 201
+Bits-Service-Upload-Queue->CC: package $PACKAGE_GUID READY\n$SHA1_PACKAGE_HASH, $SHA256_PACKAGE_HASH
+deactivate Bits-Service-Upload-Queue
+cf->CC: GET $PACKAGE_SELF_URL
+CC-->cf: 200 package READY

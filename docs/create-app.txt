@@ -1,0 +1,30 @@
+title cf push --no-start
+
+cf->CC: POST /v2/apps
+CC-->cf: 201 <app-guid>
+
+cf->CC: PUT /v2/resource_match <file fingerprints>
+loop fingerprints
+  CC->Blobstore: HEAD file
+  Blobstore-->CC: [200, 404]
+end
+CC-->cf: found fingerprints
+
+cf->cf: ZIP missing files
+cf->CC: PUT /v2/apps/:app-guid/bits <zip-file>
+
+loop existing files
+  CC->Blobstore: fetch file
+  Blobstore-->CC: file
+end
+
+loop new files
+  CC->Blobstore: store file
+  Blobstore-->CC: 201
+end
+CC-->cf: 201
+
+CC->>CC: assemble package
+
+CC->>Blobstore: store package
+Blobstore-->CC: 201

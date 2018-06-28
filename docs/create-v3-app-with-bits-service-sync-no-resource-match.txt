@@ -1,0 +1,23 @@
+title Create App (V3) with bits-service
+
+cf->CC: POST /v3/apps
+CC-->cf: APP_GUID
+cf->CC: POST /v3/apps/$APP_GUID/packages
+CC-->CC: Generate\nPACKAGE_GUID
+CC->Bits-Service: GET /sign/packages/$PACKAGE_GUID
+activate Bits-Service
+Bits-Service-->CC: UPLOAD_URL (signed)
+deactivate Bits-Service
+CC-->cf: 201 $UPLOAD_URL
+
+cf->cf: create package.zip
+cf->Bits-Service: POST $UPLOAD_URL package.zip
+activate Bits-Service
+Bits-Service->Bits-Service: extract PACKAGE_GUID\n from $UPLOAD_URL
+Bits-Service->CC: package PROCESSING $PACKAGE_GUID
+Bits-Service->Bits-Service: calc SHA1_PACKAGE_HASH,\nSHA256_PACKAGE_HASH
+Bits-Service->Blobstore: PUT package.zip
+Bits-Service->CC: package $PACKAGE_GUID READY\n$SHA1_PACKAGE_HASH, $SHA256_PACKAGE_HASH
+deactivate Bits-Service
+Bits-Service-->cf: 201
+CC-->cf: ready

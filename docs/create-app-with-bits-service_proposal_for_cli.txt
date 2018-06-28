@@ -1,0 +1,54 @@
+# TODO
+# * async: Background / Polling?
+# * GET statt POST /signed/app_stash/matches
+# * CAPI
+#   - return signed URLs to CLI for /app_stash/matches and /app_stash/entries
+#   - who gets info about package ready?
+
+title Create v2 App with Bits-Service (Direct CLI Upload)
+cf->CC: GET /v2/info
+CC-->cf: $BITS_ENDPOINT
+
+cf->CC: PUT /v2/apps/:guid
+CC->Bits-Service: GET /sign/app_stash/matches
+Bits-Service-->CC: 201 $SIGNED_ENTRIES_URL
+
+CC->Bits-Service: GET /sign/app_stash/entries
+Bits-Service-->CC: 201 $SIGNED_BUNDLE_URL
+
+CC-->cf: 201 $APP_GUID, $SIGNED_ENTRIES_URL, $SIGNED_BUNDLE_URL
+cf->Bits-Service: POST /signed/app_stash/matches [JSON of known file SHAs]
+loop each SHA
+    Bits-Service->Blobstore: HEAD file
+    Blobstore-->Bits-Service:
+end
+Bits-Service-->cf: files found
+
+cf->cf: create ZIP with missing bits
+
+# start upload zip archive from cli
+# [Not implemented yet in CC]
+#what is with the sha? POST /v2/apps/:guid/bits [zip file + SHAs known to CC]
+
+cf->Bits-Service: POST /signed/app_stash/entries [zip file]
+Bits-Service->Bits-Service: unzip
+loop unzipped files
+    Bits-Service->Blobstore: store
+    Blobstore-->Bits-Service:
+end
+
+#who bundles? this is open question
+Bits-Service-->cf: [SHAs of files from zip]
+
+cf->cf: Collect list of all SHAs
+cf->Bits-Service: POST /signed/app_stash/bundle [all SHAs]
+
+loop existing files
+  Bits-Service->Blobstore: fetch file
+  Blobstore-->Bits-Service: file
+end
+
+Bits-Service->Bits-Service: assemble package
+Bits-Service-->cf: 201
+
+cf->CC: Ready to start

@@ -1,0 +1,9 @@
+title Create Droplet Today
+
+note over DEA,CC,Blobstore: stage app
+DEA->CC: POST /staging/droplets/<app-guid>/upload
+CC->Blobstore: upload file
+note over DEA,CC,Blobstore: run app
+DEA->CC: GET /staging/droplets/<app-guid>/download
+CC-->DEA: download url
+DEA->Blobstore: fetch file

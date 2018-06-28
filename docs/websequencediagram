@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+#
+# Render textual input as web sequence diagram
+#
+# Reads the text from the file given by the first argument and writes the result to the file given by the second argument.
+#
+# Example:
+#
+# websequencediagram create-v3-package-with-bits-service.txt create-v3-package-with-bits-service.png
+#
+# adapted from https://www.websequencediagrams.com/embedding.html#ruby
+#
+src = File.read(ARGV[0])
+target = ARGV[1]
+
+require 'net/http'
+require 'yaml'
+require 'uri'
+require 'open-uri'
+
+response = Net::HTTP.post_form(
+  URI.parse('http://www.websequencediagrams.com/index.php'),
+  'style' => 'default',
+  'message' => src
+)
+
+appendix = YAML.safe_load(response.body)['img']
+File.write(target, open("http://www.websequencediagrams.com/#{appendix}").read)

@@ -1,0 +1,16 @@
+title Create Droplet with Bits-Service
+
+note over DEA,CC,Bits-Service,Blobstore: stage app
+DEA->CC: POST /staging/droplets/<app-guid>/upload
+CC->Bits-Service: upload file
+Bits-Service->Bits-Service: calculate digest (SHA)
+Bits-Service->Blobstore: upload file
+Bits-Service-->CC: {:guid, :digest}
+
+note over DEA,CC,Bits-Service,Blobstore: run app
+CC-->>DEA: NATs message to start app {:guid, :digest}
+DEA->CC: GET /staging/droplets/<app-guid>/download
+CC-->DEA: download url
+DEA->Bits-Service: fetch file
+Bits-Service->Blobstore: download file
+Bits-Service-->DEA: bits
