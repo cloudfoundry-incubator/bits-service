@@ -13,6 +13,7 @@ import (
 	"github.com/petergtz/bitsgo/blobstores/validate"
 	"github.com/petergtz/bitsgo/config"
 	"github.com/petergtz/bitsgo/logger"
+	log "github.com/petergtz/bitsgo/logger"
 	"github.com/pkg/errors"
 )
 
@@ -37,9 +38,13 @@ func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
 			AccessID:        config.AccessKeyID,
 			SecretAccessKey: config.SecretAccessKey,
 		}
-		if config.Region == "" { // make SDK happy
-			config.Region = "dummy-region"
-		}
+	}
+
+	// Make SDK happy. The AWS Client requires a region, although it never uses that region,
+	// because S3 is region independent. (It's using that region when used with other AWS services.)
+	if config.Region == "" {
+		config.Region = "us-east-1"
+		log.Log.Infow("No AWS region specified for blobstore. Using a default value.", "bucket", config.Bucket, "default-region", config.Region)
 	}
 
 	return &Blobstore{
