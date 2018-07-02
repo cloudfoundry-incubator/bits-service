@@ -46,7 +46,7 @@ func main() {
 	logger := createLoggerWith(config.Logging.Level)
 	log.SetLogger(logger)
 
-	appStashBlobstore := createAppStashBlobstore(config.AppStash)
+	appStashBlobstore, signAppStashURLHandler := createAppStashBlobstore(config.AppStash, config.PublicEndpointUrl(), config.Port, config.Secret)
 	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpointUrl(), config.Port, config.Secret, "packages")
 	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets")
 	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpointUrl(), config.Port, config.Secret, "buildpacks")
@@ -63,6 +63,7 @@ func main() {
 		signDropletURLHandler,
 		signBuildpackURLHandler,
 		signBuildpackCacheURLHandler,
+		signAppStashURLHandler,
 		bitsgo.NewAppStashHandlerWithSizeThresholds(appStashBlobstore, config.AppStash.MaxBodySizeBytes(), config.AppStashConfig.MinimumSizeBytes(), config.AppStashConfig.MaximumSizeBytes()),
 		bitsgo.NewResourceHandlerWithUpdater(
 			packageBlobstore,
@@ -283,49 +284,63 @@ func createLocalResourceSigner(publicEndpoint *url.URL, port int, secret string,
 	}
 }
 
-func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig) bitsgo.NoRedirectBlobstore {
+func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string) (bitsgo.NoRedirectBlobstore, *bitsgo.SignResourceHandler) {
+	signAppStashMatchesHandler := bitsgo.NewSignResourceHandler(
+		nil, // signing for get is not necessary for app_stash
+		&local.LocalResourceSigner{
+			DelegateEndpoint:   fmt.Sprintf("%v://%v:%v", publicEndpoint.Scheme, publicEndpoint.Host, port),
+			Signer:             &pathsigner.PathSignerValidator{secret, clock.New()},
+			ResourcePathPrefix: "/app_stash/matches",
+		})
+
 	switch blobstoreConfig.BlobstoreType {
 	case config.Local:
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			decorator.ForBlobstoreWithPathPrefixing(
-				local.NewBlobstore(*blobstoreConfig.LocalConfig),
-				"app_bits_cache/"))
+				decorator.ForBlobstoreWithPathPrefixing(
+					local.NewBlobstore(*blobstoreConfig.LocalConfig),
+					"app_bits_cache/")),
+			signAppStashMatchesHandler
 	case config.AWS:
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			decorator.ForBlobstoreWithPathPrefixing(
-				s3.NewBlobstore(*blobstoreConfig.S3Config),
-				"app_bits_cache/"))
+				decorator.ForBlobstoreWithPathPrefixing(
+					s3.NewBlobstore(*blobstoreConfig.S3Config),
+					"app_bits_cache/")),
+			signAppStashMatchesHandler
 	case config.Google:
 		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			decorator.ForBlobstoreWithPathPrefixing(
-				gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
-				"app_bits_cache/"))
+				decorator.ForBlobstoreWithPathPrefixing(
+					gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
+					"app_bits_cache/")),
+			signAppStashMatchesHandler
 	case config.Azure:
 		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			decorator.ForBlobstoreWithPathPrefixing(
-				azure.NewBlobstore(*blobstoreConfig.AzureConfig),
-				"app_bits_cache/"))
+				decorator.ForBlobstoreWithPathPrefixing(
+					azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+					"app_bits_cache/")),
+			signAppStashMatchesHandler
 	case config.OpenStack:
 		log.Log.Infow("Creating Openstack blobstore", "container", blobstoreConfig.OpenstackConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			decorator.ForBlobstoreWithPathPrefixing(
-				openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
-				"app_bits_cache/"))
+				decorator.ForBlobstoreWithPathPrefixing(
+					openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
+					"app_bits_cache/")),
+			signAppStashMatchesHandler
 	case config.WebDAV:
 		log.Log.Infow("Creating Webdav blobstore",
 			"public-endpoint", blobstoreConfig.WebdavConfig.PublicEndpoint,
 			"private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint)
 		return decorator.ForBlobstoreWithPathPartitioning(
-			decorator.ForBlobstoreWithPathPrefixing(
-				webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
-				blobstoreConfig.WebdavConfig.DirectoryKey+"/app_bits_cache/"))
+				decorator.ForBlobstoreWithPathPrefixing(
+					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
+					blobstoreConfig.WebdavConfig.DirectoryKey+"/app_bits_cache/")),
+			signAppStashMatchesHandler
 	default:
 		log.Log.Fatalw("blobstoreConfig is invalid.", "blobstore-type", blobstoreConfig.BlobstoreType)
-		return nil // satisfy compiler
+		return nil, nil // satisfy compiler
 	}
 }
 

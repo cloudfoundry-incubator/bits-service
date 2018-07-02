@@ -13,16 +13,21 @@ import (
 
 func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlewares.BasicAuthMiddleware,
 	signatureVerificationMiddleware *local.SignatureVerificationMiddleware,
-	signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler *bitsgo.SignResourceHandler,
+	signPackageURLHandler,
+	signDropletURLHandler,
+	signBuildpackURLHandler,
+	signBuildpackCacheURLHandler,
+	signAppStashURLHandler *bitsgo.SignResourceHandler,
 	appstashHandler *bitsgo.AppStashHandler,
 	packageHandler, buildpackHandler, dropletHandler, buildpackCacheHandler *bitsgo.ResourceHandler) http.Handler {
+
 	rootRouter := mux.NewRouter()
 
 	internalRouter := mux.NewRouter()
 	rootRouter.Host(privateHost).Handler(internalRouter)
 
 	SetUpSignRoute(internalRouter, basicAuthMiddleware,
-		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler)
+		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler, signAppStashURLHandler)
 
 	SetUpAppStashRoutes(internalRouter, appstashHandler)
 	SetUpPackageRoutes(internalRouter, packageHandler)
@@ -35,6 +40,7 @@ func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlew
 		signatureVerificationMiddleware,
 		negroni.Wrap(publicRouter),
 	))
+	SetUpAppStashRoutes(publicRouter, appstashHandler)
 	SetUpPackageRoutes(publicRouter, packageHandler)
 	SetUpBuildpackRoutes(publicRouter, buildpackHandler)
 	SetUpDropletRoutes(publicRouter, dropletHandler)
@@ -84,12 +90,18 @@ func setUpDefaultMethodRoutes(router *mux.Router, handler *bitsgo.ResourceHandle
 	setRouteNotFoundStatusCode(router, http.StatusMethodNotAllowed)
 }
 
-func SetUpSignRoute(router *mux.Router, basicAuthMiddleware *middlewares.BasicAuthMiddleware,
-	signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler *bitsgo.SignResourceHandler) {
+func SetUpSignRoute(router *mux.Router,
+	basicAuthMiddleware *middlewares.BasicAuthMiddleware,
+	signPackageURLHandler,
+	signDropletURLHandler,
+	signBuildpackURLHandler,
+	signBuildpackCacheURLHandler,
+	signAppStashURLHandler *bitsgo.SignResourceHandler) {
 	router.Path("/sign/packages/{resource}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signPackageURLHandler))
 	router.Path("/sign/droplets/{resource:.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signDropletURLHandler))
 	router.Path("/sign/buildpacks/{resource}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackURLHandler))
 	router.Path("/sign/buildpack_cache/entries/{resource:.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackCacheURLHandler))
+	router.Path("/sign/app_stash/matches").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signAppStashURLHandler))
 }
 
 func wrapWith(basicAuthMiddleware *middlewares.BasicAuthMiddleware, handler *bitsgo.SignResourceHandler) http.Handler {

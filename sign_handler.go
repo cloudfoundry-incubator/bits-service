@@ -36,7 +36,7 @@ func (handler *SignResourceHandler) Sign(responseWriter http.ResponseWriter, req
 	switch method {
 	case "get":
 		signer = handler.getResourceSigner
-	case "put":
+	case "put", "post":
 		signer = handler.putResourceSigner
 	default:
 		responseWriter.WriteHeader(http.StatusBadRequest)
