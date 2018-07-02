@@ -93,7 +93,7 @@ func main() {
 		Addr:         fmt.Sprintf("%v:%v", address, config.Port),
 		WriteTimeout: 60 * time.Minute,
 		ReadTimeout:  60 * time.Minute,
-		ErrorLog:     zap.NewStdLog(logger),
+		ErrorLog:     log.NewStdLog(logger),
 	}
 	e = httpServer.ListenAndServeTLS(config.CertFile, config.KeyFile)
 	log.Log.Fatalw("http server crashed", "error", e)
