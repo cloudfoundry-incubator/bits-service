@@ -244,34 +244,6 @@ func LoadConfig(filename string) (config Config, err error) {
 
 	var errs []string
 
-	verifyBlobstoreType(config.Droplets.BlobstoreType, "droplets", errs)
-	verifyBlobstoreType(config.Packages.BlobstoreType, "packages", errs)
-	verifyBlobstoreType(config.AppStash.BlobstoreType, "app_stash", errs)
-	verifyBlobstoreType(config.Buildpacks.BlobstoreType, "buildpacks", errs)
-
-	if config.BuildpackCache.AzureConfig != nil ||
-		config.BuildpackCache.GCPConfig != nil ||
-		config.BuildpackCache.LocalConfig != nil ||
-		config.BuildpackCache.OpenstackConfig != nil ||
-		config.BuildpackCache.S3Config != nil ||
-		config.BuildpackCache.WebdavConfig != nil {
-		errs = append(errs, "buildpack_cache must not have a blobstore configured, as it only exists to allow to configure max_body_size. "+
-			"As blobstore, the droplet blobstore is used.")
-	}
-
-	if config.Packages.BlobstoreType == WebDAV && config.Packages.WebdavConfig.DirectoryKey == "" {
-		errs = append(errs, "Packages WebDAV blobstore must have a directory_key configured.")
-	}
-	if config.Droplets.BlobstoreType == WebDAV && config.Droplets.WebdavConfig.DirectoryKey == "" {
-		errs = append(errs, "Droplets WebDAV blobstore must have a directory_key configured.")
-	}
-	if config.Buildpacks.BlobstoreType == WebDAV && config.Buildpacks.WebdavConfig.DirectoryKey == "" {
-		errs = append(errs, "Buildpacks WebDAV blobstore must have a directory_key configured.")
-	}
-	if config.AppStash.BlobstoreType == WebDAV && config.AppStash.WebdavConfig.DirectoryKey == "" {
-		errs = append(errs, "AppStash WebDAV blobstore must have a directory_key configured.")
-	}
-
 	if config.Port == 0 {
 		errs = append(errs, "port must be an integer > 0")
 	}
@@ -328,6 +300,44 @@ func LoadConfig(filename string) (config Config, err error) {
 		}
 	}
 
+	verifyBlobstoreType(config.Droplets.BlobstoreType, "droplets", &errs)
+	verifyBlobstoreType(config.Packages.BlobstoreType, "packages", &errs)
+	verifyBlobstoreType(config.AppStash.BlobstoreType, "app_stash", &errs)
+	verifyBlobstoreType(config.Buildpacks.BlobstoreType, "buildpacks", &errs)
+
+	verifyBlobstoreConfig(config.Droplets, "droplets", &errs)
+	verifyBlobstoreConfig(config.Packages, "packages", &errs)
+	verifyBlobstoreConfig(config.Buildpacks, "buildpacks", &errs)
+	verifyBlobstoreConfig(config.AppStash, "app_stash", &errs)
+
+	if len(errs) > 0 {
+		// returning here already, because follow-up checks are difficult if not even basic checks succeed
+		return Config{}, errors.New("error in config values: " + strings.Join(errs, "; "))
+	}
+
+	if config.BuildpackCache.AzureConfig != nil ||
+		config.BuildpackCache.GCPConfig != nil ||
+		config.BuildpackCache.LocalConfig != nil ||
+		config.BuildpackCache.OpenstackConfig != nil ||
+		config.BuildpackCache.S3Config != nil ||
+		config.BuildpackCache.WebdavConfig != nil {
+		errs = append(errs, "buildpack_cache must not have a blobstore configured, as it only exists to allow to configure max_body_size. "+
+			"As blobstore, the droplet blobstore is used.")
+	}
+
+	if config.Packages.BlobstoreType == WebDAV && config.Packages.WebdavConfig.DirectoryKey == "" {
+		errs = append(errs, "Packages WebDAV blobstore must have a directory_key configured.")
+	}
+	if config.Droplets.BlobstoreType == WebDAV && config.Droplets.WebdavConfig.DirectoryKey == "" {
+		errs = append(errs, "Droplets WebDAV blobstore must have a directory_key configured.")
+	}
+	if config.Buildpacks.BlobstoreType == WebDAV && config.Buildpacks.WebdavConfig.DirectoryKey == "" {
+		errs = append(errs, "Buildpacks WebDAV blobstore must have a directory_key configured.")
+	}
+	if config.AppStash.BlobstoreType == WebDAV && config.AppStash.WebdavConfig.DirectoryKey == "" {
+		errs = append(errs, "AppStash WebDAV blobstore must have a directory_key configured.")
+	}
+
 	if config.AppStashConfig.MinimumSizeBytes() > config.AppStashConfig.MaximumSizeBytes() {
 		errs = append(errs, "app_stash_config.maximum_size must be greater than app_stash_config.minimum_size")
 	}
@@ -339,12 +349,40 @@ func LoadConfig(filename string) (config Config, err error) {
 	return
 }
 
-func verifyBlobstoreType(blobstoreType BlobstoreType, resourceType string, errs []string) {
+func verifyBlobstoreType(blobstoreType BlobstoreType, resourceType string, errs *[]string) {
 	if !BlobstoreTypes[blobstoreType] {
 		blobstoreKeys := make([]string, 0)
 		for key := range BlobstoreTypes {
 			blobstoreKeys = append(blobstoreKeys, string(key))
 		}
-		errs = append(errs, "Blobstore type '"+string(blobstoreType)+"' for "+resourceType+" is invalid. Valid blobstore types are: "+strings.Join(blobstoreKeys, ", "))
+		*errs = append(*errs, "Blobstore type '"+string(blobstoreType)+"' for "+resourceType+" is invalid. Valid blobstore types are: "+strings.Join(blobstoreKeys, ", "))
+	}
+}
+
+func verifyBlobstoreConfig(blobstoreConfig BlobstoreConfig, resourceType string, errs *[]string) {
+	if blobstoreConfig.BlobstoreType == "" { // Already handled
+		return
+	}
+	if blobstoreConfigIsNil(blobstoreConfig) {
+		*errs = append(*errs, resourceType+" blobstore config is missing "+string(blobstoreConfig.BlobstoreType)+" config")
+	}
+}
+
+func blobstoreConfigIsNil(blobstoreConfig BlobstoreConfig) bool {
+	switch blobstoreConfig.BlobstoreType {
+	case AWS:
+		return blobstoreConfig.S3Config == nil || *blobstoreConfig.S3Config == (S3BlobstoreConfig{})
+	case Local:
+		return blobstoreConfig.LocalConfig == nil || *blobstoreConfig.LocalConfig == (LocalBlobstoreConfig{})
+	case OpenStack:
+		return blobstoreConfig.OpenstackConfig == nil || *blobstoreConfig.OpenstackConfig == (OpenstackBlobstoreConfig{})
+	case Azure:
+		return blobstoreConfig.AzureConfig == nil || *blobstoreConfig.AzureConfig == (AzureBlobstoreConfig{})
+	case Google:
+		return blobstoreConfig.GCPConfig == nil || *blobstoreConfig.GCPConfig == (GCPBlobstoreConfig{})
+	case WebDAV:
+		return blobstoreConfig.WebdavConfig == nil || *blobstoreConfig.WebdavConfig == (WebdavBlobstoreConfig{})
+	default:
+		return true
 	}
 }
