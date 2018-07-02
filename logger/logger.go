@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"bytes"
+	"log"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -27,4 +29,24 @@ func From(r *http.Request) *zap.SugaredLogger {
 	} else {
 		return Log
 	}
+}
+
+const (
+	_stdLogDefaultDepth = 2
+	_loggerWriterDepth  = 1
+)
+
+// Copied from go.uber.org/zap/global.go and changed to use Error instead of Info:
+func NewStdLog(l *zap.Logger) *log.Logger {
+	return log.New(&loggerWriter{l.WithOptions(
+		zap.AddCallerSkip(_stdLogDefaultDepth + _loggerWriterDepth),
+	)}, "" /* prefix */, 0 /* flags */)
+}
+
+type loggerWriter struct{ logger *zap.Logger }
+
+func (l *loggerWriter) Write(p []byte) (int, error) {
+	p = bytes.TrimSpace(p)
+	l.logger.Error(string(p))
+	return len(p), nil
 }
