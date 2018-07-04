@@ -65,15 +65,19 @@ func main() {
 		signBuildpackCacheURLHandler,
 		signAppStashURLHandler,
 		bitsgo.NewAppStashHandlerWithSizeThresholds(appStashBlobstore, config.AppStash.MaxBodySizeBytes(), config.AppStashConfig.MinimumSizeBytes(), config.AppStashConfig.MaximumSizeBytes()),
-		bitsgo.NewResourceHandlerWithUpdater(
+		bitsgo.NewResourceHandlerWithUpdaterAndSizeThresholds(
 			packageBlobstore,
+			appStashBlobstore,
 			createUpdater(config.CCUpdater),
 			"package",
 			metricsService,
-			config.Packages.MaxBodySizeBytes()),
-		bitsgo.NewResourceHandler(buildpackBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes()),
-		bitsgo.NewResourceHandler(dropletBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes()),
-		bitsgo.NewResourceHandler(buildpackCacheBlobstore, "buildpack_cache", metricsService, config.BuildpackCache.MaxBodySizeBytes()))
+			config.Packages.MaxBodySizeBytes(),
+			config.AppStashConfig.MinimumSizeBytes(),
+			config.AppStashConfig.MaximumSizeBytes(),
+		),
+		bitsgo.NewResourceHandler(buildpackBlobstore, appStashBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes()),
+		bitsgo.NewResourceHandler(dropletBlobstore, appStashBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes()),
+		bitsgo.NewResourceHandler(buildpackCacheBlobstore, appStashBlobstore, "buildpack_cache", metricsService, config.BuildpackCache.MaxBodySizeBytes()))
 
 	address := os.Getenv("BITS_LISTEN_ADDR")
 	if address == "" {
