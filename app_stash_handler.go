@@ -264,7 +264,7 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 		return
 	}
 
-	tempZipFilename, e := handler.CreateTempZipFileFrom(bundlesPayload, zipReader)
+	tempZipFilename, e := CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.blobstore)
 	if e != nil {
 		if notFoundError, ok := e.(*NotFoundError); ok {
 			responseWriter.WriteHeader(http.StatusNotFound)
@@ -306,7 +306,11 @@ func anyKeyMissingIn(bundlesPayload []Fingerprint) (bool, string) {
 	return false, ""
 }
 
-func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []Fingerprint, zipReader *zip.Reader) (tempFilename string, err error) {
+func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
+	zipReader *zip.Reader,
+	minimumSize, maximumSize uint64,
+	blobstore NoRedirectBlobstore,
+) (tempFilename string, err error) {
 	tempFile, e := ioutil.TempFile("", "bundles")
 	if e != nil {
 		return "", e
@@ -354,8 +358,8 @@ func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []Fingerpri
 				return "", e
 			}
 			defer tempFile.Close()
-			if uint64(tempFileSize) >= handler.minimumSize && uint64(tempFileSize) <= handler.maximumSize {
-				e = handler.blobstore.Put(hex.EncodeToString(sha.Sum(nil)), tempFile)
+			if uint64(tempFileSize) >= minimumSize && uint64(tempFileSize) <= maximumSize {
+				e = blobstore.Put(hex.EncodeToString(sha.Sum(nil)), tempFile)
 				if e != nil {
 					return "", e
 				}
@@ -370,7 +374,7 @@ func (handler *AppStashHandler) CreateTempZipFileFrom(bundlesPayload []Fingerpri
 		}
 
 		e = backoff.Retry(func() error {
-			b, e := handler.blobstore.Get(entry.Sha1)
+			b, e := blobstore.Get(entry.Sha1)
 			if e != nil {
 				if _, ok := e.(*NotFoundError); ok {
 					return backoff.Permanent(NewNotFoundErrorWithMessage(entry.Sha1))

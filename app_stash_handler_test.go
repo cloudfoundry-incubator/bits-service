@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -239,13 +240,13 @@ var _ = Describe("AppStash", func() {
 		It("Creates a zip", func() {
 			Expect(blobstore.Put("abc", strings.NewReader("filename1 content"))).To(Succeed())
 
-			tempFileName, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.Fingerprint{
+			tempFileName, e := bitsgo.CreateTempZipFileFrom([]bitsgo.Fingerprint{
 				bitsgo.Fingerprint{
 					Sha1: "abc",
 					Fn:   "filename1",
 					Mode: "644",
 				},
-			}, nil)
+			}, nil, 0, math.MaxUint64, blobstore)
 			Expect(e).NotTo(HaveOccurred())
 
 			reader, e := zip.OpenReader(tempFileName)
@@ -268,13 +269,13 @@ var _ = Describe("AppStash", func() {
 						ThenReturn(nil, errors.New("Some error")).
 						ThenReturn(ioutil.NopCloser(strings.NewReader("filename1 content")), nil)
 
-					tempFileName, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.Fingerprint{
+					tempFileName, e := bitsgo.CreateTempZipFileFrom([]bitsgo.Fingerprint{
 						bitsgo.Fingerprint{
 							Sha1: "abc",
 							Fn:   "filename1",
 							Mode: "644",
 						},
-					}, nil)
+					}, nil, 0, math.MaxUint64, blobstore)
 					Expect(e).NotTo(HaveOccurred())
 
 					reader, e := zip.OpenReader(tempFileName)
@@ -297,7 +298,7 @@ var _ = Describe("AppStash", func() {
 						ThenReturn(readClose, nil).
 						ThenReturn(ioutil.NopCloser(strings.NewReader("filename2 content")), nil)
 
-					tempFileName, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.Fingerprint{
+					tempFileName, e := bitsgo.CreateTempZipFileFrom([]bitsgo.Fingerprint{
 						bitsgo.Fingerprint{
 							Sha1: "abc",
 							Fn:   "filename1",
@@ -308,7 +309,7 @@ var _ = Describe("AppStash", func() {
 							Fn:   "filename2",
 							Mode: "644",
 						},
-					}, nil)
+					}, nil, 0, math.MaxUint64, blobstore)
 					Expect(e).NotTo(HaveOccurred())
 
 					reader, e := zip.OpenReader(tempFileName)
@@ -321,10 +322,6 @@ var _ = Describe("AppStash", func() {
 		})
 
 		Context("maximumSize and minimumSize provided", func() {
-			BeforeEach(func() {
-				appStashHandler = bitsgo.NewAppStashHandlerWithSizeThresholds(blobstore, 0, 15, 30)
-			})
-
 			It("only stores the file which is within range of thresholds", func() {
 				_, filename, _, _ := runtime.Caller(0)
 
@@ -336,7 +333,7 @@ var _ = Describe("AppStash", func() {
 				Expect(e).NotTo(HaveOccurred())
 				defer openZipFile.Close()
 
-				tempFilename, e := appStashHandler.CreateTempZipFileFrom([]bitsgo.Fingerprint{}, &openZipFile.Reader)
+				tempFilename, e := bitsgo.CreateTempZipFileFrom([]bitsgo.Fingerprint{}, &openZipFile.Reader, 15, 30, blobstore)
 				Expect(e).NotTo(HaveOccurred())
 				os.Remove(tempFilename)
 
