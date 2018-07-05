@@ -101,7 +101,7 @@ imports:
   - matchers/support/goraph/util
   - types
 - name: github.com/petergtz/pegomock
-  version: 22e6f2b05516e96e9a75ada571c8b18bce91899f
+  version: 5482ace33e29c090cd941dd9063721c39a9f2a83
   subpackages:
   - internal/verify
 - name: github.com/pkg/errors

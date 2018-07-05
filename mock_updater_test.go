@@ -16,8 +16,11 @@ func NewMockUpdater() *MockUpdater {
 	return &MockUpdater{fail: pegomock.GlobalFailHandler}
 }
 
-func (mock *MockUpdater) NotifyProcessingUpload(_param0 string) error {
-	params := []pegomock.Param{_param0}
+func (mock *MockUpdater) NotifyProcessingUpload(guid string) error {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockMockUpdater().")
+	}
+	params := []pegomock.Param{guid}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("NotifyProcessingUpload", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 error
 	if len(result) != 0 {
@@ -28,9 +31,12 @@ func (mock *MockUpdater) NotifyProcessingUpload(_param0 string) error {
 	return ret0
 }
 
-func (mock *MockUpdater) NotifyUploadFailed(_param0 string, _param1 error) error {
-	params := []pegomock.Param{_param0, _param1}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("NotifyUploadFailed", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
+func (mock *MockUpdater) NotifyUploadSucceeded(guid string, sha1 string, sha2 string) error {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockMockUpdater().")
+	}
+	params := []pegomock.Param{guid, sha1, sha2}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("NotifyUploadSucceeded", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 error
 	if len(result) != 0 {
 		if result[0] != nil {
@@ -40,9 +46,12 @@ func (mock *MockUpdater) NotifyUploadFailed(_param0 string, _param1 error) error
 	return ret0
 }
 
-func (mock *MockUpdater) NotifyUploadSucceeded(_param0 string, _param1 string, _param2 string) error {
-	params := []pegomock.Param{_param0, _param1, _param2}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("NotifyUploadSucceeded", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
+func (mock *MockUpdater) NotifyUploadFailed(guid string, e error) error {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockMockUpdater().")
+	}
+	params := []pegomock.Param{guid, e}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("NotifyUploadFailed", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 error
 	if len(result) != 0 {
 		if result[0] != nil {
@@ -70,8 +79,8 @@ type VerifierUpdater struct {
 	inOrderContext         *pegomock.InOrderContext
 }
 
-func (verifier *VerifierUpdater) NotifyProcessingUpload(_param0 string) *Updater_NotifyProcessingUpload_OngoingVerification {
-	params := []pegomock.Param{_param0}
+func (verifier *VerifierUpdater) NotifyProcessingUpload(guid string) *Updater_NotifyProcessingUpload_OngoingVerification {
+	params := []pegomock.Param{guid}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "NotifyProcessingUpload", params)
 	return &Updater_NotifyProcessingUpload_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
@@ -82,8 +91,8 @@ type Updater_NotifyProcessingUpload_OngoingVerification struct {
 }
 
 func (c *Updater_NotifyProcessingUpload_OngoingVerification) GetCapturedArguments() string {
-	_param0 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1]
+	guid := c.GetAllCapturedArguments()
+	return guid[len(guid)-1]
 }
 
 func (c *Updater_NotifyProcessingUpload_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
@@ -97,39 +106,8 @@ func (c *Updater_NotifyProcessingUpload_OngoingVerification) GetAllCapturedArgum
 	return
 }
 
-func (verifier *VerifierUpdater) NotifyUploadFailed(_param0 string, _param1 error) *Updater_NotifyUploadFailed_OngoingVerification {
-	params := []pegomock.Param{_param0, _param1}
-	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "NotifyUploadFailed", params)
-	return &Updater_NotifyUploadFailed_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
-}
-
-type Updater_NotifyUploadFailed_OngoingVerification struct {
-	mock              *MockUpdater
-	methodInvocations []pegomock.MethodInvocation
-}
-
-func (c *Updater_NotifyUploadFailed_OngoingVerification) GetCapturedArguments() (string, error) {
-	_param0, _param1 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1], _param1[len(_param1)-1]
-}
-
-func (c *Updater_NotifyUploadFailed_OngoingVerification) GetAllCapturedArguments() (_param0 []string, _param1 []error) {
-	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
-	if len(params) > 0 {
-		_param0 = make([]string, len(params[0]))
-		for u, param := range params[0] {
-			_param0[u] = param.(string)
-		}
-		_param1 = make([]error, len(params[1]))
-		for u, param := range params[1] {
-			_param1[u] = param.(error)
-		}
-	}
-	return
-}
-
-func (verifier *VerifierUpdater) NotifyUploadSucceeded(_param0 string, _param1 string, _param2 string) *Updater_NotifyUploadSucceeded_OngoingVerification {
-	params := []pegomock.Param{_param0, _param1, _param2}
+func (verifier *VerifierUpdater) NotifyUploadSucceeded(guid string, sha1 string, sha2 string) *Updater_NotifyUploadSucceeded_OngoingVerification {
+	params := []pegomock.Param{guid, sha1, sha2}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "NotifyUploadSucceeded", params)
 	return &Updater_NotifyUploadSucceeded_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
@@ -140,8 +118,8 @@ type Updater_NotifyUploadSucceeded_OngoingVerification struct {
 }
 
 func (c *Updater_NotifyUploadSucceeded_OngoingVerification) GetCapturedArguments() (string, string, string) {
-	_param0, _param1, _param2 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1], _param1[len(_param1)-1], _param2[len(_param2)-1]
+	guid, sha1, sha2 := c.GetAllCapturedArguments()
+	return guid[len(guid)-1], sha1[len(sha1)-1], sha2[len(sha2)-1]
 }
 
 func (c *Updater_NotifyUploadSucceeded_OngoingVerification) GetAllCapturedArguments() (_param0 []string, _param1 []string, _param2 []string) {
@@ -158,6 +136,37 @@ func (c *Updater_NotifyUploadSucceeded_OngoingVerification) GetAllCapturedArgume
 		_param2 = make([]string, len(params[2]))
 		for u, param := range params[2] {
 			_param2[u] = param.(string)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierUpdater) NotifyUploadFailed(guid string, e error) *Updater_NotifyUploadFailed_OngoingVerification {
+	params := []pegomock.Param{guid, e}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "NotifyUploadFailed", params)
+	return &Updater_NotifyUploadFailed_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type Updater_NotifyUploadFailed_OngoingVerification struct {
+	mock              *MockUpdater
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *Updater_NotifyUploadFailed_OngoingVerification) GetCapturedArguments() (string, error) {
+	guid, e := c.GetAllCapturedArguments()
+	return guid[len(guid)-1], e[len(e)-1]
+}
+
+func (c *Updater_NotifyUploadFailed_OngoingVerification) GetAllCapturedArguments() (_param0 []string, _param1 []error) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]string, len(params[0]))
+		for u, param := range params[0] {
+			_param0[u] = param.(string)
+		}
+		_param1 = make([]error, len(params[1]))
+		for u, param := range params[1] {
+			_param1[u] = param.(error)
 		}
 	}
 	return

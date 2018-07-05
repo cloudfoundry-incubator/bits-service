@@ -17,32 +17,11 @@ func NewMockNoRedirectBlobstore() *MockNoRedirectBlobstore {
 	return &MockNoRedirectBlobstore{fail: pegomock.GlobalFailHandler}
 }
 
-func (mock *MockNoRedirectBlobstore) Delete(_param0 string) error {
-	params := []pegomock.Param{_param0}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("Delete", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 error
-	if len(result) != 0 {
-		if result[0] != nil {
-			ret0 = result[0].(error)
-		}
+func (mock *MockNoRedirectBlobstore) Exists(path string) (bool, error) {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockMockNoRedirectBlobstore().")
 	}
-	return ret0
-}
-
-func (mock *MockNoRedirectBlobstore) DeleteDir(_param0 string) error {
-	params := []pegomock.Param{_param0}
-	result := pegomock.GetGenericMockFrom(mock).Invoke("DeleteDir", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
-	var ret0 error
-	if len(result) != 0 {
-		if result[0] != nil {
-			ret0 = result[0].(error)
-		}
-	}
-	return ret0
-}
-
-func (mock *MockNoRedirectBlobstore) Exists(_param0 string) (bool, error) {
-	params := []pegomock.Param{_param0}
+	params := []pegomock.Param{path}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("Exists", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 bool
 	var ret1 error
@@ -57,8 +36,11 @@ func (mock *MockNoRedirectBlobstore) Exists(_param0 string) (bool, error) {
 	return ret0, ret1
 }
 
-func (mock *MockNoRedirectBlobstore) Get(_param0 string) (io.ReadCloser, error) {
-	params := []pegomock.Param{_param0}
+func (mock *MockNoRedirectBlobstore) Get(path string) (io.ReadCloser, error) {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockMockNoRedirectBlobstore().")
+	}
+	params := []pegomock.Param{path}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("Get", params, []reflect.Type{reflect.TypeOf((*io.ReadCloser)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 io.ReadCloser
 	var ret1 error
@@ -73,9 +55,42 @@ func (mock *MockNoRedirectBlobstore) Get(_param0 string) (io.ReadCloser, error) 
 	return ret0, ret1
 }
 
-func (mock *MockNoRedirectBlobstore) Put(_param0 string, _param1 io.ReadSeeker) error {
-	params := []pegomock.Param{_param0, _param1}
+func (mock *MockNoRedirectBlobstore) Put(path string, src io.ReadSeeker) error {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockMockNoRedirectBlobstore().")
+	}
+	params := []pegomock.Param{path, src}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("Put", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 error
+	if len(result) != 0 {
+		if result[0] != nil {
+			ret0 = result[0].(error)
+		}
+	}
+	return ret0
+}
+
+func (mock *MockNoRedirectBlobstore) Delete(path string) error {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockMockNoRedirectBlobstore().")
+	}
+	params := []pegomock.Param{path}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("Delete", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
+	var ret0 error
+	if len(result) != 0 {
+		if result[0] != nil {
+			ret0 = result[0].(error)
+		}
+	}
+	return ret0
+}
+
+func (mock *MockNoRedirectBlobstore) DeleteDir(prefix string) error {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockMockNoRedirectBlobstore().")
+	}
+	params := []pegomock.Param{prefix}
+	result := pegomock.GetGenericMockFrom(mock).Invoke("DeleteDir", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
 	var ret0 error
 	if len(result) != 0 {
 		if result[0] != nil {
@@ -103,62 +118,8 @@ type VerifierNoRedirectBlobstore struct {
 	inOrderContext         *pegomock.InOrderContext
 }
 
-func (verifier *VerifierNoRedirectBlobstore) Delete(_param0 string) *NoRedirectBlobstore_Delete_OngoingVerification {
-	params := []pegomock.Param{_param0}
-	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "Delete", params)
-	return &NoRedirectBlobstore_Delete_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
-}
-
-type NoRedirectBlobstore_Delete_OngoingVerification struct {
-	mock              *MockNoRedirectBlobstore
-	methodInvocations []pegomock.MethodInvocation
-}
-
-func (c *NoRedirectBlobstore_Delete_OngoingVerification) GetCapturedArguments() string {
-	_param0 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1]
-}
-
-func (c *NoRedirectBlobstore_Delete_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
-	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
-	if len(params) > 0 {
-		_param0 = make([]string, len(params[0]))
-		for u, param := range params[0] {
-			_param0[u] = param.(string)
-		}
-	}
-	return
-}
-
-func (verifier *VerifierNoRedirectBlobstore) DeleteDir(_param0 string) *NoRedirectBlobstore_DeleteDir_OngoingVerification {
-	params := []pegomock.Param{_param0}
-	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "DeleteDir", params)
-	return &NoRedirectBlobstore_DeleteDir_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
-}
-
-type NoRedirectBlobstore_DeleteDir_OngoingVerification struct {
-	mock              *MockNoRedirectBlobstore
-	methodInvocations []pegomock.MethodInvocation
-}
-
-func (c *NoRedirectBlobstore_DeleteDir_OngoingVerification) GetCapturedArguments() string {
-	_param0 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1]
-}
-
-func (c *NoRedirectBlobstore_DeleteDir_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
-	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
-	if len(params) > 0 {
-		_param0 = make([]string, len(params[0]))
-		for u, param := range params[0] {
-			_param0[u] = param.(string)
-		}
-	}
-	return
-}
-
-func (verifier *VerifierNoRedirectBlobstore) Exists(_param0 string) *NoRedirectBlobstore_Exists_OngoingVerification {
-	params := []pegomock.Param{_param0}
+func (verifier *VerifierNoRedirectBlobstore) Exists(path string) *NoRedirectBlobstore_Exists_OngoingVerification {
+	params := []pegomock.Param{path}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "Exists", params)
 	return &NoRedirectBlobstore_Exists_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
@@ -169,8 +130,8 @@ type NoRedirectBlobstore_Exists_OngoingVerification struct {
 }
 
 func (c *NoRedirectBlobstore_Exists_OngoingVerification) GetCapturedArguments() string {
-	_param0 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1]
+	path := c.GetAllCapturedArguments()
+	return path[len(path)-1]
 }
 
 func (c *NoRedirectBlobstore_Exists_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
@@ -184,8 +145,8 @@ func (c *NoRedirectBlobstore_Exists_OngoingVerification) GetAllCapturedArguments
 	return
 }
 
-func (verifier *VerifierNoRedirectBlobstore) Get(_param0 string) *NoRedirectBlobstore_Get_OngoingVerification {
-	params := []pegomock.Param{_param0}
+func (verifier *VerifierNoRedirectBlobstore) Get(path string) *NoRedirectBlobstore_Get_OngoingVerification {
+	params := []pegomock.Param{path}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "Get", params)
 	return &NoRedirectBlobstore_Get_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
@@ -196,8 +157,8 @@ type NoRedirectBlobstore_Get_OngoingVerification struct {
 }
 
 func (c *NoRedirectBlobstore_Get_OngoingVerification) GetCapturedArguments() string {
-	_param0 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1]
+	path := c.GetAllCapturedArguments()
+	return path[len(path)-1]
 }
 
 func (c *NoRedirectBlobstore_Get_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
@@ -211,8 +172,8 @@ func (c *NoRedirectBlobstore_Get_OngoingVerification) GetAllCapturedArguments() 
 	return
 }
 
-func (verifier *VerifierNoRedirectBlobstore) Put(_param0 string, _param1 io.ReadSeeker) *NoRedirectBlobstore_Put_OngoingVerification {
-	params := []pegomock.Param{_param0, _param1}
+func (verifier *VerifierNoRedirectBlobstore) Put(path string, src io.ReadSeeker) *NoRedirectBlobstore_Put_OngoingVerification {
+	params := []pegomock.Param{path, src}
 	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "Put", params)
 	return &NoRedirectBlobstore_Put_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
 }
@@ -223,8 +184,8 @@ type NoRedirectBlobstore_Put_OngoingVerification struct {
 }
 
 func (c *NoRedirectBlobstore_Put_OngoingVerification) GetCapturedArguments() (string, io.ReadSeeker) {
-	_param0, _param1 := c.GetAllCapturedArguments()
-	return _param0[len(_param0)-1], _param1[len(_param1)-1]
+	path, src := c.GetAllCapturedArguments()
+	return path[len(path)-1], src[len(src)-1]
 }
 
 func (c *NoRedirectBlobstore_Put_OngoingVerification) GetAllCapturedArguments() (_param0 []string, _param1 []io.ReadSeeker) {
@@ -237,6 +198,60 @@ func (c *NoRedirectBlobstore_Put_OngoingVerification) GetAllCapturedArguments() 
 		_param1 = make([]io.ReadSeeker, len(params[1]))
 		for u, param := range params[1] {
 			_param1[u] = param.(io.ReadSeeker)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierNoRedirectBlobstore) Delete(path string) *NoRedirectBlobstore_Delete_OngoingVerification {
+	params := []pegomock.Param{path}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "Delete", params)
+	return &NoRedirectBlobstore_Delete_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type NoRedirectBlobstore_Delete_OngoingVerification struct {
+	mock              *MockNoRedirectBlobstore
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *NoRedirectBlobstore_Delete_OngoingVerification) GetCapturedArguments() string {
+	path := c.GetAllCapturedArguments()
+	return path[len(path)-1]
+}
+
+func (c *NoRedirectBlobstore_Delete_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]string, len(params[0]))
+		for u, param := range params[0] {
+			_param0[u] = param.(string)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierNoRedirectBlobstore) DeleteDir(prefix string) *NoRedirectBlobstore_DeleteDir_OngoingVerification {
+	params := []pegomock.Param{prefix}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "DeleteDir", params)
+	return &NoRedirectBlobstore_DeleteDir_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type NoRedirectBlobstore_DeleteDir_OngoingVerification struct {
+	mock              *MockNoRedirectBlobstore
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *NoRedirectBlobstore_DeleteDir_OngoingVerification) GetCapturedArguments() string {
+	prefix := c.GetAllCapturedArguments()
+	return prefix[len(prefix)-1]
+}
+
+func (c *NoRedirectBlobstore_DeleteDir_OngoingVerification) GetAllCapturedArguments() (_param0 []string) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]string, len(params[0]))
+		for u, param := range params[0] {
+			_param0[u] = param.(string)
 		}
 	}
 	return
