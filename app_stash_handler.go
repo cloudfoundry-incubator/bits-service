@@ -289,7 +289,15 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 }
 
 func fprintDescriptionAsJSON(responseWriter http.ResponseWriter, description string, a ...interface{}) {
-	fmt.Fprintf(responseWriter, `{"description":"%v"}`, fmt.Sprintf(description, a...))
+	m, e := json.Marshal(struct {
+		Description string
+	}{
+		Description: fmt.Sprintf(description, a...),
+	})
+	if e != nil {
+		internalServerError(responseWriter, nil, e)
+	}
+	responseWriter.Write(m)
 }
 
 func anyKeyMissingIn(bundlesPayload []Fingerprint) (bool, string) {
