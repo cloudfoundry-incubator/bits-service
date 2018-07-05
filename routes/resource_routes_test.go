@@ -44,15 +44,17 @@ var _ = Describe("routes", func() {
 	})
 
 	var (
-		blobstoreEntries map[string][]byte
-		blobstore        *inmemory_blobstore.Blobstore
-		router           *mux.Router
-		responseWriter   *httptest.ResponseRecorder
+		blobstoreEntries  map[string][]byte
+		blobstore         *inmemory_blobstore.Blobstore
+		appstashBlobstore *inmemory_blobstore.Blobstore
+		router            *mux.Router
+		responseWriter    *httptest.ResponseRecorder
 	)
 
 	BeforeEach(func() {
 		blobstoreEntries = make(map[string][]byte)
 		blobstore = inmemory_blobstore.NewBlobstoreWithEntries(blobstoreEntries)
+		appstashBlobstore = inmemory_blobstore.NewBlobstore()
 		router = mux.NewRouter()
 		responseWriter = httptest.NewRecorder()
 	})
@@ -103,7 +105,7 @@ var _ = Describe("routes", func() {
 
 			It("returns StatusOK and an empty body, and forwards the file reader to the blobstore", func() {
 				router.ServeHTTP(responseWriter, newHttpTestPutRequest(path, map[string]map[string]io.Reader{
-					resourceType: map[string]io.Reader{"somefilename": strings.NewReader("My test string")},
+					resourceType: map[string]io.Reader{"somefilename": CreateZip(map[string]string{})},
 				}))
 				Expect(*responseWriter).To(HaveStatusCodeAndBody(
 					Equal(http.StatusCreated),
@@ -116,7 +118,7 @@ var _ = Describe("routes", func() {
 						MatchRegexp(`.*"created_at" *:.*`),
 					)))
 
-				Expect(blobstoreEntries).To(HaveKeyWithValue(blobstoreKey, []byte("My test string")))
+				Expect(blobstoreEntries).To(HaveKeyWithValue(blobstoreKey, CreateZip(map[string]string{}).Bytes()))
 			})
 		})
 
@@ -141,7 +143,7 @@ var _ = Describe("routes", func() {
 		BeforeEach(func() {
 			SetUpPackageRoutes(
 				router,
-				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), "package", statsd.NewMetricsService(), 0))
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), appstashBlobstore, "package", statsd.NewMetricsService(), 0))
 		})
 		ItSupportsMethodsGetPutDeleteFor("/packages/theguid", "package", "th/eg/theguid")
 	})
@@ -150,7 +152,7 @@ var _ = Describe("routes", func() {
 		BeforeEach(func() {
 			SetUpDropletRoutes(
 				router,
-				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), "droplet", statsd.NewMetricsService(), 0))
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), appstashBlobstore, "droplet", statsd.NewMetricsService(), 0))
 		})
 
 		Context("With digest in URL (/droplets/{guid}/{checksum})", func() {
@@ -185,7 +187,7 @@ var _ = Describe("routes", func() {
 		BeforeEach(func() {
 			SetUpBuildpackRoutes(
 				router,
-				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), "buildpack", statsd.NewMetricsService(), 0))
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), appstashBlobstore, "buildpack", statsd.NewMetricsService(), 0))
 		})
 		ItSupportsMethodsGetPutDeleteFor("/buildpacks/theguid", "buildpack", "th/eg/theguid")
 	})
@@ -194,7 +196,7 @@ var _ = Describe("routes", func() {
 		BeforeEach(func() {
 			SetUpBuildpackCacheRoutes(
 				router,
-				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(decorator.ForBlobstoreWithPathPrefixing(blobstore, "buildpack_cache/")), "buildpack_cache", statsd.NewMetricsService(), 0))
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(decorator.ForBlobstoreWithPathPrefixing(blobstore, "buildpack_cache/")), appstashBlobstore, "buildpack_cache", statsd.NewMetricsService(), 0))
 		})
 		Context("Method GET", func() {
 			It("returns StatusNotFound when blobstore returns NotFoundError", func() {

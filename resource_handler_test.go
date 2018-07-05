@@ -1,8 +1,6 @@
 package bitsgo_test
 
 import (
-	"archive/zip"
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"reflect"
@@ -24,6 +22,7 @@ import (
 
 	"io"
 
+	. "github.com/petergtz/bitsgo/testutil"
 	. "github.com/petergtz/pegomock"
 )
 
@@ -50,32 +49,38 @@ var _ = Describe("ResourceHandler", func() {
 				When(blobstore.Put(AnyString(), anyReadSeeker())).ThenReturn(NewNoSpaceLeftError())
 
 				handler.AddOrReplace(responseWriter,
-					newTestRequest("test-resource", "some-filename", createZip(map[string]string{"file1": "content1"}).String()),
+					newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
 					map[string]string{})
 
 				Expect(responseWriter.Code).To(Equal(http.StatusInsufficientStorage))
 			})
 		})
 
-		Context("no space left in app-stash blobstore", func() {
-			It("translates NoSpaceLeftError into StatusInsufficientStorage", func() {
-				When(appStashBlobstore.Put(AnyString(), anyReadSeeker())).ThenReturn(NewNoSpaceLeftError())
-
-				handler.AddOrReplace(responseWriter,
-					newTestRequest("test-resource", "some-filename", createZip(map[string]string{"file1": "content1"}).String()),
-					map[string]string{})
-
-				Expect(responseWriter.Code).To(Equal(http.StatusInsufficientStorage))
+		Context("resource is a package", func() {
+			BeforeEach(func() {
+				handler = NewResourceHandlerWithUpdater(blobstore, appStashBlobstore, updater, "package", NewMockMetricsService(), 0)
 			})
-		})
 
-		Context("payload is not a valid zip file", func() {
-			It("returns a HTTP status UnprocessableEntity ", func() {
-				handler.AddOrReplace(responseWriter,
-					newTestRequest("test-resource", "some-filename", "not a zip file"),
-					map[string]string{"identifier": "someguid"})
+			Context("no space left in app-stash blobstore", func() {
+				It("translates NoSpaceLeftError into StatusInsufficientStorage", func() {
+					When(appStashBlobstore.Put(AnyString(), anyReadSeeker())).ThenReturn(NewNoSpaceLeftError())
 
-				Expect(responseWriter.Code).To(Equal(http.StatusUnprocessableEntity))
+					handler.AddOrReplace(responseWriter,
+						newTestRequest("package", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
+						map[string]string{})
+
+					Expect(responseWriter.Code).To(Equal(http.StatusInsufficientStorage))
+				})
+			})
+
+			Context("package payload is not a valid zip file", func() {
+				It("returns a HTTP status UnprocessableEntity ", func() {
+					handler.AddOrReplace(responseWriter,
+						newTestRequest("package", "some-filename", "not a zip file"),
+						map[string]string{"identifier": "someguid"})
+
+					Expect(responseWriter.Code).To(Equal(http.StatusUnprocessableEntity))
+				})
 			})
 		})
 
@@ -89,7 +94,7 @@ var _ = Describe("ResourceHandler", func() {
 					return nil
 				})
 
-				req := newTestRequest("test-resource", "some-filename", createZip(map[string]string{"file1": "content1"}).String())
+				req := newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String())
 				q, e := url.ParseQuery("async=true")
 				Expect(e).NotTo(HaveOccurred())
 				req.URL.RawQuery = q.Encode()
@@ -179,7 +184,7 @@ var _ = Describe("ResourceHandler", func() {
 		Context("No errors", func() {
 			It("calls updater and blobstore in the right order", func() {
 				handler.AddOrReplace(responseWriter,
-					newTestRequest("test-resource", "some-filename", createZip(map[string]string{"file1": "content1"}).String()),
+					newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
 					map[string]string{"identifier": "someguid"})
 
 				inOrderContext := new(InOrderContext)
@@ -201,7 +206,7 @@ var _ = Describe("ResourceHandler", func() {
 					When(updater.NotifyProcessingUpload(AnyString())).ThenReturn(NewStateForbiddenError())
 
 					handler.AddOrReplace(responseWriter,
-						newTestRequest("test-resource", "some-filename", createZip(map[string]string{"file1": "content1"}).String()),
+						newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
 						map[string]string{"identifier": "someguid"})
 
 					updater.VerifyWasCalled(Never()).NotifyUploadFailed(AnyString(), anyError())
@@ -218,7 +223,7 @@ var _ = Describe("ResourceHandler", func() {
 					When(updater.NotifyUploadSucceeded(AnyString(), AnyString(), AnyString())).ThenReturn(fmt.Errorf("Some error"))
 
 					handler.AddOrReplace(responseWriter,
-						newTestRequest("test-resource", "some-filename", createZip(map[string]string{"file1": "content1"}).String()),
+						newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
 						map[string]string{"identifier": "someguid"})
 
 					updater.VerifyWasCalled(Never()).NotifyUploadFailed(AnyString(), anyError())
@@ -233,7 +238,7 @@ var _ = Describe("ResourceHandler", func() {
 					When(updater.NotifyUploadFailed(AnyString(), anyError())).ThenReturn(fmt.Errorf("Some error"))
 
 					handler.AddOrReplace(responseWriter,
-						newTestRequest("test-resource", "some-filename", createZip(map[string]string{"file1": "content1"}).String()),
+						newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
 						map[string]string{"identifier": "someguid"})
 
 					inOrderContext := new(InOrderContext)
@@ -252,7 +257,7 @@ var _ = Describe("ResourceHandler", func() {
 					When(updater.NotifyProcessingUpload(AnyString())).ThenReturn(fmt.Errorf("Unexpected error"))
 
 					handler.AddOrReplace(responseWriter,
-						newTestRequest("test-resource", "some-filename", createZip(map[string]string{"file1": "content1"}).String()),
+						newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
 						map[string]string{"identifier": "someguid"})
 
 					updater.VerifyWasCalled(Never()).NotifyUploadFailed(AnyString(), anyError())
@@ -270,7 +275,7 @@ var _ = Describe("ResourceHandler", func() {
 					When(updater.NotifyProcessingUpload(AnyString())).ThenReturn(bitsgo.NewNotFoundError())
 
 					handler.AddOrReplace(responseWriter,
-						newTestRequest("test-resource", "some-filename", createZip(map[string]string{"file1": "content1"}).String()),
+						newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
 						map[string]string{"identifier": "someguid"})
 
 					updater.VerifyWasCalled(Never()).NotifyUploadFailed(AnyString(), anyError())
@@ -301,21 +306,6 @@ func newTestRequest(resource string, filename string, body string) *http.Request
 		})
 	Expect(e).NotTo(HaveOccurred())
 	return request
-}
-
-func createZip(contents map[string]string) *bytes.Buffer {
-	var result bytes.Buffer
-	zipWriter := zip.NewWriter(&result)
-	defer zipWriter.Close()
-	for filename, fileContents := range contents {
-		entryWriter, e := zipWriter.Create(filename)
-		Expect(e).NotTo(HaveOccurred())
-		entryWriter.Write([]byte(fileContents))
-
-	}
-	e := zipWriter.Close()
-	Expect(e).NotTo(HaveOccurred())
-	return &result
 }
 
 func newGetRequestWithOptionalIfNoneModify(ifNoneModify string) *http.Request {

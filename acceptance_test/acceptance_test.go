@@ -1,6 +1,8 @@
 package main_test
 
 import (
+	"archive/zip"
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"io"
@@ -11,14 +13,13 @@ import (
 	"testing"
 	"time"
 
-	"strings"
-
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/petergtz/bitsgo/httputil"
+	. "github.com/petergtz/bitsgo/testutil"
 )
 
 func TestEndToEnd(t *testing.T) {
@@ -67,7 +68,7 @@ var _ = Describe("Accessing the bits-service", func() {
 
 		It("return http.StatusOK for a package that does exist", func() {
 			request, e := httputil.NewPutRequest("https://internal.127.0.0.1.xip.io:4443/packages/myguid", map[string]map[string]io.Reader{
-				"package": map[string]io.Reader{"somefilename": strings.NewReader("My test string")},
+				"package": map[string]io.Reader{"somefilename": CreateZip(map[string]string{"somefile": "lalala\n\n"})},
 			})
 			Expect(e).NotTo(HaveOccurred())
 
@@ -87,7 +88,7 @@ var _ = Describe("Accessing the bits-service", func() {
 		Context("After retrieving a signed URL", func() {
 			It("returns http.StatusOK when accessing package through public host with md5", func() {
 				request, e := httputil.NewPutRequest("https://internal.127.0.0.1.xip.io:4443/packages/myguid", map[string]map[string]io.Reader{
-					"package": map[string]io.Reader{"somefilename": strings.NewReader("lalala\n\n")},
+					"package": map[string]io.Reader{"somefilename": CreateZip(map[string]string{"somefile": "lalala\n\n"})},
 				})
 				Expect(e).NotTo(HaveOccurred())
 
@@ -102,7 +103,14 @@ var _ = Describe("Accessing the bits-service", func() {
 				Ω(e).ShouldNot(HaveOccurred())
 				response, e = client.Get(string(signedUrl))
 				Ω(e).ShouldNot(HaveOccurred())
-				Expect(ioutil.ReadAll(response.Body)).To(ContainSubstring("lalala"))
+
+				responseBody, e := ioutil.ReadAll(response.Body)
+				Expect(e).NotTo(HaveOccurred())
+				zipReader, e := zip.NewReader(bytes.NewReader(responseBody), int64(len(responseBody)))
+				Expect(e).NotTo(HaveOccurred())
+
+				Expect(zipReader.File).To(HaveLen(1))
+				VerifyZipFileEntry(zipReader, "somefile", "lalala\n\n")
 			})
 		})
 	})
@@ -120,7 +128,7 @@ var _ = Describe("Accessing the bits-service", func() {
 					Expect(e).NotTo(HaveOccurred())
 
 					r, e := httputil.NewPutRequest(string(signedUrl)+"&async=true", map[string]map[string]io.Reader{
-						"package": map[string]io.Reader{"somefilename": strings.NewReader("lalala\n\n")},
+						"package": map[string]io.Reader{"somefilename": CreateZip(map[string]string{"somefile": "lalala\n\n"})},
 					})
 					Expect(e).NotTo(HaveOccurred())
 					response, e = client.Do(r)

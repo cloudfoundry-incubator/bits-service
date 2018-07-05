@@ -15,6 +15,7 @@ import (
 	"github.com/petergtz/bitsgo"
 	inmemory "github.com/petergtz/bitsgo/blobstores/inmemory"
 	. "github.com/petergtz/bitsgo/matchers"
+	. "github.com/petergtz/bitsgo/testutil"
 	. "github.com/petergtz/pegomock"
 )
 
@@ -38,7 +39,7 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 		reader, e := zip.OpenReader(tempFileName)
 		Expect(e).NotTo(HaveOccurred())
 		Expect(reader.File).To(HaveLen(1))
-		verifyZipFileEntry(&reader.Reader, "filename1", "filename1 content")
+		VerifyZipFileEntry(&reader.Reader, "filename1", "filename1 content")
 	})
 
 	Context("One error from blobstore", func() {
@@ -66,7 +67,7 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 				reader, e := zip.OpenReader(tempFileName)
 				Expect(e).NotTo(HaveOccurred())
 				Expect(reader.File).To(HaveLen(1))
-				verifyZipFileEntry(&reader.Reader, "filename1", "filename1 content")
+				VerifyZipFileEntry(&reader.Reader, "filename1", "filename1 content")
 			})
 		})
 
@@ -100,8 +101,8 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 				reader, e := zip.OpenReader(tempFileName)
 				Expect(e).NotTo(HaveOccurred())
 				Expect(reader.File).To(HaveLen(2))
-				verifyZipFileEntry(&reader.Reader, "filename1", "filename1 content")
-				verifyZipFileEntry(&reader.Reader, "filename2", "filename2 content")
+				VerifyZipFileEntry(&reader.Reader, "filename1", "filename1 content")
+				VerifyZipFileEntry(&reader.Reader, "filename2", "filename2 content")
 			})
 		})
 	})

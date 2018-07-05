@@ -290,7 +290,7 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 
 func fprintDescriptionAsJSON(responseWriter http.ResponseWriter, description string, a ...interface{}) {
 	m, e := json.Marshal(struct {
-		Description string
+		Description string `json:"description"`
 	}{
 		Description: fmt.Sprintf(description, a...),
 	})

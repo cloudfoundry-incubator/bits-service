@@ -17,6 +17,7 @@ import (
 	"github.com/petergtz/bitsgo"
 	inmemory "github.com/petergtz/bitsgo/blobstores/inmemory"
 	"github.com/petergtz/bitsgo/httputil"
+	. "github.com/petergtz/bitsgo/testutil"
 )
 
 var _ = Describe("AppStash", func() {
@@ -149,10 +150,10 @@ var _ = Describe("AppStash", func() {
 				Expect(e).NotTo(HaveOccurred())
 
 				Expect(zipReader.File).To(HaveLen(4))
-				verifyZipFileEntry(zipReader, "filenameA", "cached content")
-				verifyZipFileEntry(zipReader, "filenameB", "test-content")
-				verifyZipFileEntry(zipReader, "folder/filenameC", "another cached content")
-				verifyZipFileEntry(zipReader, "zip-folder/file-in-folder", "folder file content")
+				VerifyZipFileEntry(zipReader, "filenameA", "cached content")
+				VerifyZipFileEntry(zipReader, "filenameB", "test-content")
+				VerifyZipFileEntry(zipReader, "folder/filenameC", "another cached content")
+				VerifyZipFileEntry(zipReader, "zip-folder/file-in-folder", "folder file content")
 
 				content, e := blobstore.Get("b971c6ef19b1d70ae8f0feb989b106c319b36230")
 				Expect(e).NotTo(HaveOccurred())
@@ -183,8 +184,8 @@ var _ = Describe("AppStash", func() {
 					Expect(e).NotTo(HaveOccurred())
 
 					Expect(zipReader.File).To(HaveLen(2))
-					verifyZipFileEntry(zipReader, "filenameB", "test-content")
-					verifyZipFileEntry(zipReader, "zip-folder/file-in-folder", "folder file content")
+					VerifyZipFileEntry(zipReader, "filenameB", "test-content")
+					VerifyZipFileEntry(zipReader, "zip-folder/file-in-folder", "folder file content")
 
 					responseWriter = httptest.NewRecorder()
 					appStashHandler.PostBundles(responseWriter, httptest.NewRequest("POST", "http://example.com", strings.NewReader(`[
@@ -203,8 +204,8 @@ var _ = Describe("AppStash", func() {
 					Expect(e).NotTo(HaveOccurred())
 
 					Expect(zipReader.File).To(HaveLen(2))
-					verifyZipFileEntry(zipReader, "anotherFilenameB", "test-content")
-					verifyZipFileEntry(zipReader, "zip-folder/another-file-in-folder", "folder file content")
+					VerifyZipFileEntry(zipReader, "anotherFilenameB", "test-content")
+					VerifyZipFileEntry(zipReader, "zip-folder/another-file-in-folder", "folder file content")
 				})
 			})
 
@@ -232,17 +233,3 @@ var _ = Describe("AppStash", func() {
 
 	})
 })
-
-func verifyZipFileEntry(reader *zip.Reader, expectedFilename string, expectedContent string) {
-	var foundEntries []string
-	for _, entry := range reader.File {
-		if entry.Name == expectedFilename {
-			content, e := entry.Open()
-			Expect(e).NotTo(HaveOccurred())
-			Expect(ioutil.ReadAll(content)).To(MatchRegexp(expectedContent), "for filename "+expectedFilename)
-			return
-		}
-		foundEntries = append(foundEntries, entry.Name)
-	}
-	Fail("Did not find entry with name " + expectedFilename + ". Found only: " + strings.Join(foundEntries, ", "))
-}
