@@ -123,7 +123,7 @@ var _ = Describe("AppStash", func() {
 			It("bundles all files from blobstore and from uploaded zip into zip bundle", func() {
 				_, filename, _, _ := runtime.Caller(0)
 
-				zipFile, e := os.Open(filepath.Join(filepath.Dir(filename), "asset", "test-file.zip"))
+				zipFile, e := os.Open(filepath.Join(filepath.Dir(filename), "assets", "test-file.zip"))
 				Expect(e).NotTo(HaveOccurred())
 				defer zipFile.Close()
 
@@ -167,7 +167,7 @@ var _ = Describe("AppStash", func() {
 				It("can re-use cached files from previous bundles", func() {
 					_, filename, _, _ := runtime.Caller(0)
 
-					zipFile, e := os.Open(filepath.Join(filepath.Dir(filename), "asset", "test-file.zip"))
+					zipFile, e := os.Open(filepath.Join(filepath.Dir(filename), "assets", "test-file.zip"))
 					Expect(e).NotTo(HaveOccurred())
 					defer zipFile.Close()
 
