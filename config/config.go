@@ -393,6 +393,8 @@ func blobstoreConfigIsNil(blobstoreConfig BlobstoreConfig) bool {
 		return blobstoreConfig.GCPConfig == nil || *blobstoreConfig.GCPConfig == (GCPBlobstoreConfig{})
 	case WebDAV:
 		return blobstoreConfig.WebdavConfig == nil || *blobstoreConfig.WebdavConfig == (WebdavBlobstoreConfig{})
+	case Alibaba:
+		return blobstoreConfig.AlibabaConfig == nil || *blobstoreConfig.AlibabaConfig == (AlibabaBlobstoreConfig{})
 	default:
 		return true
 	}
