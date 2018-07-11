@@ -2,13 +2,14 @@ package bitsgo_test
 
 import (
 	"archive/zip"
-	"errors"
 	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -125,6 +126,20 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 
 			Expect(blobstore.Entries).To(HaveLen(1))
 			Expect(blobstore.Entries).To(HaveKeyWithValue("e04c62ab0e87c29f862ee7c4e85c9fed51531dae", []byte("folder file content\n")))
+		})
+	})
+
+	Context("More files in zip than ulimit allows per process", func() {
+		It("does not fail with 'too many open files", func() {
+			_, filename, _, _ := runtime.Caller(0)
+
+			openZipFile, e := zip.OpenReader(filepath.Join(filepath.Dir(filename), "assets", "lots-of-files.zip"))
+			Expect(e).NotTo(HaveOccurred())
+			defer openZipFile.Close()
+
+			tempFilename, e := bitsgo.CreateTempZipFileFrom([]bitsgo.Fingerprint{}, &openZipFile.Reader, 15, 30, blobstore)
+			Expect(e).NotTo(HaveOccurred(), "Error: %v", e)
+			os.Remove(tempFilename)
 		})
 	})
 })

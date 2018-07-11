@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/pkg/errors"
+
 	"github.com/cenkalti/backoff"
 )
 
@@ -17,12 +19,17 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 	minimumSize, maximumSize uint64,
 	blobstore NoRedirectBlobstore,
 ) (tempFilename string, err error) {
-	tempFile, e := ioutil.TempFile("", "bundles")
+	tempZipFile, e := ioutil.TempFile("", "bundles")
 	if e != nil {
-		return "", e
+		return "", errors.Wrap(e, "Could not create temp file")
 	}
-	defer tempFile.Close()
-	zipWriter := zip.NewWriter(tempFile)
+	defer func() {
+		if err != nil {
+			os.Remove(tempZipFile.Name())
+		}
+	}()
+	defer tempZipFile.Close()
+	zipWriter := zip.NewWriter(tempZipFile)
 
 	if zipReader != nil {
 		for _, zipInputFileEntry := range zipReader.File {
@@ -31,17 +38,17 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 			}
 			zipFileEntryWriter, e := zipWriter.CreateHeader(zipEntryHeader(zipInputFileEntry.Name, zipInputFileEntry.FileInfo().Mode()))
 			if e != nil {
-				return "", e
+				return "", errors.Wrap(e, "Could not create header in zip file")
 			}
 			zipEntryReader, e := zipInputFileEntry.Open()
 			if e != nil {
-				return "", e
+				return "", errors.Wrap(e, "Could not open zip file entry")
 			}
 			defer zipEntryReader.Close()
 
 			tempFile, e := ioutil.TempFile("", "app-stash")
 			if e != nil {
-				return "", e
+				return "", errors.Wrap(e, "Could not create tempfile")
 			}
 			defer os.Remove(tempFile.Name())
 			defer tempFile.Close()
@@ -49,34 +56,45 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 			sha := sha1.New()
 			tempFileSize, e := io.Copy(io.MultiWriter(zipFileEntryWriter, tempFile, sha), zipEntryReader)
 			if e != nil {
-				return "", e
+				return "", errors.Wrap(e, "Could not copy content from zip entry")
 			}
 			e = tempFile.Close()
 			if e != nil {
-				return "", e
+				return "", errors.Wrap(e, "Could not close temp file")
 			}
 			e = zipEntryReader.Close()
 			if e != nil {
-				return "", e
+				return "", errors.Wrap(e, "Could not close zip entry reader")
 			}
-			tempFile, e = os.Open(tempFile.Name())
+			e = backoff.Retry(func() error {
+				tempFile, e = os.Open(tempFile.Name())
+				if e != nil {
+					return errors.Wrap(e, "Could not open temp file for reading")
+				}
+				defer tempFile.Close()
+				if uint64(tempFileSize) >= minimumSize && uint64(tempFileSize) <= maximumSize {
+					sha := hex.EncodeToString(sha.Sum(nil))
+					e = blobstore.Put(sha, tempFile)
+					if e != nil {
+						if _, ok := e.(*NoSpaceLeftError); ok {
+							return backoff.Permanent(e)
+						}
+						return errors.Wrapf(e, "Could not upload file to blobstore. SHA: '%v'", sha)
+					}
+				}
+				return nil
+			}, backoff.NewExponentialBackOff())
 			if e != nil {
 				return "", e
 			}
-			defer tempFile.Close()
-			if uint64(tempFileSize) >= minimumSize && uint64(tempFileSize) <= maximumSize {
-				e = blobstore.Put(hex.EncodeToString(sha.Sum(nil)), tempFile)
-				if e != nil {
-					return "", e
-				}
-			}
+			os.Remove(tempFile.Name())
 		}
 	}
 
 	for _, entry := range bundlesPayload {
 		zipEntry, e := zipWriter.CreateHeader(zipEntryHeader(entry.Fn, fileModeFrom(entry.Mode)))
 		if e != nil {
-			return "", e
+			return "", errors.Wrap(e, "Could create header in zip file")
 		}
 
 		e = backoff.Retry(func() error {
@@ -85,13 +103,13 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 				if _, ok := e.(*NotFoundError); ok {
 					return backoff.Permanent(NewNotFoundErrorWithMessage(entry.Sha1))
 				}
-				return e
+				return errors.Wrapf(e, "Could not get file from blobstore. SHA: '%v'", entry.Sha1)
 			}
 			defer b.Close()
 
 			_, e = io.Copy(zipEntry, b)
 			if e != nil {
-				return e
+				return errors.Wrapf(e, "Could not copy file to zip entry. SHA:", entry.Sha1)
 			}
 			return nil
 		},
@@ -102,7 +120,7 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 		}
 	}
 	zipWriter.Close()
-	return tempFile.Name(), nil
+	return tempZipFile.Name(), nil
 }
 
 func fileModeFrom(s string) os.FileMode {
