@@ -193,20 +193,33 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 			return
 		}
 
-		tempFilename, e = CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.appStashBlobstore)
-		if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
-			writeResponseBasedOn("", e, responseWriter, request, 0, nil, nil, "")
-			return
-		}
-		if _, ok := e.(*NotFoundError); ok {
-			logger.From(request).Infow("Invalid resources: sha1 does not exist in app-stash", "identifier", params["identifier"], "error", e)
-			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-			fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: not all sha1s specified could be found.")
-			return
-		}
-		if e != nil {
-			internalServerError(responseWriter, request, e)
-			return
+		if len(bundlesPayload) == 0 {
+			_, e = file.Seek(0, io.SeekStart)
+			if e != nil {
+				internalServerError(responseWriter, request, e)
+				return
+			}
+			tempFilename, e = CreateTempFileWithContent(file)
+			if e != nil {
+				internalServerError(responseWriter, request, e)
+				return
+			}
+		} else {
+			tempFilename, e = CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.appStashBlobstore)
+			if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
+				writeResponseBasedOn("", e, responseWriter, request, 0, nil, nil, "")
+				return
+			}
+			if _, ok := e.(*NotFoundError); ok {
+				logger.From(request).Infow("Invalid resources: sha1 does not exist in app-stash", "identifier", params["identifier"], "error", e)
+				responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+				fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: not all sha1s specified could be found.")
+				return
+			}
+			if e != nil {
+				internalServerError(responseWriter, request, e)
+				return
+			}
 		}
 	} else {
 		tempFilename, e = CreateTempFileWithContent(file)
