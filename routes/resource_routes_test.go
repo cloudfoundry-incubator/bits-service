@@ -112,10 +112,12 @@ var _ = Describe("routes", func() {
 					// TODO: Use a proper json comparison.
 					SatisfyAll(
 						MatchRegexp("{.*}"),
-						MatchRegexp(`.*"guid" *: *"[A-Za-z0-9/]*".*`),
+						MatchRegexp(`.*"guid" *: *"[A-Za-z0-9/]+".*`),
 						MatchRegexp(`.*"state" *: *"READY".*`),
 						MatchRegexp(`.*"type" *: *"bits".*`),
 						MatchRegexp(`.*"created_at" *:.*`),
+						MatchRegexp(`.*"sha1" *: *"[a-z0-9]{40}".*`),
+						MatchRegexp(`.*"sha256" *: *"[a-z0-9]{64}".*`),
 					)))
 
 				Expect(blobstoreEntries).To(HaveKeyWithValue(blobstoreKey, CreateZip(map[string]string{}).Bytes()))

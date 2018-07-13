@@ -61,6 +61,8 @@ type responseBody struct {
 	State     string    `json:"state"`
 	Type      string    `json:"type"`
 	CreatedAt time.Time `json:"created_at"`
+	Sha1      string    `json:"sha1"`
+	Sha256    string    `json:"sha256"`
 }
 
 func NewResourceHandler(blobstore Blobstore, appStashBlobstore NoRedirectBlobstore, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64) *ResourceHandler {
@@ -229,17 +231,37 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 		}
 	}
 
+	sha1, sha256, e := ShaSums(tempFilename)
+	if e != nil {
+		internalServerError(responseWriter, request, e)
+		return
+	}
+
 	e = handler.updater.NotifyProcessingUpload(params["identifier"])
 	if handleNotificationError(e, responseWriter, request) {
 		return
 	}
 
 	if request.URL.Query().Get("async") == "true" {
-		go handler.uploadResource(tempFilename, request, params["identifier"], true)
-		writeResponseBasedOn("", nil, responseWriter, request, http.StatusAccepted, nil, &responseBody{Guid: params["identifier"], State: "PROCESSING_UPLOAD", Type: "bits", CreatedAt: time.Now()}, "")
+		go handler.uploadResource(tempFilename, request, params["identifier"], true, sha1, sha256)
+		writeResponseBasedOn("", nil, responseWriter, request, http.StatusAccepted, nil, &responseBody{
+			Guid:      params["identifier"],
+			State:     "PROCESSING_UPLOAD",
+			Type:      "bits",
+			CreatedAt: time.Now(),
+			Sha1:      hex.EncodeToString(sha1),
+			Sha256:    hex.EncodeToString(sha256),
+		}, "")
 	} else {
-		e = handler.uploadResource(tempFilename, request, params["identifier"], false)
-		writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+		e = handler.uploadResource(tempFilename, request, params["identifier"], false, sha1, sha256)
+		writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{
+			Guid:      params["identifier"],
+			State:     "READY",
+			Type:      "bits",
+			CreatedAt: time.Now(),
+			Sha1:      hex.EncodeToString(sha1),
+			Sha256:    hex.EncodeToString(sha256),
+		}, "")
 	}
 }
 
@@ -258,7 +280,7 @@ func CreateTempFileWithContent(reader io.Reader) (string, error) {
 	return uploadedFile.Name(), nil
 }
 
-func (handler *ResourceHandler) uploadResource(tempFilename string, request *http.Request, identifier string, async bool) error {
+func (handler *ResourceHandler) uploadResource(tempFilename string, request *http.Request, identifier string, async bool, sha1Sum []byte, sha256Sum []byte) error {
 	defer os.Remove(tempFilename)
 
 	tempFile, e := os.Open(tempFilename)
@@ -281,12 +303,7 @@ func (handler *ResourceHandler) uploadResource(tempFilename string, request *htt
 		}
 		return handle(errors.Wrapf(e, "Could not upload temporary file to blobstore"), async, request)
 	}
-	sha1, sha256, e := ShaSums(tempFilename)
-	if e != nil {
-		handler.notifyUploadFailed(identifier, e, request)
-		return handle(errors.Wrapf(e, "Could not build sha sums of temporary file '%v'", tempFilename), async, request)
-	}
-	e = handler.updater.NotifyUploadSucceeded(identifier, hex.EncodeToString(sha1), hex.EncodeToString(sha256))
+	e = handler.updater.NotifyUploadSucceeded(identifier, hex.EncodeToString(sha1Sum), hex.EncodeToString(sha256Sum))
 	if e != nil {
 		return handle(errors.Wrapf(e, "Could not notify Cloud Controller about successful upload"), async, request)
 	}
