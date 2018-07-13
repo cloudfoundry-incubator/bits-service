@@ -144,9 +144,9 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
 	}
-	file, fi, e := request.FormFile(handler.resourceType)
+	file, fileInfo, e := request.FormFile(handler.resourceType)
 	if e == http.ErrMissingFile {
-		file, fi, e = request.FormFile("bits")
+		file, fileInfo, e = request.FormFile("bits")
 	}
 	if e == http.ErrMissingFile {
 		badRequest(responseWriter, request, "Could not retrieve form parameter '%s' or 'bits", handler.resourceType)
@@ -181,7 +181,7 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 			}
 		}
 
-		zipReader, e := zip.NewReader(file, fi.Size)
+		zipReader, e := zip.NewReader(file, fileInfo.Size)
 		if e != nil && strings.Contains(e.Error(), "not a valid zip file") {
 			logger.From(request).Infow("Invalid resources: not a valid zip file", "identifier", params["identifier"])
 			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
