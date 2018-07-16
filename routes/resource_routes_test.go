@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -221,7 +222,7 @@ var _ = Describe("routes", func() {
 
 	Describe("/app_stash", func() {
 		BeforeEach(func() {
-			SetUpAppStashRoutes(router, bitsgo.NewAppStashHandler(blobstore, 0))
+			SetUpAppStashRoutes(router, bitsgo.NewAppStashHandlerWithSizeThresholds(blobstore, 0, 0, math.MaxUint64))
 		})
 
 		Describe("/app_stash/entries", func() {

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,7 +30,7 @@ var _ = Describe("AppStash", func() {
 
 	BeforeEach(func() {
 		blobstore = inmemory.NewBlobstore()
-		appStashHandler = bitsgo.NewAppStashHandler(blobstore, 0)
+		appStashHandler = bitsgo.NewAppStashHandlerWithSizeThresholds(blobstore, 0, 0, math.MaxUint64)
 		responseWriter = httptest.NewRecorder()
 	})
 
