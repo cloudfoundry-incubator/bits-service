@@ -32,6 +32,7 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 		"host", request.Host,
 		"method", request.Method,
 		"path", request.URL.RequestURI(),
+		"user-agent", request.UserAgent(),
 	)
 
 	negroniResponseWriter, ok := responseWriter.(negroni.ResponseWriter)
@@ -48,6 +49,7 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 		"status-code", negroniResponseWriter.Status(),
 		"body-size", negroniResponseWriter.Size(),
 		"duration", time.Since(startTime),
+		"user-agent", request.UserAgent(),
 	}
 	if negroniResponseWriter.Status() >= 300 && negroniResponseWriter.Status() < 400 {
 		fields = append(fields, zap.String("Location", negroniResponseWriter.Header().Get("Location")))
