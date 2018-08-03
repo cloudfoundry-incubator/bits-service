@@ -397,12 +397,18 @@ func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, reque
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	}
+	startTime := time.Now()
 	e = handler.blobstore.Delete(params["identifier"])
+	handler.metricsService.SendTimingMetric(handler.resourceType+"-delete_from_blobstore-time", time.Since(startTime))
+
 	writeResponseBasedOn("", e, responseWriter, request, http.StatusNoContent, nil, nil, "")
 }
 
 func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	startTime := time.Now()
 	e := handler.blobstore.DeleteDir(params["identifier"])
+	handler.metricsService.SendTimingMetric(handler.resourceType+"-delete_dir_from_blobstore-time", time.Since(startTime))
+
 	switch e.(type) {
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNoContent)
