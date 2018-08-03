@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/petergtz/bitsgo/logger"
-	"github.com/petergtz/bitsgo/util"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
+	"github.com/cloudfoundry-incubator/bits-service/util"
 	"github.com/pkg/errors"
 )
 

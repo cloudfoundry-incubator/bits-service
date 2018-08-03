@@ -18,8 +18,8 @@ import (
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"github.com/petergtz/bitsgo/httputil"
-	. "github.com/petergtz/bitsgo/testutil"
+	"github.com/cloudfoundry-incubator/bits-service/httputil"
+	. "github.com/cloudfoundry-incubator/bits-service/testutil"
 )
 
 func TestEndToEnd(t *testing.T) {
@@ -35,7 +35,7 @@ var _ = Describe("Accessing the bits-service", func() {
 	)
 
 	BeforeSuite(func() {
-		pathToWebserver, err := gexec.Build("github.com/petergtz/bitsgo/cmd/bitsgo")
+		pathToWebserver, err := gexec.Build("github.com/cloudfoundry-incubator/bits-service/cmd/bitsgo")
 		Ω(err).ShouldNot(HaveOccurred())
 
 		os.Setenv("BITS_LISTEN_ADDR", "127.0.0.1")

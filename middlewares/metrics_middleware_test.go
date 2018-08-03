@@ -6,8 +6,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo/middlewares"
-	. "github.com/petergtz/bitsgo/middlewares/matchers"
+	"github.com/cloudfoundry-incubator/bits-service/middlewares"
+	. "github.com/cloudfoundry-incubator/bits-service/middlewares/matchers"
 	. "github.com/petergtz/pegomock"
 )
 

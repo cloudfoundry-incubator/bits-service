@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/petergtz/bitsgo"
+	"github.com/cloudfoundry-incubator/bits-service"
 
 	"bytes"
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/petergtz/bitsgo/logger"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
 )
 
 type PanicMiddleware struct{}

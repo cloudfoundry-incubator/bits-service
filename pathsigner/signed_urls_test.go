@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo/httputil"
-	. "github.com/petergtz/bitsgo/pathsigner"
+	"github.com/cloudfoundry-incubator/bits-service/httputil"
+	. "github.com/cloudfoundry-incubator/bits-service/pathsigner"
 )
 
 func TestPathSigner(t *testing.T) {

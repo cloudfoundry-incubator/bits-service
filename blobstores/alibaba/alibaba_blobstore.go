@@ -5,13 +5,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/petergtz/bitsgo"
+	"github.com/cloudfoundry-incubator/bits-service"
 	"github.com/pkg/errors"
 
 	oss "github.com/aliyun/aliyun-oss-go-sdk/oss"
-	"github.com/petergtz/bitsgo/blobstores/validate"
-	"github.com/petergtz/bitsgo/config"
-	"github.com/petergtz/bitsgo/logger"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/validate"
+	"github.com/cloudfoundry-incubator/bits-service/config"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
 )
 
 type Blobstore struct {

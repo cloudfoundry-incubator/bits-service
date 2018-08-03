@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/blobstores/local"
-	"github.com/petergtz/bitsgo/middlewares"
-	"github.com/petergtz/bitsgo/util"
+	"github.com/cloudfoundry-incubator/bits-service"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/local"
+	"github.com/cloudfoundry-incubator/bits-service/middlewares"
+	"github.com/cloudfoundry-incubator/bits-service/util"
 	"github.com/urfave/negroni"
 )
 

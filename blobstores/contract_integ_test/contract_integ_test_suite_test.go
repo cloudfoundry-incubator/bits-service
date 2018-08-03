@@ -5,7 +5,7 @@ import (
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo"
+	"github.com/cloudfoundry-incubator/bits-service"
 
 	"testing"
 )

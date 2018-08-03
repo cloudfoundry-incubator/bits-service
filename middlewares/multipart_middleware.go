@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/petergtz/bitsgo/logger"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
 )
 
 type MultipartMiddleware struct{}

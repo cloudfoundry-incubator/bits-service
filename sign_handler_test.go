@@ -8,8 +8,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/httputil"
+	"github.com/cloudfoundry-incubator/bits-service"
+	"github.com/cloudfoundry-incubator/bits-service/httputil"
 	. "github.com/petergtz/pegomock"
 )
 

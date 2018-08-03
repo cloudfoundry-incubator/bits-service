@@ -38,7 +38,7 @@ To install bitsgo:
 mkdir -p $GOPATH/src/github.com/petergtz
 cd $GOPATH/src/github.com/petergtz
 
-git clone https://github.com/petergtz/bitsgo.git
+git clone https://github.com/cloudfoundry-incubator/bits-service.git
 cd bitsgo
 
 glide install

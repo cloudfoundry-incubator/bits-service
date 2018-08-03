@@ -4,7 +4,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/petergtz/bitsgo"
+	"github.com/cloudfoundry-incubator/bits-service"
 )
 
 type PrefixingPathBlobstoreDecorator struct {

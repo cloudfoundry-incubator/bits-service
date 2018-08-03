@@ -16,11 +16,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo/blobstores/azure"
-	"github.com/petergtz/bitsgo/blobstores/gcp"
-	"github.com/petergtz/bitsgo/blobstores/openstack"
-	"github.com/petergtz/bitsgo/blobstores/s3"
-	"github.com/petergtz/bitsgo/config"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/azure"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/gcp"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/openstack"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/s3"
+	"github.com/cloudfoundry-incubator/bits-service/config"
 )
 
 var _ = XDescribe("Non-local blobstores SLOW TESTS", func() {

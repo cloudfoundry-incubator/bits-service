@@ -1,8 +1,8 @@
 package bitsgo_test
 
 import (
-	. "github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/httputil"
+	. "github.com/cloudfoundry-incubator/bits-service"
+	"github.com/cloudfoundry-incubator/bits-service/httputil"
 
 	"net/http"
 	"net/http/httptest"

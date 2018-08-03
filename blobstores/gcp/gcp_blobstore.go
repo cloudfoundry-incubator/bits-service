@@ -10,11 +10,11 @@ import (
 
 	"cloud.google.com/go/storage"
 
-	"github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/blobstores/validate"
-	"github.com/petergtz/bitsgo/config"
-	"github.com/petergtz/bitsgo/logger"
-	"github.com/petergtz/bitsgo/util"
+	"github.com/cloudfoundry-incubator/bits-service"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/validate"
+	"github.com/cloudfoundry-incubator/bits-service/config"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
+	"github.com/cloudfoundry-incubator/bits-service/util"
 	"github.com/pkg/errors"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"

@@ -12,10 +12,10 @@ import (
 	"github.com/onsi/gomega"
 
 	. "github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo"
-	inmemory "github.com/petergtz/bitsgo/blobstores/inmemory"
-	"github.com/petergtz/bitsgo/blobstores/local"
-	"github.com/petergtz/bitsgo/config"
+	"github.com/cloudfoundry-incubator/bits-service"
+	inmemory "github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/local"
+	"github.com/cloudfoundry-incubator/bits-service/config"
 	"os"
 )
 

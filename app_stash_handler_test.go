@@ -15,10 +15,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo"
-	inmemory "github.com/petergtz/bitsgo/blobstores/inmemory"
-	"github.com/petergtz/bitsgo/httputil"
-	. "github.com/petergtz/bitsgo/testutil"
+	"github.com/cloudfoundry-incubator/bits-service"
+	inmemory "github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
+	"github.com/cloudfoundry-incubator/bits-service/httputil"
+	. "github.com/cloudfoundry-incubator/bits-service/testutil"
 )
 
 var _ = Describe("AppStash", func() {

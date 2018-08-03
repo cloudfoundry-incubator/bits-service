@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/petergtz/bitsgo/logger"
+	log "github.com/cloudfoundry-incubator/bits-service/logger"
 )
 
 func NewHttpClient(pemCerts string, insecureSkipVerify bool) *http.Client {

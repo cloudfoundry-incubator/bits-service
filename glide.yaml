@@ -1,4 +1,4 @@
-package: github.com/petergtz/bitsgo
+package: github.com/cloudfoundry-incubator/bits-service
 import:
 - package: github.com/aws/aws-sdk-go
   subpackages:

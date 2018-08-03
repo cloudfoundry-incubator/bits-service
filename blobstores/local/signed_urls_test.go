@@ -6,7 +6,7 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/gorilla/mux"
-	"github.com/petergtz/bitsgo/pathsigner"
+	"github.com/cloudfoundry-incubator/bits-service/pathsigner"
 	"github.com/urfave/negroni"
 
 	"net/http/httptest"
@@ -17,7 +17,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	. "github.com/petergtz/bitsgo/blobstores/local"
+	. "github.com/cloudfoundry-incubator/bits-service/blobstores/local"
 )
 
 func TestLocalBlobstore(t *testing.T) {

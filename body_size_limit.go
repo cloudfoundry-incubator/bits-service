@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/petergtz/bitsgo/logger"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
 )
 
 // Note: this changes the request under certain conditions

@@ -8,12 +8,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/blobstores/s3/signer"
-	"github.com/petergtz/bitsgo/blobstores/validate"
-	"github.com/petergtz/bitsgo/config"
-	"github.com/petergtz/bitsgo/logger"
-	log "github.com/petergtz/bitsgo/logger"
+	"github.com/cloudfoundry-incubator/bits-service"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/s3/signer"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/validate"
+	"github.com/cloudfoundry-incubator/bits-service/config"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
+	log "github.com/cloudfoundry-incubator/bits-service/logger"
 	"github.com/pkg/errors"
 )
 

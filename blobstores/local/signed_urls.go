@@ -6,7 +6,7 @@ import (
 
 	"time"
 
-	"github.com/petergtz/bitsgo/pathsigner"
+	"github.com/cloudfoundry-incubator/bits-service/pathsigner"
 )
 
 type SignatureVerificationMiddleware struct {

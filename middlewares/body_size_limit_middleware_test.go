@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo/middlewares"
+	"github.com/cloudfoundry-incubator/bits-service/middlewares"
 )
 
 func TestMiddleWares(t *testing.T) {

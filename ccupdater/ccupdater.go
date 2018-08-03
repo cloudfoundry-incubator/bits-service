@@ -10,9 +10,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/petergtz/bitsgo/logger"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
 
-	"github.com/petergtz/bitsgo"
+	"github.com/cloudfoundry-incubator/bits-service"
 
 	"github.com/pkg/errors"
 )

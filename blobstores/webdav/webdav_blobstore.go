@@ -11,10 +11,10 @@ import (
 
 	"time"
 
-	"github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/config"
-	"github.com/petergtz/bitsgo/httputil"
-	"github.com/petergtz/bitsgo/logger"
+	"github.com/cloudfoundry-incubator/bits-service"
+	"github.com/cloudfoundry-incubator/bits-service/config"
+	"github.com/cloudfoundry-incubator/bits-service/httputil"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
 	"github.com/pkg/errors"
 )
 

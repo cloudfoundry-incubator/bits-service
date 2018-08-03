@@ -7,10 +7,10 @@ import (
 
 	"github.com/petergtz/pegomock"
 
-	"github.com/petergtz/bitsgo"
+	"github.com/cloudfoundry-incubator/bits-service"
 
-	. "github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/httputil"
+	. "github.com/cloudfoundry-incubator/bits-service"
+	"github.com/cloudfoundry-incubator/bits-service/httputil"
 
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +22,7 @@ import (
 
 	"io"
 
-	. "github.com/petergtz/bitsgo/testutil"
+	. "github.com/cloudfoundry-incubator/bits-service/testutil"
 	. "github.com/petergtz/pegomock"
 )
 

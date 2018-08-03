@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo/middlewares"
+	"github.com/cloudfoundry-incubator/bits-service/middlewares"
 	"github.com/pkg/errors"
 )
 

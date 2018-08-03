@@ -13,10 +13,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo"
-	inmemory "github.com/petergtz/bitsgo/blobstores/inmemory"
-	. "github.com/petergtz/bitsgo/matchers"
-	. "github.com/petergtz/bitsgo/testutil"
+	"github.com/cloudfoundry-incubator/bits-service"
+	inmemory "github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
+	. "github.com/cloudfoundry-incubator/bits-service/matchers"
+	. "github.com/cloudfoundry-incubator/bits-service/testutil"
 	. "github.com/petergtz/pegomock"
 )
 

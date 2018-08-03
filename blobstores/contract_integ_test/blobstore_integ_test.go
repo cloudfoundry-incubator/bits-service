@@ -13,14 +13,14 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
-	"github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/blobstores/alibaba"
-	"github.com/petergtz/bitsgo/blobstores/azure"
-	"github.com/petergtz/bitsgo/blobstores/gcp"
-	"github.com/petergtz/bitsgo/blobstores/openstack"
-	"github.com/petergtz/bitsgo/blobstores/s3"
-	"github.com/petergtz/bitsgo/config"
-	"github.com/petergtz/bitsgo/httputil"
+	"github.com/cloudfoundry-incubator/bits-service"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/alibaba"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/azure"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/gcp"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/openstack"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/s3"
+	"github.com/cloudfoundry-incubator/bits-service/config"
+	"github.com/cloudfoundry-incubator/bits-service/httputil"
 )
 
 var _ = Describe("Non-local blobstores", func() {

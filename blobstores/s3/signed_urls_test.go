@@ -8,9 +8,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	"github.com/petergtz/bitsgo/blobstores/decorator"
-	. "github.com/petergtz/bitsgo/blobstores/s3"
-	"github.com/petergtz/bitsgo/config"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/decorator"
+	. "github.com/cloudfoundry-incubator/bits-service/blobstores/s3"
+	"github.com/cloudfoundry-incubator/bits-service/config"
 )
 
 func TestS3Blobstore(t *testing.T) {

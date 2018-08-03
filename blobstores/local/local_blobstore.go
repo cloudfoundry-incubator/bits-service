@@ -6,12 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/petergtz/bitsgo/config"
+	"github.com/cloudfoundry-incubator/bits-service/config"
 
 	"syscall"
 
-	"github.com/petergtz/bitsgo"
-	"github.com/petergtz/bitsgo/logger"
+	"github.com/cloudfoundry-incubator/bits-service"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
 	"github.com/pkg/errors"
 )
 
