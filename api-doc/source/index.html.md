@@ -684,3 +684,7 @@ These are of the form `bits.status-<status-code>`, e.g.:
 * `bits.packages-cc_updater_processing_upload-time`
 * `bits.packages-cc_updater_ready-time`
 * `bits.packages-cc_updater_failed-time`
+
+## Number of Go Routines
+
+* `bits.numGoRoutines`

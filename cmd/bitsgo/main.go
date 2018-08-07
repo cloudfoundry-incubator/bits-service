@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -54,6 +55,8 @@ func main() {
 	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets", log.Log)
 
 	metricsService := statsd.NewMetricsService()
+
+	go regularlyEmitGoRoutines(metricsService)
 
 	handler := routes.SetUpAllRoutes(
 		config.PrivateEndpointUrl().Host,
@@ -385,4 +388,10 @@ func createUpdater(ccUpdaterConfig *config.CCUpdaterConfig) bitsgo.Updater {
 		ccUpdaterConfig.ClientCertFile,
 		ccUpdaterConfig.ClientKeyFile,
 		ccUpdaterConfig.CACertFile)
+}
+
+func regularlyEmitGoRoutines(metricsService bitsgo.MetricsService) {
+	for range time.Tick(1 * time.Minute) {
+		metricsService.SendGaugeMetric("numGoRoutines", int64(runtime.NumGoroutine()))
+	}
 }
