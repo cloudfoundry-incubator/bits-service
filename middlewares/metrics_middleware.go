@@ -9,19 +9,15 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/cloudfoundry-incubator/bits-service"
 )
 
-type MetricsService interface {
-	SendTimingMetric(name string, duration time.Duration)
-	SendGaugeMetric(name string, value int64)
-	SendCounterMetric(name string, value int64)
-}
-
 type MetricsMiddleware struct {
-	metricsService MetricsService
+	metricsService bitsgo.MetricsService
 }
 
-func NewMetricsMiddleware(metricsService MetricsService) *MetricsMiddleware {
+func NewMetricsMiddleware(metricsService bitsgo.MetricsService) *MetricsMiddleware {
 	return &MetricsMiddleware{metricsService: metricsService}
 }
 

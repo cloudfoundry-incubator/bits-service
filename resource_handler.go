@@ -21,10 +21,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type MetricsService interface {
-	SendTimingMetric(name string, duration time.Duration)
-}
-
 type StateForbiddenError struct {
 	error
 }
