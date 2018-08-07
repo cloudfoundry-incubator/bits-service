@@ -29,14 +29,27 @@ A package are the files that make up an application from the developer's point o
 > Example request:
 
 ```shell
-curl -X PUT 'https://internal.example.com/packages/c33e184b-e698-4290-952e-4047601e4627' \
-  -F package=@package-file
+curl -X PUT 'https://internal.example.com/packages/c33e184b-e698-4290-952e-4047601e4627?async=true' \
+  -F package=@package-file -F resources='[{
+  "sha1": "8b381f8864b572841a26266791c64ae97738a659",
+  "fn":   "script.rb",
+  "mode": "0644"
+}]'
 ```
 
 > Example response:
 
 ```shell
-HTTP/1.1 201 Created
+HTTP/1.1 202 Accepted
+
+{
+  "guid":       "c33e184b-e698-4290-952e-4047601e4627",
+  "state":      "PROCESSING_UPLOAD",
+  "type":       "bits",
+  "created_at": "2018-08-07T12:05:31.075337155+02:00",
+  "sha1":       "54f4f25322f2a30d1ba50e556ff8249d0bba9bf4",
+  "sha256":     "2a953858fee9aa617aa8617b5b805e82c3f859be02e9a5ae175f8a55e0d2e020",
+}
 ```
 
 ### HTTP Request
@@ -44,10 +57,22 @@ HTTP/1.1 201 Created
 
 where `:guid` is the package's GUID.
 
-### Request Body
-`package: <formfile>`
+### Query Parameters
+Parameter | Default | Description
+--------- | ------- | -----------
+`async`   | `false` | When `true`, request will return immediately, and upload the package to the backend blobstore in the background. The package state will be updated in the Cloud Controller once the background upload is finished.
 
-If the body is not a file upload, but contains a `:source_guid`, its value is treated as `:guid` and an attempt is made to copy the package from the one identified by the value of `:source_guid`.
+### Request Body
+
+The request body must either be a multipart upload with the following form fields:
+
+`package: <formfile>` or `bits: <formfile>`
+
+Optional:`resources: [ { "sha1": "<sha1-checksum>", "fn": "<filename>", "mode": "<filemode>" }, ...]`
+
+Where `package` and `bits` can be used interchangeably.
+
+Or, if the body is not a multipart upload, but contains a `:source_guid`, its value is treated as `:guid` and an attempt is made to copy the package from the one identified by the value of `:source_guid`.
 
 ### Access
 Internal endpoint only
@@ -483,6 +508,8 @@ Internal endpoint only
 
 ## Uploading Entries
 
+**Deprecated.** _This endpoint will be removed in future major versions of the Bits-Service. This functionality is now integrated in [Uploading a Package](#uploading-a-package)._
+
 > Example request:
 
 ```shell
@@ -514,6 +541,8 @@ This endpoint takes a zip file and stores its uncompressed files in the app stas
 Internal endpoint only
 
 ## Bundling Entries
+
+**Deprecated.** _This endpoint will be removed in future major versions of the Bits-Service. This functionality is now integrated in [Uploading a Package](#uploading-a-package)._
 
 > Example request:
 
@@ -578,7 +607,7 @@ where `:path` is the URL path of the signed entity.
 ### Query Parameters
 Parameter | Default | Description
 --------- | ------- | -----------
-`verb`    | `GET`   | Defines the verb that can be used in association with the signed URL. Either `GET` or `PUT`.
+`verb`    | `GET`   | Defines the verb that can be used in association with the signed URL. Either `GET`, `PUT`, or `POST`.
 
 ### Access
 Internal endpoint only
