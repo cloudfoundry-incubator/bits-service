@@ -31,13 +31,12 @@ func From(r *http.Request) *zap.SugaredLogger {
 	}
 }
 
-const (
-	_stdLogDefaultDepth = 2
-	_loggerWriterDepth  = 1
-)
-
 // Copied from go.uber.org/zap/global.go and changed to use Error instead of Info:
 func NewStdLog(l *zap.Logger) *log.Logger {
+	const (
+		_stdLogDefaultDepth = 2
+		_loggerWriterDepth  = 1
+	)
 	return log.New(&loggerWriter{l.WithOptions(
 		zap.AddCallerSkip(_stdLogDefaultDepth + _loggerWriterDepth),
 	)}, "" /* prefix */, 0 /* flags */)
