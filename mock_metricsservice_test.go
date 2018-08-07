@@ -19,10 +19,26 @@ func NewMockMetricsService() *MockMetricsService {
 
 func (mock *MockMetricsService) SendTimingMetric(name string, duration time.Duration) {
 	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockMockMetricsService().")
+		panic("mock must not be nil. Use myMock := NewMockMetricsService().")
 	}
 	params := []pegomock.Param{name, duration}
 	pegomock.GetGenericMockFrom(mock).Invoke("SendTimingMetric", params, []reflect.Type{})
+}
+
+func (mock *MockMetricsService) SendGaugeMetric(name string, value int64) {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockMetricsService().")
+	}
+	params := []pegomock.Param{name, value}
+	pegomock.GetGenericMockFrom(mock).Invoke("SendGaugeMetric", params, []reflect.Type{})
+}
+
+func (mock *MockMetricsService) SendCounterMetric(name string, value int64) {
+	if mock == nil {
+		panic("mock must not be nil. Use myMock := NewMockMetricsService().")
+	}
+	params := []pegomock.Param{name, value}
+	pegomock.GetGenericMockFrom(mock).Invoke("SendCounterMetric", params, []reflect.Type{})
 }
 
 func (mock *MockMetricsService) VerifyWasCalledOnce() *VerifierMetricsService {
@@ -69,6 +85,68 @@ func (c *MetricsService_SendTimingMetric_OngoingVerification) GetAllCapturedArgu
 		_param1 = make([]time.Duration, len(params[1]))
 		for u, param := range params[1] {
 			_param1[u] = param.(time.Duration)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierMetricsService) SendGaugeMetric(name string, value int64) *MetricsService_SendGaugeMetric_OngoingVerification {
+	params := []pegomock.Param{name, value}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "SendGaugeMetric", params)
+	return &MetricsService_SendGaugeMetric_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type MetricsService_SendGaugeMetric_OngoingVerification struct {
+	mock              *MockMetricsService
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *MetricsService_SendGaugeMetric_OngoingVerification) GetCapturedArguments() (string, int64) {
+	name, value := c.GetAllCapturedArguments()
+	return name[len(name)-1], value[len(value)-1]
+}
+
+func (c *MetricsService_SendGaugeMetric_OngoingVerification) GetAllCapturedArguments() (_param0 []string, _param1 []int64) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]string, len(params[0]))
+		for u, param := range params[0] {
+			_param0[u] = param.(string)
+		}
+		_param1 = make([]int64, len(params[1]))
+		for u, param := range params[1] {
+			_param1[u] = param.(int64)
+		}
+	}
+	return
+}
+
+func (verifier *VerifierMetricsService) SendCounterMetric(name string, value int64) *MetricsService_SendCounterMetric_OngoingVerification {
+	params := []pegomock.Param{name, value}
+	methodInvocations := pegomock.GetGenericMockFrom(verifier.mock).Verify(verifier.inOrderContext, verifier.invocationCountMatcher, "SendCounterMetric", params)
+	return &MetricsService_SendCounterMetric_OngoingVerification{mock: verifier.mock, methodInvocations: methodInvocations}
+}
+
+type MetricsService_SendCounterMetric_OngoingVerification struct {
+	mock              *MockMetricsService
+	methodInvocations []pegomock.MethodInvocation
+}
+
+func (c *MetricsService_SendCounterMetric_OngoingVerification) GetCapturedArguments() (string, int64) {
+	name, value := c.GetAllCapturedArguments()
+	return name[len(name)-1], value[len(value)-1]
+}
+
+func (c *MetricsService_SendCounterMetric_OngoingVerification) GetAllCapturedArguments() (_param0 []string, _param1 []int64) {
+	params := pegomock.GetGenericMockFrom(c.mock).GetInvocationParams(c.methodInvocations)
+	if len(params) > 0 {
+		_param0 = make([]string, len(params[0]))
+		for u, param := range params[0] {
+			_param0[u] = param.(string)
+		}
+		_param1 = make([]int64, len(params[1]))
+		for u, param := range params[1] {
+			_param1[u] = param.(int64)
 		}
 	}
 	return
