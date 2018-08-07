@@ -47,11 +47,11 @@ func main() {
 	logger := createLoggerWith(config.Logging.Level)
 	log.SetLogger(logger)
 
-	appStashBlobstore, signAppStashURLHandler := createAppStashBlobstore(config.AppStash, config.PublicEndpointUrl(), config.Port, config.Secret)
-	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpointUrl(), config.Port, config.Secret, "packages")
-	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets")
-	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpointUrl(), config.Port, config.Secret, "buildpacks")
-	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets")
+	appStashBlobstore, signAppStashURLHandler := createAppStashBlobstore(config.AppStash, config.PublicEndpointUrl(), config.Port, config.Secret, log.Log)
+	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpointUrl(), config.Port, config.Secret, "packages", log.Log)
+	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets", log.Log)
+	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpointUrl(), config.Port, config.Secret, "buildpacks", log.Log)
+	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets", log.Log)
 
 	metricsService := statsd.NewMetricsService()
 
@@ -142,7 +142,7 @@ func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAu
 	return
 }
 
-func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
+func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string, logger *zap.SugaredLogger) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
 	localResourceSigner := createLocalResourceSigner(publicEndpoint, port, secret, resourceType)
 	switch blobstoreConfig.BlobstoreType {
 	case config.Local:
@@ -153,10 +153,10 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	case config.AWS:
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
-				s3.NewBlobstore(*blobstoreConfig.S3Config)),
+				s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger)),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
-					s3.NewBlobstore(*blobstoreConfig.S3Config)),
+					s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger)),
 				localResourceSigner)
 	case config.Google:
 		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
@@ -210,7 +210,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	}
 }
 
-func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
+func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string, logger *zap.SugaredLogger) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
 	localResourceSigner := createLocalResourceSigner(publicEndpoint, port, secret, "buildpack_cache/entries")
 	switch blobstoreConfig.BlobstoreType {
 	case config.Local:
@@ -224,12 +224,12 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					s3.NewBlobstore(*blobstoreConfig.S3Config),
+					s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					decorator.ForResourceSignerWithPathPrefixing(
-						s3.NewBlobstore(*blobstoreConfig.S3Config),
+						s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger),
 						"buildpack_cache")),
 				localResourceSigner)
 	case config.Google:
@@ -308,7 +308,7 @@ func createLocalResourceSigner(publicEndpoint *url.URL, port int, secret string,
 	}
 }
 
-func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string) (bitsgo.NoRedirectBlobstore, *bitsgo.SignResourceHandler) {
+func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, logger *zap.SugaredLogger) (bitsgo.NoRedirectBlobstore, *bitsgo.SignResourceHandler) {
 	signAppStashMatchesHandler := bitsgo.NewSignResourceHandler(
 		nil, // signing for get is not necessary for app_stash
 		&local.LocalResourceSigner{
@@ -329,7 +329,7 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpo
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					s3.NewBlobstore(*blobstoreConfig.S3Config),
+					s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger),
 					"app_bits_cache/")),
 			signAppStashMatchesHandler
 	case config.Google:

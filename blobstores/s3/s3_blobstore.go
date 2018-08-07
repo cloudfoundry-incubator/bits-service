@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -28,6 +30,10 @@ type S3Signer interface {
 }
 
 func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
+	return NewBlobstoreWithLogger(config, log.Log)
+}
+
+func NewBlobstoreWithLogger(config config.S3BlobstoreConfig, logger *zap.SugaredLogger) *Blobstore {
 	validate.NotEmpty(config.AccessKeyID)
 	validate.NotEmpty(config.Bucket)
 	validate.NotEmpty(config.SecretAccessKey)
@@ -48,7 +54,7 @@ func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
 	}
 
 	return &Blobstore{
-		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey, config.Host),
+		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey, config.Host, logger, config.S3DebugLogLevel),
 		bucket:   config.Bucket,
 		signer:   s3Signer,
 	}

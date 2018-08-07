@@ -118,6 +118,7 @@ type S3BlobstoreConfig struct {
 	SecretAccessKey string `yaml:"secret_access_key"`
 	Region          string
 	Host            string `yaml:",omitempty"`
+	S3DebugLogLevel string `yaml:"s3_debug_log_level"`
 }
 
 type GCPBlobstoreConfig struct {
