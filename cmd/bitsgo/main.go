@@ -48,13 +48,13 @@ func main() {
 	logger := createLoggerWith(config.Logging.Level)
 	log.SetLogger(logger)
 
-	appStashBlobstore, signAppStashURLHandler := createAppStashBlobstore(config.AppStash, config.PublicEndpointUrl(), config.Port, config.Secret, log.Log)
-	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpointUrl(), config.Port, config.Secret, "packages", log.Log)
-	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets", log.Log)
-	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpointUrl(), config.Port, config.Secret, "buildpacks", log.Log)
-	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets", log.Log)
-
 	metricsService := statsd.NewMetricsService()
+
+	appStashBlobstore, signAppStashURLHandler := createAppStashBlobstore(config.AppStash, config.PublicEndpointUrl(), config.Port, config.Secret, log.Log, metricsService)
+	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpointUrl(), config.Port, config.Secret, "packages", log.Log, metricsService)
+	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets", log.Log, metricsService)
+	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpointUrl(), config.Port, config.Secret, "buildpacks", log.Log, metricsService)
+	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets", log.Log, metricsService)
 
 	go regularlyEmitGoRoutines(metricsService)
 
@@ -145,18 +145,24 @@ func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAu
 	return
 }
 
-func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string, logger *zap.SugaredLogger) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
+func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
 	localResourceSigner := createLocalResourceSigner(publicEndpoint, port, secret, resourceType)
 	switch blobstoreConfig.BlobstoreType {
 	case config.Local:
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
-				local.NewBlobstore(*blobstoreConfig.LocalConfig)),
+				decorator.ForBlobstoreWithMetricsEmitter(
+					local.NewBlobstore(*blobstoreConfig.LocalConfig),
+					metricsService,
+					resourceType)),
 			bitsgo.NewSignResourceHandler(localResourceSigner, localResourceSigner)
 	case config.AWS:
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
-				s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger)),
+				decorator.ForBlobstoreWithMetricsEmitter(
+					s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger),
+					metricsService,
+					resourceType)),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger)),
@@ -164,7 +170,10 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	case config.Google:
 		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
-				gcp.NewBlobstore(*blobstoreConfig.GCPConfig)),
+				decorator.ForBlobstoreWithMetricsEmitter(
+					gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
+					metricsService,
+					resourceType)),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					gcp.NewBlobstore(*blobstoreConfig.GCPConfig)),
@@ -172,7 +181,10 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	case config.Azure:
 		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
-				azure.NewBlobstore(*blobstoreConfig.AzureConfig)),
+				decorator.ForBlobstoreWithMetricsEmitter(
+					azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+					metricsService,
+					resourceType)),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					azure.NewBlobstore(*blobstoreConfig.AzureConfig)),
@@ -180,7 +192,10 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	case config.OpenStack:
 		log.Log.Infow("Creating Openstack blobstore", "container", blobstoreConfig.OpenstackConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
-				openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig)),
+				decorator.ForBlobstoreWithMetricsEmitter(
+					openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
+					metricsService,
+					resourceType)),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig)),
@@ -191,7 +206,10 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 			"private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
+						metricsService,
+						resourceType),
 					blobstoreConfig.WebdavConfig.DirectoryKey+"/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -202,7 +220,10 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	case config.Alibaba:
 		log.Log.Infow("Creating Alibaba blobstore", "bucket", blobstoreConfig.AlibabaConfig.BucketName)
 		return decorator.ForBlobstoreWithPathPartitioning(
-				alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig)),
+				decorator.ForBlobstoreWithMetricsEmitter(
+					alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig),
+					metricsService,
+					resourceType)),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig)),
@@ -213,21 +234,27 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	}
 }
 
-func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string, logger *zap.SugaredLogger) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
+func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
 	localResourceSigner := createLocalResourceSigner(publicEndpoint, port, secret, "buildpack_cache/entries")
 	switch blobstoreConfig.BlobstoreType {
 	case config.Local:
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					local.NewBlobstore(*blobstoreConfig.LocalConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						local.NewBlobstore(*blobstoreConfig.LocalConfig),
+						metricsService,
+						resourceType),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(localResourceSigner, localResourceSigner)
 	case config.AWS:
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger),
+						metricsService,
+						resourceType),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -239,7 +266,10 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
+						metricsService,
+						resourceType),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -251,7 +281,10 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+						metricsService,
+						resourceType),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -263,7 +296,10 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 		log.Log.Infow("Creating Openstack blobstore", "container", blobstoreConfig.OpenstackConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
+						metricsService,
+						resourceType),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -277,7 +313,10 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 			"private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
+						metricsService,
+						resourceType),
 					blobstoreConfig.WebdavConfig.DirectoryKey+"/buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -289,7 +328,10 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 		log.Log.Infow("Creating Alibaba blobstore", "bucket", blobstoreConfig.AlibabaConfig.BucketName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig),
+						metricsService,
+						resourceType),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -311,7 +353,7 @@ func createLocalResourceSigner(publicEndpoint *url.URL, port int, secret string,
 	}
 }
 
-func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, logger *zap.SugaredLogger) (bitsgo.NoRedirectBlobstore, *bitsgo.SignResourceHandler) {
+func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.NoRedirectBlobstore, *bitsgo.SignResourceHandler) {
 	signAppStashMatchesHandler := bitsgo.NewSignResourceHandler(
 		nil, // signing for get is not necessary for app_stash
 		&local.LocalResourceSigner{
@@ -325,35 +367,50 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpo
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					local.NewBlobstore(*blobstoreConfig.LocalConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						local.NewBlobstore(*blobstoreConfig.LocalConfig),
+						metricsService,
+						"app_stash"),
 					"app_bits_cache/")),
 			signAppStashMatchesHandler
 	case config.AWS:
 		log.Log.Infow("Creating S3 blobstore", "bucket", blobstoreConfig.S3Config.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger),
+						metricsService,
+						"app_stash"),
 					"app_bits_cache/")),
 			signAppStashMatchesHandler
 	case config.Google:
 		log.Log.Infow("Creating GCP blobstore", "bucket", blobstoreConfig.GCPConfig.Bucket)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
+						metricsService,
+						"app_stash"),
 					"app_bits_cache/")),
 			signAppStashMatchesHandler
 	case config.Azure:
 		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+						metricsService,
+						"app_stash"),
 					"app_bits_cache/")),
 			signAppStashMatchesHandler
 	case config.OpenStack:
 		log.Log.Infow("Creating Openstack blobstore", "container", blobstoreConfig.OpenstackConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
+						metricsService,
+						"app_stash"),
 					"app_bits_cache/")),
 			signAppStashMatchesHandler
 	case config.WebDAV:
@@ -362,14 +419,20 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpo
 			"private-endpoint", blobstoreConfig.WebdavConfig.PrivateEndpoint)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
+						metricsService,
+						"app_stash"),
 					blobstoreConfig.WebdavConfig.DirectoryKey+"/app_bits_cache/")),
 			signAppStashMatchesHandler
 	case config.Alibaba:
 		log.Log.Infow("Creating Alibaba blobstore", "bucket-name", blobstoreConfig.AlibabaConfig.BucketName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
-					alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig),
+					decorator.ForBlobstoreWithMetricsEmitter(
+						alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig),
+						metricsService,
+						"app_stash"),
 					"app_bits_cache/")),
 			signAppStashMatchesHandler
 	default:

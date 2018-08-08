@@ -45,9 +45,15 @@ func (decorator *MetricsEmittingBlobstoreDecorator) Copy(src, dest string) error
 }
 
 func (decorator *MetricsEmittingBlobstoreDecorator) Delete(path string) error {
-	return decorator.delegate.Delete(path)
+	startTime := time.Now()
+	e := decorator.delegate.Delete(path)
+	decorator.metricsService.SendTimingMetric(decorator.resourceType+"-delete_from_blobstore-time", time.Since(startTime))
+	return e
 }
 
 func (decorator *MetricsEmittingBlobstoreDecorator) DeleteDir(prefix string) error {
-	return decorator.delegate.DeleteDir(prefix)
+	startTime := time.Now()
+	e := decorator.delegate.DeleteDir(prefix)
+	decorator.metricsService.SendTimingMetric(decorator.resourceType+"-delete_dir_from_blobstore-time", time.Since(startTime))
+	return e
 }

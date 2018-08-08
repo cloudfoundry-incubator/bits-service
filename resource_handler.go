@@ -274,9 +274,7 @@ func (handler *ResourceHandler) uploadResource(tempFilename string, request *htt
 	defer tempFile.Close()
 
 	logger.From(request).Debugw("Starting upload to blobstore", "identifier", identifier)
-	startTime := time.Now()
 	e = handler.blobstore.Put(identifier, tempFile)
-	handler.metricsService.SendTimingMetric(handler.resourceType+"-cp_to_blobstore-time", time.Since(startTime))
 	logger.From(request).Debugw("Completed upload to blobstore", "identifier", identifier)
 
 	if e != nil {
@@ -393,17 +391,13 @@ func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, reque
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	}
-	startTime := time.Now()
 	e = handler.blobstore.Delete(params["identifier"])
-	handler.metricsService.SendTimingMetric(handler.resourceType+"-delete_from_blobstore-time", time.Since(startTime))
 
 	writeResponseBasedOn("", e, responseWriter, request, http.StatusNoContent, nil, nil, "")
 }
 
 func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
-	startTime := time.Now()
 	e := handler.blobstore.DeleteDir(params["identifier"])
-	handler.metricsService.SendTimingMetric(handler.resourceType+"-delete_dir_from_blobstore-time", time.Since(startTime))
 
 	switch e.(type) {
 	case *NotFoundError:
