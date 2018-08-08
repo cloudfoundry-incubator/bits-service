@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -18,6 +19,7 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 	zipReader *zip.Reader,
 	minimumSize, maximumSize uint64,
 	blobstore NoRedirectBlobstore,
+	metricsService MetricsService,
 ) (tempFilename string, err error) {
 	tempZipFile, e := ioutil.TempFile("", "bundles")
 	if e != nil {
@@ -66,7 +68,7 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 			if e != nil {
 				return "", errors.Wrap(e, "Could not close zip entry reader")
 			}
-			e = backoff.Retry(func() error {
+			e = backoff.RetryNotify(func() error {
 				tempFile, e = os.Open(tempFile.Name())
 				if e != nil {
 					return errors.Wrap(e, "Could not open temp file for reading")
@@ -83,7 +85,9 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 					}
 				}
 				return nil
-			}, backoff.NewExponentialBackOff())
+			}, backoff.NewExponentialBackOff(), func(e error, backOffDelay time.Duration) {
+				metricsService.SendCounterMetric("appStashPutRetries", 1)
+			})
 			if e != nil {
 				return "", e
 			}
@@ -97,7 +101,7 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 			return "", errors.Wrap(e, "Could create header in zip file")
 		}
 
-		e = backoff.Retry(func() error {
+		e = backoff.RetryNotify(func() error {
 			b, e := blobstore.Get(entry.Sha1)
 			if e != nil {
 				if _, ok := e.(*NotFoundError); ok {
@@ -114,6 +118,9 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 			return nil
 		},
 			backoff.NewExponentialBackOff(),
+			func(e error, backOffDelay time.Duration) {
+				metricsService.SendCounterMetric("appStashGetRetries", 1)
+			},
 		)
 		if e != nil {
 			return "", e

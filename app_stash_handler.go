@@ -24,14 +24,16 @@ type AppStashHandler struct {
 	maxBodySizeLimit uint64
 	minimumSize      uint64
 	maximumSize      uint64
+	metricsService   MetricsService
 }
 
-func NewAppStashHandlerWithSizeThresholds(blobstore NoRedirectBlobstore, maxBodySizeLimit uint64, minimumSize uint64, maximumSize uint64) *AppStashHandler {
+func NewAppStashHandlerWithSizeThresholds(blobstore NoRedirectBlobstore, maxBodySizeLimit uint64, minimumSize uint64, maximumSize uint64, metricsService MetricsService) *AppStashHandler {
 	return &AppStashHandler{
 		blobstore:        blobstore,
 		maxBodySizeLimit: maxBodySizeLimit,
 		minimumSize:      minimumSize,
 		maximumSize:      maximumSize,
+		metricsService:   metricsService,
 	}
 }
 
@@ -257,7 +259,7 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 		return
 	}
 
-	tempZipFilename, e := CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.blobstore)
+	tempZipFilename, e := CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.blobstore, handler.metricsService)
 	if e != nil {
 		if notFoundError, ok := e.(*NotFoundError); ok {
 			responseWriter.WriteHeader(http.StatusNotFound)

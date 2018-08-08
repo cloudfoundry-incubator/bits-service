@@ -191,7 +191,7 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 			return
 		}
 
-		tempFilename, e = CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.appStashBlobstore)
+		tempFilename, e = CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.appStashBlobstore, handler.metricsService)
 		if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
 			writeResponseBasedOn("", e, responseWriter, request, 0, nil, nil, "")
 			return

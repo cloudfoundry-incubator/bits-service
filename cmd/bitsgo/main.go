@@ -68,7 +68,7 @@ func main() {
 		signBuildpackURLHandler,
 		signBuildpackCacheURLHandler,
 		signAppStashURLHandler,
-		bitsgo.NewAppStashHandlerWithSizeThresholds(appStashBlobstore, config.AppStash.MaxBodySizeBytes(), config.AppStashConfig.MinimumSizeBytes(), config.AppStashConfig.MaximumSizeBytes()),
+		bitsgo.NewAppStashHandlerWithSizeThresholds(appStashBlobstore, config.AppStash.MaxBodySizeBytes(), config.AppStashConfig.MinimumSizeBytes(), config.AppStashConfig.MaximumSizeBytes(), metricsService),
 		bitsgo.NewResourceHandlerWithUpdaterAndSizeThresholds(
 			packageBlobstore,
 			appStashBlobstore,

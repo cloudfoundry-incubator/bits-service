@@ -16,11 +16,6 @@ import (
 
 	"io/ioutil"
 
-	"github.com/gorilla/mux"
-	"github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/gomega"
-	. "github.com/onsi/gomega"
 	"github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/decorator"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
@@ -28,6 +23,11 @@ import (
 	. "github.com/cloudfoundry-incubator/bits-service/routes"
 	"github.com/cloudfoundry-incubator/bits-service/statsd"
 	. "github.com/cloudfoundry-incubator/bits-service/testutil"
+	"github.com/gorilla/mux"
+	"github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 	"github.com/petergtz/pegomock"
 	. "github.com/petergtz/pegomock"
 )
@@ -222,7 +222,7 @@ var _ = Describe("routes", func() {
 
 	Describe("/app_stash", func() {
 		BeforeEach(func() {
-			SetUpAppStashRoutes(router, bitsgo.NewAppStashHandlerWithSizeThresholds(blobstore, 0, 0, math.MaxUint64))
+			SetUpAppStashRoutes(router, bitsgo.NewAppStashHandlerWithSizeThresholds(blobstore, 0, 0, math.MaxUint64, NewMockMetricsService()))
 		})
 
 		Describe("/app_stash/entries", func() {

@@ -13,12 +13,12 @@ import (
 	"runtime"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/cloudfoundry-incubator/bits-service"
 	inmemory "github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
 	"github.com/cloudfoundry-incubator/bits-service/httputil"
 	. "github.com/cloudfoundry-incubator/bits-service/testutil"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("AppStash", func() {
@@ -30,7 +30,7 @@ var _ = Describe("AppStash", func() {
 
 	BeforeEach(func() {
 		blobstore = inmemory.NewBlobstore()
-		appStashHandler = bitsgo.NewAppStashHandlerWithSizeThresholds(blobstore, 0, 0, math.MaxUint64)
+		appStashHandler = bitsgo.NewAppStashHandlerWithSizeThresholds(blobstore, 0, 0, math.MaxUint64, NewMockMetricsService())
 		responseWriter = httptest.NewRecorder()
 	})
 
@@ -46,7 +46,7 @@ var _ = Describe("AppStash", func() {
 			)
 
 			BeforeEach(func() {
-				appStashHandler = bitsgo.NewAppStashHandlerWithSizeThresholds(blobstore, 0, minimumSize, maximumSize)
+				appStashHandler = bitsgo.NewAppStashHandlerWithSizeThresholds(blobstore, 0, minimumSize, maximumSize, NewMockMetricsService())
 				Expect(blobstore.Put("shaA", strings.NewReader("cached content"))).To(Succeed())
 				Expect(blobstore.Put("shaB", strings.NewReader("another cached content"))).To(Succeed())
 				Expect(blobstore.Put("shaC", strings.NewReader("yet another cached content"))).To(Succeed())
