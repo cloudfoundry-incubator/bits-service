@@ -243,7 +243,7 @@ var _ = Describe("ResourceHandler", func() {
 
 					inOrderContext := new(InOrderContext)
 					updater.VerifyWasCalledInOrder(Once(), inOrderContext).NotifyProcessingUpload("someguid")
-					blobstore.VerifyWasCalledInOrder(Once(), inOrderContext).Put(EqString("someguid"), anyReadSeeker())
+					blobstore.VerifyWasCalledInOrder(AtLeast(2), inOrderContext).Put(EqString("someguid"), anyReadSeeker())
 					updater.VerifyWasCalledInOrder(Once(), inOrderContext).NotifyUploadFailed(EqString("someguid"), anyError())
 					Expect(responseWriter.Code).To(Equal(http.StatusInternalServerError))
 				})

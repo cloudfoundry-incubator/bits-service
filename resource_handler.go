@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/cloudfoundry-incubator/bits-service/logger"
 	"github.com/cloudfoundry-incubator/bits-service/util"
 	"github.com/pkg/errors"
@@ -131,7 +132,21 @@ func (handler *ResourceHandler) AddOrReplaceWithDigestInHeader(responseWriter ht
 		internalServerError(responseWriter, request, e)
 		return
 	}
-	e = handler.blobstore.Put(params["identifier"]+"/"+value, bytes.NewReader(content))
+
+	e = backoff.RetryNotify(func() error {
+		e := handler.blobstore.Put(params["identifier"]+"/"+value, bytes.NewReader(content))
+		if e != nil {
+			if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
+				return backoff.Permanent(e)
+			}
+			return errors.Wrap(e, "Could not upload bits to blobstore")
+		}
+		return nil
+
+	}, retryPolicy(), func(e error, delay time.Duration) {
+		handler.metricsService.SendCounterMetric("upload"+handler.resourceType, 1)
+	})
+
 	// TODO use Clock instead:
 	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
@@ -265,24 +280,32 @@ func CreateTempFileWithContent(reader io.Reader) (string, error) {
 
 func (handler *ResourceHandler) uploadResource(tempFilename string, request *http.Request, identifier string, async bool, sha1Sum []byte, sha256Sum []byte) error {
 	defer os.Remove(tempFilename)
-
-	tempFile, e := os.Open(tempFilename)
-	if e != nil {
-		handler.notifyUploadFailed(identifier, e, request)
-		return handle(errors.Wrapf(e, "Could not open temporary file '%v'", tempFilename), async, request)
-	}
-	defer tempFile.Close()
-
-	logger.From(request).Debugw("Starting upload to blobstore", "identifier", identifier)
-	e = handler.blobstore.Put(identifier, tempFile)
-	logger.From(request).Debugw("Completed upload to blobstore", "identifier", identifier)
-
-	if e != nil {
-		handler.notifyUploadFailed(identifier, e, request)
-		if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
-			return handle(e, async, request)
+	e := backoff.RetryNotify(func() error {
+		tempFile, e := os.Open(tempFilename)
+		if e != nil {
+			return backoff.Permanent(errors.Wrapf(e, "Could not open temporary file '%v'", tempFilename))
 		}
-		return handle(errors.Wrapf(e, "Could not upload temporary file to blobstore"), async, request)
+		defer tempFile.Close()
+
+		logger.From(request).Debugw("Starting upload to blobstore", "identifier", identifier)
+		e = handler.blobstore.Put(identifier, tempFile)
+		logger.From(request).Debugw("Completed upload to blobstore", "identifier", identifier)
+
+		if e != nil {
+			if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
+				return backoff.Permanent(e)
+			}
+
+			return errors.Wrapf(e, "Could not upload temporary file to blobstore", tempFilename)
+		}
+		return nil
+	}, retryPolicy(), func(e error, delay time.Duration) {
+		handler.metricsService.SendCounterMetric("upload"+handler.resourceType, 1)
+	})
+
+	if e != nil {
+		handler.notifyUploadFailed(identifier, e, request)
+		return handle(e, async, request)
 	}
 	e = handler.updater.NotifyUploadSucceeded(identifier, hex.EncodeToString(sha1Sum), hex.EncodeToString(sha256Sum))
 	if e != nil {
@@ -295,9 +318,14 @@ func (handler *ResourceHandler) uploadResource(tempFilename string, request *htt
 func handle(e error, async bool, request *http.Request) error {
 	if async {
 		logger.From(request).Errorw("Failure during upload", "error", e)
-		return nil
 	}
 	return e
+}
+
+func retryPolicy() *backoff.ExponentialBackOff {
+	retryPolicy := backoff.NewExponentialBackOff()
+	retryPolicy.MaxElapsedTime = time.Second
+	return retryPolicy
 }
 
 func (handler *ResourceHandler) notifyUploadFailed(identifier string, e error, request *http.Request) {
