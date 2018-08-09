@@ -166,8 +166,8 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 	defer file.Close()
 
 	var tempFilename string
-	// TODO: this big if-block should either be extracted into separet methods, or maybe better not be necessary at all.
-	//       The reason it's necessary right now is that we need zip handling only for packages. We treated other resources opaque.
+	// TODO: this big if-block should either be extracted into separate methods, or maybe better not be necessary at all.
+	//       The reason it's necessary right now is that we need zip handling only for packages. We treat other resources opaque.
 	if handler.resourceType == "package" {
 		var bundlesPayload []Fingerprint
 		resources := request.FormValue("resources")
