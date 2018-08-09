@@ -178,7 +178,6 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 		var bundlesPayload []Fingerprint
 		resources := request.FormValue("resources")
 		if resources != "" {
-			fmt.Println(resources)
 			e = json.Unmarshal([]byte(resources), &bundlesPayload)
 			if e != nil {
 				logger.From(request).Infow("Invalid resources. JSON payload could not be parsed", "resources", resources)
