@@ -98,6 +98,7 @@ func main() {
 			middlewares.NewMetricsMiddleware(metricsService),
 			middlewares.NewZapLoggerMiddleware(log.Log),
 			&middlewares.MultipartMiddleware{},
+			&middlewares.PanicMiddleware{},
 			negroni.Wrap(handler)),
 		Addr:         fmt.Sprintf("%v:%v", address, config.Port),
 		WriteTimeout: 60 * time.Minute,

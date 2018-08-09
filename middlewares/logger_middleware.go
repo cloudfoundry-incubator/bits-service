@@ -23,8 +23,9 @@ func NewZapLoggerMiddleware(logger *zap.SugaredLogger) *ZapLoggerMiddleware {
 func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
 	startTime := time.Now()
 
+	requestId := rand.Int63()
 	requestLogger := middleware.logger.With(
-		"request-id", rand.Int63(),
+		"request-id", requestId,
 		"vcap-request-id", request.Header.Get("X-Vcap-Request-Id"))
 
 	requestLogger.Infow(
@@ -40,7 +41,12 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 		negroniResponseWriter = negroni.NewResponseWriter(responseWriter)
 	}
 
-	next(negroniResponseWriter, request.WithContext(context.WithValue(nil, "logger", requestLogger)))
+	requestContext := request.Context()
+	requestContext = context.WithValue(requestContext, "logger", requestLogger)
+	requestContext = context.WithValue(requestContext, "vcap-request-id", request.Header.Get("X-Vcap-Request-Id"))
+	requestContext = context.WithValue(requestContext, "request-id", requestId)
+
+	next(negroniResponseWriter, request.WithContext(requestContext))
 
 	fields := []interface{}{
 		"host", request.Host,
