@@ -343,7 +343,6 @@ func handleNotificationError(e error, responseWriter http.ResponseWriter, reques
 		return true
 	case error:
 		panic(e)
-		return true
 	}
 	return false
 }
