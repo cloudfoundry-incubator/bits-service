@@ -11,7 +11,9 @@ import (
 var Log = setUpDefaultLogger().Sugar()
 
 func setUpDefaultLogger() *zap.Logger {
-	logger, e := zap.NewDevelopment()
+	cfg := zap.NewDevelopmentConfig()
+	cfg.DisableStacktrace = true
+	logger, e := cfg.Build()
 	if e != nil {
 		panic(e)
 	}
