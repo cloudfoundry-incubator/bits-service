@@ -176,13 +176,13 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 			if e != nil {
 				logger.From(request).Infow("Invalid resources. JSON payload could not be parsed", "resources", resources)
 				responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-				fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: JSON payload could not be parsed: '%s'", resources)
+				util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: JSON payload could not be parsed: '%s'", resources)
 				return
 			}
 			if isMissing, key := anyKeyMissingIn(bundlesPayload); isMissing {
 				logger.From(request).Infow("Invalid resources. Key missing", "resources", resources, "missing-key", key)
 				responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-				fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: key `%v` missing or empty", key)
+				util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: key `%v` missing or empty", key)
 				return
 			}
 		}
@@ -191,7 +191,7 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 		if e != nil && strings.Contains(e.Error(), "not a valid zip file") {
 			logger.From(request).Infow("Invalid resources: not a valid zip file", "identifier", params["identifier"])
 			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-			fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: bits uploaded is not a valid zip file")
+			util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: bits uploaded is not a valid zip file")
 			return
 		}
 		util.PanicOnError(e)
@@ -204,7 +204,7 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 		if _, ok := e.(*NotFoundError); ok {
 			logger.From(request).Infow("Invalid resources: sha1 does not exist in app-stash", "identifier", params["identifier"], "error", e)
 			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-			fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: not all sha1s specified could be found.")
+			util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: not all sha1s specified could be found.")
 			return
 		}
 		util.PanicOnError(e)
@@ -335,11 +335,11 @@ func handleNotificationError(e error, responseWriter http.ResponseWriter, reques
 	switch e.(type) {
 	case *StateForbiddenError:
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		util.FprintDescriptionAndCodeAsJSON(responseWriter, "290008", "Cannot update an existing package.")
+		util.FprintDescriptionAndCodeAsJSON(responseWriter, 290008, "Cannot update an existing package.")
 		return true
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)
-		util.FprintDescriptionAndCodeAsJSON(responseWriter, "10010", e.Error())
+		util.FprintDescriptionAndCodeAsJSON(responseWriter, 10010, e.Error())
 		return true
 	case error:
 		panic(e)
@@ -419,7 +419,7 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	case *NoSpaceLeftError:
-		http.Error(responseWriter, util.DescriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
+		http.Error(responseWriter, util.DescriptionAndCodeAsJSON(500000, "Request Entity Too Large"), http.StatusInsufficientStorage)
 		return
 	case error:
 		panic(e)
@@ -465,5 +465,5 @@ func badRequest(responseWriter http.ResponseWriter, request *http.Request, messa
 	responseBody := fmt.Sprintf(message, args...)
 	logger.From(request).Infow("Bad request", "body", responseBody)
 	responseWriter.WriteHeader(http.StatusBadRequest)
-	util.FprintDescriptionAndCodeAsJSON(responseWriter, "290003", message, args...)
+	util.FprintDescriptionAndCodeAsJSON(responseWriter, 290003, message, args...)
 }

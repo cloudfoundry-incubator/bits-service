@@ -54,7 +54,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	if len(fingerprints) == 0 {
 		logger.From(request).Debugw("Empty list", "body", string(body), "error", e)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-		fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: must be a non-empty array.")
+		util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: must be a non-empty array.")
 		return
 	}
 	matchedFingerprints := []Fingerprint{} // this must not be nil, because the JSON marshaller will not marshal it correctly in case of []
@@ -106,7 +106,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 		}
 		sha, e := copyTo(handler.blobstore, zipFileEntry)
 		if _, isNoSpaceLeftError := e.(*NoSpaceLeftError); isNoSpaceLeftError {
-			http.Error(responseWriter, util.DescriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
+			http.Error(responseWriter, util.DescriptionAndCodeAsJSON(500000, "Request Entity Too Large"), http.StatusInsufficientStorage)
 			return
 		}
 		util.PanicOnError(e)
@@ -216,13 +216,13 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 	if e != nil {
 		log.Printf("Invalid body %s", body)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-		fprintDescriptionAsJSON(responseWriter, "Invalid body %s", body)
+		util.FprintDescriptionAsJSON(responseWriter, "Invalid body %s", body)
 		return
 	}
 
 	if isMissing, key := anyKeyMissingIn(bundlesPayload); isMissing {
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-		fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: key `%v` missing or empty", key)
+		util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: key `%v` missing or empty", key)
 		return
 	}
 
@@ -230,7 +230,7 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 	if e != nil {
 		if notFoundError, ok := e.(*NotFoundError); ok {
 			responseWriter.WriteHeader(http.StatusNotFound)
-			fprintDescriptionAsJSON(responseWriter, "%v not found", notFoundError.Error())
+			util.FprintDescriptionAsJSON(responseWriter, "%v not found", notFoundError.Error())
 			return
 		}
 		panic(e)
@@ -243,16 +243,6 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 
 	_, e = io.Copy(responseWriter, tempZipFile)
 	util.PanicOnError(e)
-}
-
-func fprintDescriptionAsJSON(responseWriter http.ResponseWriter, description string, a ...interface{}) {
-	m, e := json.Marshal(struct {
-		Description string `json:"description"`
-	}{
-		Description: fmt.Sprintf(description, a...),
-	})
-	util.PanicOnError(e)
-	responseWriter.Write(m)
 }
 
 func anyKeyMissingIn(bundlesPayload []Fingerprint) (bool, string) {

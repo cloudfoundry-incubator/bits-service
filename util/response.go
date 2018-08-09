@@ -1,16 +1,26 @@
 package util
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
 
-func FprintDescriptionAndCodeAsJSON(responseWriter http.ResponseWriter, code string, description string, a ...interface{}) {
+func FprintDescriptionAndCodeAsJSON(responseWriter http.ResponseWriter, code int, description string, a ...interface{}) {
 	fmt.Fprintf(responseWriter, DescriptionAndCodeAsJSON(code, description, a...))
 }
 
-func DescriptionAndCodeAsJSON(code string, description string, a ...interface{}) string {
-	return fmt.Sprintf(`{"description":"%v","code":%v}`, fmt.Sprintf(description, a...), code)
+func DescriptionAndCodeAsJSON(code int, description string, a ...interface{}) string {
+
+	m, e := json.Marshal(struct {
+		Description string `json:"description"`
+		Code        int    `json:"code"`
+	}{
+		Description: fmt.Sprintf(description, a...),
+		Code:        code,
+	})
+	PanicOnError(e)
+	return string(m)
 }
 
 func FprintDescriptionAsJSON(responseWriter http.ResponseWriter, description string, a ...interface{}) {
@@ -18,5 +28,11 @@ func FprintDescriptionAsJSON(responseWriter http.ResponseWriter, description str
 }
 
 func DescriptionAsJSON(description string, a ...interface{}) string {
-	return fmt.Sprintf(`{"description":"%v"}`, fmt.Sprintf(description, a...))
+	m, e := json.Marshal(struct {
+		Description string `json:"description"`
+	}{
+		Description: fmt.Sprintf(description, a...),
+	})
+	PanicOnError(e)
+	return string(m)
 }
