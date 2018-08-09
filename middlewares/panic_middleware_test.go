@@ -1,11 +1,11 @@
 package middlewares_test
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/cloudfoundry-incubator/bits-service/middlewares"
+	"github.com/cloudfoundry-incubator/bits-service/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -15,14 +15,13 @@ var _ = Describe("PanicMiddleWare", func() {
 	Context("Handler panics", func() {
 		It("catches a panic and responds with an Internal Server Error", func() {
 			responseWriter := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "http://example.com/some/request", nil)
-			c := r.Context()
-			c = context.WithValue(c, "request-id", "123456")
-			c = context.WithValue(c, "vcap-request-id", "123456-7890-1234")
 
 			(&middlewares.PanicMiddleware{}).ServeHTTP(
 				responseWriter,
-				r.WithContext(c),
+				util.RequestWithContextValues(
+					httptest.NewRequest("GET", "http://example.com/some/request", nil),
+					"request-id", "123456",
+					"vcap-request-id", "123456-7890-1234"),
 				func(http.ResponseWriter, *http.Request) {
 					panic(errors.New("Some unexpected error"))
 				})

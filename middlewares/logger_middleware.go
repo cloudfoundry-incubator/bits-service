@@ -6,8 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"context"
-
+	"github.com/cloudfoundry-incubator/bits-service/util"
 	"github.com/urfave/negroni"
 	"go.uber.org/zap"
 )
@@ -41,12 +40,11 @@ func (middleware *ZapLoggerMiddleware) ServeHTTP(responseWriter http.ResponseWri
 		negroniResponseWriter = negroni.NewResponseWriter(responseWriter)
 	}
 
-	requestContext := request.Context()
-	requestContext = context.WithValue(requestContext, "logger", requestLogger)
-	requestContext = context.WithValue(requestContext, "vcap-request-id", request.Header.Get("X-Vcap-Request-Id"))
-	requestContext = context.WithValue(requestContext, "request-id", requestId)
-
-	next(negroniResponseWriter, request.WithContext(requestContext))
+	next(negroniResponseWriter, util.RequestWithContextValues(request,
+		"logger", requestLogger,
+		"vcap-request-id", request.Header.Get("X-Vcap-Request-Id"),
+		"request-id", requestId,
+	))
 
 	fields := []interface{}{
 		"host", request.Host,
