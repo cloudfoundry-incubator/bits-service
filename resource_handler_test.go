@@ -219,33 +219,35 @@ var _ = Describe("ResourceHandler", func() {
 			})
 
 			Context("NotifyUploadSucceeded returns an error", func() {
-				It("has uploaded the resource, returns internal server error", func() {
+				It("has uploaded the resource, panics", func() {
 					When(updater.NotifyUploadSucceeded(AnyString(), AnyString(), AnyString())).ThenReturn(fmt.Errorf("Some error"))
 
-					handler.AddOrReplace(responseWriter,
-						newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
-						map[string]string{"identifier": "someguid"})
+					Expect(func() {
+						handler.AddOrReplace(responseWriter,
+							newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
+							map[string]string{"identifier": "someguid"})
+					}).To(Panic())
 
 					updater.VerifyWasCalled(Never()).NotifyUploadFailed(AnyString(), anyError())
 					blobstore.VerifyWasCalledOnce().Put(EqString("someguid"), anyReadSeeker())
-					Expect(responseWriter.Code).To(Equal(http.StatusInternalServerError))
 				})
 			})
 
 			Context("NotifyUploadFailed returns an error", func() {
-				It("returns InternalServerError", func() {
+				It("panics", func() {
 					When(blobstore.Put(AnyString(), anyReadSeeker())).ThenReturn(fmt.Errorf("Some blobstore error"))
 					When(updater.NotifyUploadFailed(AnyString(), anyError())).ThenReturn(fmt.Errorf("Some error"))
 
-					handler.AddOrReplace(responseWriter,
-						newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
-						map[string]string{"identifier": "someguid"})
+					Expect(func() {
+						handler.AddOrReplace(responseWriter,
+							newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
+							map[string]string{"identifier": "someguid"})
+					}).To(Panic())
 
 					inOrderContext := new(InOrderContext)
 					updater.VerifyWasCalledInOrder(Once(), inOrderContext).NotifyProcessingUpload("someguid")
 					blobstore.VerifyWasCalledInOrder(AtLeast(2), inOrderContext).Put(EqString("someguid"), anyReadSeeker())
 					updater.VerifyWasCalledInOrder(Once(), inOrderContext).NotifyUploadFailed(EqString("someguid"), anyError())
-					Expect(responseWriter.Code).To(Equal(http.StatusInternalServerError))
 				})
 			})
 
@@ -253,18 +255,19 @@ var _ = Describe("ResourceHandler", func() {
 
 		Context("replies with an unexpected error", func() {
 			Context("NotifyProcessingUpload returns unexpected error", func() {
-				It("does not upload the resource, returns BadRequest", func() {
+				It("does not upload the resource, panics", func() {
 					When(updater.NotifyProcessingUpload(AnyString())).ThenReturn(fmt.Errorf("Unexpected error"))
 
-					handler.AddOrReplace(responseWriter,
-						newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
-						map[string]string{"identifier": "someguid"})
+					Expect(func() {
+						handler.AddOrReplace(responseWriter,
+							newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
+							map[string]string{"identifier": "someguid"})
+					}).To(Panic())
 
 					updater.VerifyWasCalled(Never()).NotifyUploadFailed(AnyString(), anyError())
 					updater.VerifyWasCalled(Never()).NotifyUploadSucceeded(AnyString(), AnyString(), AnyString())
 					blobstore.VerifyWasCalled(Never()).Put(AnyString(), anyReadSeeker())
 
-					Expect(responseWriter.Code).To(Equal(http.StatusInternalServerError))
 				})
 			})
 		})

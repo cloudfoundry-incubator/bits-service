@@ -128,10 +128,7 @@ func (handler *ResourceHandler) AddOrReplaceWithDigestInHeader(responseWriter ht
 
 	// TODO this can cause an out of memory panic. Should be smart about writing big files to disk instead.
 	content, e := ioutil.ReadAll(request.Body)
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 
 	e = backoff.RetryNotify(func() error {
 		e := handler.blobstore.Put(params["identifier"]+"/"+value, bytes.NewReader(content))
@@ -165,10 +162,7 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 		badRequest(responseWriter, request, "Could not retrieve form parameter '%s' or 'bits", handler.resourceType)
 		return
 	}
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 	defer file.Close()
 
 	var tempFilename string
@@ -200,10 +194,7 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 			fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: bits uploaded is not a valid zip file")
 			return
 		}
-		if e != nil {
-			internalServerError(responseWriter, request, e)
-			return
-		}
+		util.PanicOnError(e)
 
 		tempFilename, e = CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.appStashBlobstore, handler.metricsService)
 		if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
@@ -216,23 +207,14 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 			fprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: not all sha1s specified could be found.")
 			return
 		}
-		if e != nil {
-			internalServerError(responseWriter, request, e)
-			return
-		}
+		util.PanicOnError(e)
 	} else {
 		tempFilename, e = CreateTempFileWithContent(file)
-		if e != nil {
-			internalServerError(responseWriter, request, e)
-			return
-		}
+		util.PanicOnError(e)
 	}
 
 	sha1, sha256, e := ShaSums(tempFilename)
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 
 	e = handler.updater.NotifyProcessingUpload(params["identifier"])
 	if handleNotificationError(e, responseWriter, request) {
@@ -360,7 +342,7 @@ func handleNotificationError(e error, responseWriter http.ResponseWriter, reques
 		util.FprintDescriptionAndCodeAsJSON(responseWriter, "10010", e.Error())
 		return true
 	case error:
-		internalServerError(responseWriter, request, e)
+		panic(e)
 		return true
 	}
 	return false
@@ -381,10 +363,7 @@ func (handler *ResourceHandler) CopySourceGuid(responseWriter http.ResponseWrite
 
 func sourceGuidFrom(request *http.Request, responseWriter http.ResponseWriter) string {
 	content, e := ioutil.ReadAll(request.Body)
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return ""
-	}
+	util.PanicOnError(e)
 	var payload struct {
 		SourceGuid string `json:"source_guid"`
 	}
@@ -410,10 +389,7 @@ func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, reque
 	// TODO nothing should be S3 specific here
 	// this check is needed, because S3 does not return a NotFound on a Delete request:
 	exists, e := handler.blobstore.Exists(params["identifier"])
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 	if !exists {
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
@@ -446,7 +422,7 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		http.Error(responseWriter, util.DescriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
 		return
 	case error:
-		internalServerError(responseWriter, request, e)
+		panic(e)
 		return
 	}
 	if redirectLocation != "" {
@@ -458,10 +434,7 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		var buffer bytes.Buffer
 		sha := sha1.New()
 		_, e := io.Copy(io.MultiWriter(&buffer, sha), body)
-		if e != nil {
-			internalServerError(responseWriter, request, e)
-			return
-		}
+		util.PanicOnError(e)
 		eTag := hex.EncodeToString(sha.Sum(nil))
 		logger.From(request).Debugw("Cache check", "if-none-modify", ifNoneModify, "etag", eTag)
 		responseWriter.Header().Set("ETag", eTag)
@@ -475,10 +448,7 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 	}
 	if jsonBody != nil {
 		respBody, marshallingErr := json.Marshal(jsonBody)
-		if marshallingErr != nil {
-			internalServerError(responseWriter, request, marshallingErr)
-			return
-		}
+		util.PanicOnError(marshallingErr)
 		responseWriter.WriteHeader(statusCode)
 		responseWriter.Write(respBody)
 		return
@@ -489,11 +459,6 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 func redirect(responseWriter http.ResponseWriter, redirectLocation string) {
 	responseWriter.Header().Set("Location", redirectLocation)
 	responseWriter.WriteHeader(http.StatusFound)
-}
-
-func internalServerError(responseWriter http.ResponseWriter, request *http.Request, e error) {
-	logger.From(request).Errorw("Internal Server Error.", "error", fmt.Sprintf("%+v", e))
-	responseWriter.WriteHeader(http.StatusInternalServerError)
 }
 
 func badRequest(responseWriter http.ResponseWriter, request *http.Request, message string, args ...interface{}) {

@@ -42,10 +42,7 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 		return
 	}
 	body, e := ioutil.ReadAll(request.Body)
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 	var fingerprints []Fingerprint
 	e = json.Unmarshal(body, &fingerprints)
 	if e != nil {
@@ -66,19 +63,13 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 			continue
 		}
 		exists, e := handler.blobstore.Exists(entry.Sha1)
-		if e != nil {
-			internalServerError(responseWriter, request, e)
-			return
-		}
+		util.PanicOnError(e)
 		if exists {
 			matchedFingerprints = append(matchedFingerprints, entry)
 		}
 	}
 	response, e := json.Marshal(&matchedFingerprints)
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 	responseWriter.Write(response)
 }
 
@@ -94,18 +85,12 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 	defer uploadedFile.Close()
 
 	tempZipFile, e := ioutil.TempFile("", "")
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 	defer os.Remove(tempZipFile.Name())
 	defer tempZipFile.Close()
 
 	_, e = io.Copy(tempZipFile, uploadedFile)
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 
 	openZipFile, e := zip.OpenReader(tempZipFile.Name())
 	if e != nil {
@@ -124,10 +109,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 			http.Error(responseWriter, util.DescriptionAndCodeAsJSON("500000", "Request Entity Too Large"), http.StatusInsufficientStorage)
 			return
 		}
-		if e != nil {
-			internalServerError(responseWriter, request, e)
-			return
-		}
+		util.PanicOnError(e)
 		logger.From(request).Debugw("Filemode in zip File Entry", "filemode", zipFileEntry.FileInfo().Mode().String())
 		fingerprints = append(fingerprints, Fingerprint{
 			Sha1: sha,
@@ -137,10 +119,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 		})
 	}
 	receipt, e := json.Marshal(fingerprints)
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 	responseWriter.WriteHeader(http.StatusCreated)
 	responseWriter.Write(receipt)
 }
@@ -215,34 +194,22 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 			badRequest(responseWriter, request, "Could not retrieve form parameter 'resources")
 			return
 		}
-		if e != nil {
-			internalServerError(responseWriter, request, e)
-			return
-		}
+		util.PanicOnError(e)
 		zipFile, fi, e := request.FormFile("application")
 		if e == http.ErrMissingFile {
 			badRequest(responseWriter, request, "Could not retrieve form parameter 'application")
 			return
 		}
-		if e != nil {
-			internalServerError(responseWriter, request, e)
-			return
-		}
+		util.PanicOnError(e)
 		defer zipFile.Close()
 		zipReader, e = zip.NewReader(zipFile, fi.Size)
-		if e != nil {
-			internalServerError(responseWriter, request, e)
-			return
-		}
+		util.PanicOnError(e)
 	} else {
 		resources = request.Body
 	}
 
 	body, e := ioutil.ReadAll(resources)
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 
 	var bundlesPayload []Fingerprint
 	e = json.Unmarshal(body, &bundlesPayload)
@@ -266,23 +233,16 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 			fprintDescriptionAsJSON(responseWriter, "%v not found", notFoundError.Error())
 			return
 		}
-		internalServerError(responseWriter, request, e)
-		return
+		panic(e)
 	}
 	defer os.Remove(tempZipFilename)
 
 	tempZipFile, e := os.Open(tempZipFilename)
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 	defer tempZipFile.Close()
 
 	_, e = io.Copy(responseWriter, tempZipFile)
-	if e != nil {
-		internalServerError(responseWriter, request, e)
-		return
-	}
+	util.PanicOnError(e)
 }
 
 func fprintDescriptionAsJSON(responseWriter http.ResponseWriter, description string, a ...interface{}) {
@@ -291,9 +251,7 @@ func fprintDescriptionAsJSON(responseWriter http.ResponseWriter, description str
 	}{
 		Description: fmt.Sprintf(description, a...),
 	})
-	if e != nil {
-		internalServerError(responseWriter, nil, e)
-	}
+	util.PanicOnError(e)
 	responseWriter.Write(m)
 }
 
