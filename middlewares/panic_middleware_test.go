@@ -20,7 +20,7 @@ var _ = Describe("PanicMiddleWare", func() {
 				responseWriter,
 				util.RequestWithContextValues(
 					httptest.NewRequest("GET", "http://example.com/some/request", nil),
-					"request-id", "123456",
+					"request-id", int64(123456),
 					"vcap-request-id", "123456-7890-1234"),
 				func(http.ResponseWriter, *http.Request) {
 					panic(errors.New("Some unexpected error"))
@@ -30,7 +30,7 @@ var _ = Describe("PanicMiddleWare", func() {
 			Expect(responseWriter.Body.String()).To(MatchJSON(`{
 				"service": "Bits-Service",
 				"error": "Internal Server Error",
-				"request-id": "123456",
+				"request-id": 123456,
 				"vcap-request-id":"123456-7890-1234"
 			}`))
 		})

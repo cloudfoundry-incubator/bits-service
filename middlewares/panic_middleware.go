@@ -15,7 +15,7 @@ type internalServerErrorResponseBody struct {
 	Service       string `json:"service"`
 	Error         string `json:"error"`
 	VcapRequestID string `json:"vcap-request-id"`
-	RequestID     string `json:"request-id"`
+	RequestID     int64  `json:"request-id"`
 }
 
 func (middleware *PanicMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
@@ -26,8 +26,8 @@ func (middleware *PanicMiddleware) ServeHTTP(responseWriter http.ResponseWriter,
 			body, e := json.Marshal(internalServerErrorResponseBody{
 				Service:       "Bits-Service",
 				Error:         "Internal Server Error",
-				VcapRequestID: safeGetValueFrom(request.Context(), "vcap-request-id"),
-				RequestID:     safeGetValueFrom(request.Context(), "request-id"),
+				VcapRequestID: safeGetStringValueFrom(request.Context(), "vcap-request-id"),
+				RequestID:     safeGetInt64ValueFrom(request.Context(), "request-id"),
 			})
 			if e != nil {
 				// Nothing we can do at this point
@@ -40,13 +40,22 @@ func (middleware *PanicMiddleware) ServeHTTP(responseWriter http.ResponseWriter,
 	next(responseWriter, request)
 }
 
-func safeGetValueFrom(c context.Context, key string) string {
+func safeGetStringValueFrom(c context.Context, key string) string {
 	if c.Value(key) == nil {
 		return ""
 	}
 	if value, ok := c.Value(key).(string); ok {
 		return value
-	} else {
-		return ""
 	}
+	return ""
+}
+
+func safeGetInt64ValueFrom(c context.Context, key string) int64 {
+	if c.Value(key) == nil {
+		return 0
+	}
+	if value, ok := c.Value(key).(int64); ok {
+		return value
+	}
+	return 0
 }
