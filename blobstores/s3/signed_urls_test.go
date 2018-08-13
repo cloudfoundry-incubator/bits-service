@@ -28,7 +28,7 @@ var _ = Describe("Signing URLs", func() {
 				Region:          "us-east-1",
 			}))
 
-		signedURL := signer.Sign("myresource", "get", time.Now())
+		signedURL := signer.Sign("myresource", "get", time.Now().Add(time.Hour))
 
 		Expect(signedURL).To(SatisfyAll(
 			ContainSubstring("https://mybucket.s3.amazonaws.com/my/re/myresource"),

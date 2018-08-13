@@ -6,8 +6,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/bits-service/middlewares"
 	"github.com/cloudfoundry-incubator/bits-service/util"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 )
 

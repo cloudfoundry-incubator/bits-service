@@ -17,8 +17,6 @@ import (
 	inmemory "github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
 	"github.com/cloudfoundry-incubator/bits-service/httputil"
 	. "github.com/cloudfoundry-incubator/bits-service/testutil"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("AppStash", func() {

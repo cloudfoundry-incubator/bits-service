@@ -7,11 +7,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/gomega"
-	. "github.com/onsi/gomega"
 	"github.com/cloudfoundry-incubator/bits-service/middlewares"
+	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 )
 
 func TestMiddleWares(t *testing.T) {

@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/httputil"
 	. "github.com/petergtz/pegomock"

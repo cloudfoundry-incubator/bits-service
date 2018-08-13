@@ -17,9 +17,6 @@ import (
 	"net/url"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"io"
 
 	. "github.com/cloudfoundry-incubator/bits-service/testutil"

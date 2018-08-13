@@ -12,9 +12,6 @@ import (
 	"io/ioutil"
 
 	"io"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 type testHandler struct {

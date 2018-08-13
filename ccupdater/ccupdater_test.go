@@ -7,8 +7,6 @@ import (
 
 	"github.com/cloudfoundry-incubator/bits-service"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	. "github.com/cloudfoundry-incubator/bits-service/ccupdater"
 	. "github.com/cloudfoundry-incubator/bits-service/ccupdater/matchers"
 	. "github.com/petergtz/pegomock"

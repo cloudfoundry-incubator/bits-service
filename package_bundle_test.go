@@ -15,8 +15,6 @@ import (
 	inmemory "github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
 	. "github.com/cloudfoundry-incubator/bits-service/matchers"
 	. "github.com/cloudfoundry-incubator/bits-service/testutil"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	. "github.com/petergtz/pegomock"
 )
 
