@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
@@ -166,48 +167,13 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 	defer file.Close()
 
 	var tempFilename string
-	// TODO: this big if-block should either be extracted into separate methods, or maybe better not be necessary at all.
+	// TODO: this if-block maybe not be necessary at all.
 	//       The reason it's necessary right now is that we need zip handling only for packages. We treat other resources opaque.
 	if handler.resourceType == "package" {
-		var bundlesPayload []Fingerprint
-		resources := request.FormValue("resources")
-		if resources != "" {
-			e = json.Unmarshal([]byte(resources), &bundlesPayload)
-			if e != nil {
-				logger.From(request).Infow("Invalid resources. JSON payload could not be parsed", "resources", resources)
-				responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-				util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: JSON payload could not be parsed: '%s'", resources)
-				return
-			}
-			if isMissing, key := anyKeyMissingIn(bundlesPayload); isMissing {
-				logger.From(request).Infow("Invalid resources. Key missing", "resources", resources, "missing-key", key)
-				responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-				util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: key `%v` missing or empty", key)
-				return
-			}
-		}
-
-		zipReader, e := zip.NewReader(file, fileInfo.Size)
-		if e != nil && strings.Contains(e.Error(), "not a valid zip file") {
-			logger.From(request).Infow("Invalid resources: not a valid zip file", "identifier", params["identifier"])
-			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-			util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: bits uploaded is not a valid zip file")
+		tempFilename = handler.completePackageWithResources(request, responseWriter, file, fileInfo.Size, params["identifier"])
+		if tempFilename == "" {
 			return
 		}
-		util.PanicOnError(e)
-
-		tempFilename, e = CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.appStashBlobstore, handler.metricsService)
-		if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
-			writeResponseBasedOn("", e, responseWriter, request, 0, nil, nil, "")
-			return
-		}
-		if _, ok := e.(*NotFoundError); ok {
-			logger.From(request).Infow("Invalid resources: sha1 does not exist in app-stash", "identifier", params["identifier"], "error", e)
-			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-			util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: not all sha1s specified could be found.")
-			return
-		}
-		util.PanicOnError(e)
 	} else {
 		tempFilename, e = CreateTempFileWithContent(file)
 		util.PanicOnError(e)
@@ -242,6 +208,51 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 			Sha256:    hex.EncodeToString(sha256),
 		}, "")
 	}
+}
+
+// returns tempfileName == "" when something goes wrong and temp zip file cannot be created.
+// In that case, http response is already handled.
+func (handler *ResourceHandler) completePackageWithResources(request *http.Request, responseWriter http.ResponseWriter, file multipart.File, fileSize int64, identifier string) (tempfileName string) {
+	var bundlesPayload []Fingerprint
+	resources := request.FormValue("resources")
+	if resources != "" {
+		e := json.Unmarshal([]byte(resources), &bundlesPayload)
+		if e != nil {
+			logger.From(request).Infow("Invalid resources. JSON payload could not be parsed", "resources", resources)
+			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+			util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: JSON payload could not be parsed: '%s'", resources)
+			return ""
+		}
+		if isMissing, key := anyKeyMissingIn(bundlesPayload); isMissing {
+			logger.From(request).Infow("Invalid resources. Key missing", "resources", resources, "missing-key", key)
+			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+			util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: key `%v` missing or empty", key)
+			return ""
+		}
+	}
+
+	zipReader, e := zip.NewReader(file, fileSize)
+	if e != nil && strings.Contains(e.Error(), "not a valid zip file") {
+		logger.From(request).Infow("Invalid resources: not a valid zip file", "identifier", identifier)
+		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+		util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: bits uploaded is not a valid zip file")
+		return ""
+	}
+	util.PanicOnError(e)
+
+	tempFilename, e := CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.appStashBlobstore, handler.metricsService)
+	if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
+		writeResponseBasedOn("", e, responseWriter, request, 0, nil, nil, "")
+		return ""
+	}
+	if _, ok := e.(*NotFoundError); ok {
+		logger.From(request).Infow("Invalid resources: sha1 does not exist in app-stash", "identifier", identifier, "error", e)
+		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
+		util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: not all sha1s specified could be found.")
+		return ""
+	}
+	util.PanicOnError(e)
+	return tempFilename
 }
 
 func CreateTempFileWithContent(reader io.Reader) (string, error) {
