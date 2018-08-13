@@ -266,7 +266,7 @@ var _ = Describe("Non-local blobstores", func() {
 		})
 
 	})
-	FContext("alibaba", func() {
+	Context("alibaba", func() {
 		var alibabaConfig config.AlibabaBlobstoreConfig
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &alibabaConfig)).To(Succeed()) })
 		JustBeforeEach(func() { blobstore = alibaba.NewBlobstore(alibabaConfig) })
