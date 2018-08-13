@@ -16,6 +16,7 @@ type ZapLoggerMiddleware struct {
 }
 
 func NewZapLoggerMiddleware(logger *zap.SugaredLogger) *ZapLoggerMiddleware {
+	rand.Seed(time.Now().Unix())
 	return &ZapLoggerMiddleware{logger: logger}
 }
 
