@@ -125,7 +125,8 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 
 func (blobstore *Blobstore) Copy(src, dest string) error {
 	logger.Log.Debugw("Copy in Azure", "container", blobstore.containerName, "src", src, "dest", dest)
-	e := blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(dest).Copy(src, nil)
+	e := blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(dest).Copy(
+		blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(src).GetURL(), nil)
 
 	if e != nil {
 		blobstore.handleError(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.containerName)
