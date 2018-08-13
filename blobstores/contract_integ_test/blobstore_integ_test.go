@@ -10,9 +10,6 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/types"
 	"github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/alibaba"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/azure"
@@ -21,6 +18,9 @@ import (
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/s3"
 	"github.com/cloudfoundry-incubator/bits-service/config"
 	"github.com/cloudfoundry-incubator/bits-service/httputil"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 )
 
 var _ = Describe("Non-local blobstores", func() {
@@ -109,8 +109,7 @@ var _ = Describe("Non-local blobstores", func() {
 			})
 		})
 
-		Context("Can copy", func() {
-
+		Context("Copy", func() {
 			BeforeEach(func() {
 				srcFilepath = fmt.Sprintf("src-testfile")
 				destFilepath = fmt.Sprintf("dest-testfile")
@@ -122,20 +121,19 @@ var _ = Describe("Non-local blobstores", func() {
 			})
 
 			AfterEach(func() {
-				//teardown
 				e := blobstore.Delete(srcFilepath)
 				Expect(e).NotTo(HaveOccurred())
 				e = blobstore.Delete(destFilepath)
 				Expect(e).NotTo(HaveOccurred())
 			})
-			It("a resource from src to dest", func() {
+
+			It("copies a resource from src to dest", func() {
 				e := blobstore.Copy(srcFilepath, destFilepath)
 				Expect(e).NotTo(HaveOccurred())
 
 				body, e := blobstore.Get(destFilepath)
 				Expect(e).NotTo(HaveOccurred())
 				Expect(body).NotTo(BeNil())
-
 			})
 		})
 
