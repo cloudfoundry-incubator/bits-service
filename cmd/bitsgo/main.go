@@ -54,7 +54,7 @@ func main() {
 	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpointUrl(), config.Port, config.Secret, "packages", log.Log, metricsService)
 	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets", log.Log, metricsService)
 	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpointUrl(), config.Port, config.Secret, "buildpacks", log.Log, metricsService)
-	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets", log.Log, metricsService)
+	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, log.Log, metricsService)
 
 	go regularlyEmitGoRoutines(metricsService)
 
@@ -235,7 +235,7 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	}
 }
 
-func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
+func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
 	localResourceSigner := createLocalResourceSigner(publicEndpoint, port, secret, "buildpack_cache/entries")
 	switch blobstoreConfig.BlobstoreType {
 	case config.Local:
@@ -245,7 +245,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					decorator.ForBlobstoreWithMetricsEmitter(
 						local.NewBlobstore(*blobstoreConfig.LocalConfig),
 						metricsService,
-						resourceType),
+						"buildpack_cache"),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(localResourceSigner, localResourceSigner)
 	case config.AWS:
@@ -255,7 +255,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					decorator.ForBlobstoreWithMetricsEmitter(
 						s3.NewBlobstoreWithLogger(*blobstoreConfig.S3Config, logger),
 						metricsService,
-						resourceType),
+						"buildpack_cache"),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -270,7 +270,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					decorator.ForBlobstoreWithMetricsEmitter(
 						gcp.NewBlobstore(*blobstoreConfig.GCPConfig),
 						metricsService,
-						resourceType),
+						"buildpack_cache"),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -285,7 +285,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					decorator.ForBlobstoreWithMetricsEmitter(
 						azure.NewBlobstore(*blobstoreConfig.AzureConfig),
 						metricsService,
-						resourceType),
+						"buildpack_cache"),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -300,7 +300,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					decorator.ForBlobstoreWithMetricsEmitter(
 						openstack.NewBlobstore(*blobstoreConfig.OpenstackConfig),
 						metricsService,
-						resourceType),
+						"buildpack_cache"),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -317,7 +317,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					decorator.ForBlobstoreWithMetricsEmitter(
 						webdav.NewBlobstore(*blobstoreConfig.WebdavConfig),
 						metricsService,
-						resourceType),
+						"buildpack_cache"),
 					blobstoreConfig.WebdavConfig.DirectoryKey+"/buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
@@ -332,7 +332,7 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 					decorator.ForBlobstoreWithMetricsEmitter(
 						alibaba.NewBlobstore(*blobstoreConfig.AlibabaConfig),
 						metricsService,
-						resourceType),
+						"buildpack_cache"),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
