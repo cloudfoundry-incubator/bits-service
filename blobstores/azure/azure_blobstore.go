@@ -62,7 +62,10 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 }
 
 func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
-	return blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(path).GetSASURI(time.Now().Add(time.Hour), "r")
+	return blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(path).GetSASURI(storage.BlobSASOptions{
+		BlobServiceSASPermissions: storage.BlobServiceSASPermissions{Read: true},
+		SASOptions:                storage.SASOptions{Expiry: time.Now().Add(time.Hour)},
+	})
 }
 
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
@@ -181,9 +184,15 @@ func (blobstore *Blobstore) Sign(resource string, method string, expirationTime 
 	var e error
 	switch strings.ToLower(method) {
 	case "put":
-		signedURL, e = blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(resource).GetSASURI(expirationTime, "wc")
+		signedURL, e = blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(resource).GetSASURI(storage.BlobSASOptions{
+			BlobServiceSASPermissions: storage.BlobServiceSASPermissions{Write: true, Create: true},
+			SASOptions:                storage.SASOptions{Expiry: expirationTime},
+		})
 	case "get":
-		signedURL, e = blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(resource).GetSASURI(expirationTime, "r")
+		signedURL, e = blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(resource).GetSASURI(storage.BlobSASOptions{
+			BlobServiceSASPermissions: storage.BlobServiceSASPermissions{Read: true},
+			SASOptions:                storage.SASOptions{Expiry: expirationTime},
+		})
 	default:
 		panic("The only supported methods are 'put' and 'get'")
 	}
