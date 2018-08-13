@@ -113,6 +113,7 @@ func createLoggerWith(logLevel string) *zap.Logger {
 	loggerConfig := zap.NewProductionConfig()
 	loggerConfig.Level = zapLogLevelFrom(logLevel)
 	loggerConfig.DisableStacktrace = true
+	loggerConfig.Sampling = nil
 	logger, e := loggerConfig.Build()
 	if e != nil {
 		log.Log.Panic(e)
