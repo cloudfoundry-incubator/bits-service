@@ -7,14 +7,21 @@ import (
 
 type NotFoundError struct {
 	error
+	MissingKey string
 }
 
+// Deprecated. Use NewNotFoundErrorWithKey
 func NewNotFoundError() *NotFoundError {
-	return &NotFoundError{fmt.Errorf("NotFoundError")}
+	return &NotFoundError{error: fmt.Errorf("NotFoundError")}
 }
 
+func NewNotFoundErrorWithKey(key string) *NotFoundError {
+	return &NotFoundError{error: fmt.Errorf("Not found: " + key), MissingKey: key}
+}
+
+// Deprecated. Use NewNotFoundErrorWithKey
 func NewNotFoundErrorWithMessage(message string) *NotFoundError {
-	return &NotFoundError{fmt.Errorf(message)}
+	return &NotFoundError{error: fmt.Errorf(message)}
 }
 
 type NoSpaceLeftError struct {

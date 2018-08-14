@@ -226,7 +226,7 @@ func (handler *ResourceHandler) completePackageWithResources(request *http.Reque
 		if isMissing, key := anyKeyMissingIn(bundlesPayload); isMissing {
 			logger.From(request).Infow("Invalid resources. Key missing", "resources", resources, "missing-key", key)
 			responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-			util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: key `%v` missing or empty", key)
+			util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: key \"%v\" missing or empty", key)
 			return ""
 		}
 	}
@@ -245,10 +245,10 @@ func (handler *ResourceHandler) completePackageWithResources(request *http.Reque
 		writeResponseBasedOn("", e, responseWriter, request, 0, nil, nil, "")
 		return ""
 	}
-	if _, ok := e.(*NotFoundError); ok {
-		logger.From(request).Infow("Invalid resources: sha1 does not exist in app-stash", "identifier", identifier, "error", e)
+	if notFoundErr, ok := e.(*NotFoundError); ok {
+		logger.From(request).Infow("Invalid resources: sha1 does not exist in app-stash", "identifier", identifier, "sha1", notFoundErr.MissingKey)
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
-		util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: not all sha1s specified could be found.")
+		util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: not all specified sha1s could be found in app-stash. Missing sha1: \"%v\"", notFoundErr.MissingKey)
 		return ""
 	}
 	util.PanicOnError(e)

@@ -105,7 +105,7 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 			b, e := blobstore.Get(entry.Sha1)
 			if e != nil {
 				if _, ok := e.(*NotFoundError); ok {
-					return backoff.Permanent(NewNotFoundErrorWithMessage(entry.Sha1))
+					return backoff.Permanent(NewNotFoundErrorWithKey(entry.Sha1))
 				}
 				return errors.Wrapf(e, "Could not get file from blobstore. SHA: '%v'", entry.Sha1)
 			}
