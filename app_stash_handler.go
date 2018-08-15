@@ -230,7 +230,7 @@ func (handler *AppStashHandler) PostBundles(responseWriter http.ResponseWriter, 
 	if e != nil {
 		if notFoundError, ok := e.(*NotFoundError); ok {
 			responseWriter.WriteHeader(http.StatusNotFound)
-			util.FprintDescriptionAsJSON(responseWriter, "%v not found", notFoundError.Error())
+			util.FprintDescriptionAsJSON(responseWriter, "%v not found", notFoundError.MissingKey)
 			return
 		}
 		panic(e)
