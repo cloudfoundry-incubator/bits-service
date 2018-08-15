@@ -64,8 +64,8 @@ logging:
   file: /tmp/bits-service.log
   syslog: vcap.bits-service
   level: debug
-public_endpoint: https://public.127.0.0.1.xip.io
-private_endpoint: https://internal.127.0.0.1.xip.io
+public_endpoint: https://public.127.0.0.1.nip.io
+private_endpoint: https://internal.127.0.0.1.nip.io
 secret: geheim
 port: 8000
 key_file: /some/path
@@ -142,8 +142,8 @@ logging:
   file: /tmp/bits-service.log
   syslog: vcap.bits-service
   level: debug
-public_endpoint: https://public.127.0.0.1.xip.io
-private_endpoint: https://internal.127.0.0.1.xip.io
+public_endpoint: https://public.127.0.0.1.nip.io
+private_endpoint: https://internal.127.0.0.1.nip.io
 secret: geheim
 port: 8000
 max_body_size: 13M
@@ -163,8 +163,8 @@ cert_file: /some/path
 	Context("can read limits for resources match ", func() {
 		It("value: MinimumSize", func() {
 			fmt.Fprintf(configFile, "%s", `
-public_endpoint: https://public.127.0.0.1.xip.io
-private_endpoint: https://internal.127.0.0.1.xip.io
+public_endpoint: https://public.127.0.0.1.nip.io
+private_endpoint: https://internal.127.0.0.1.nip.io
 port: 8000
 key_file: /some/path
 cert_file: /some/path
@@ -183,8 +183,8 @@ app_stash_config:
 
 			It("returns an error", func() {
 				fmt.Fprintf(configFile, "%s", `
-public_endpoint: https://public.127.0.0.1.xip.io
-private_endpoint: https://internal.127.0.0.1.xip.io
+public_endpoint: https://public.127.0.0.1.nip.io
+private_endpoint: https://internal.127.0.0.1.nip.io
 port: 8000
 key_file: /some/path
 cert_file: /some/path
@@ -210,8 +210,8 @@ logging:
   file: /tmp/bits-service.log
   syslog: vcap.bits-service
   level: debug
-public_endpoint: https://public.127.0.0.1.xip.io
-private_endpoint: https://internal.127.0.0.1.xip.io
+public_endpoint: https://public.127.0.0.1.nip.io
+private_endpoint: https://internal.127.0.0.1.nip.io
 secret: geheim
 port: 8000
 key_file: /some/path

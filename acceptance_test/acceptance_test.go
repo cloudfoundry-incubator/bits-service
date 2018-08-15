@@ -62,32 +62,32 @@ var _ = Describe("Accessing the bits-service", func() {
 
 	Context("through private host", func() {
 		It("return http.StatusNotFound for a package that does not exist", func() {
-			Expect(client.Get("https://internal.127.0.0.1.xip.io:4443/packages/notexistent")).
+			Expect(client.Get("https://internal.127.0.0.1.nip.io:4443/packages/notexistent")).
 				To(WithTransform(GetStatusCode, Equal(http.StatusNotFound)))
 		})
 
 		It("return http.StatusOK for a package that does exist", func() {
-			request, e := httputil.NewPutRequest("https://internal.127.0.0.1.xip.io:4443/packages/myguid", map[string]map[string]io.Reader{
+			request, e := httputil.NewPutRequest("https://internal.127.0.0.1.nip.io:4443/packages/myguid", map[string]map[string]io.Reader{
 				"package": map[string]io.Reader{"somefilename": CreateZip(map[string]string{"somefile": "lalala\n\n"})},
 			})
 			Expect(e).NotTo(HaveOccurred())
 
 			Expect(client.Do(request)).To(WithTransform(GetStatusCode, Equal(201)))
 
-			Expect(client.Get("https://internal.127.0.0.1.xip.io:4443/packages/myguid")).
+			Expect(client.Get("https://internal.127.0.0.1.nip.io:4443/packages/myguid")).
 				To(WithTransform(GetStatusCode, Equal(http.StatusOK)))
 		})
 	})
 
 	Context("through public host", func() {
 		It("returns http.StatusForbidden when accessing package through public host without md5", func() {
-			Expect(client.Get("https://public.127.0.0.1.xip.io:4443/packages/notexistent")).
+			Expect(client.Get("https://public.127.0.0.1.nip.io:4443/packages/notexistent")).
 				To(WithTransform(GetStatusCode, Equal(http.StatusForbidden)))
 		})
 
 		Context("After retrieving a signed URL", func() {
 			It("returns http.StatusOK when accessing package through public host with md5", func() {
-				request, e := httputil.NewPutRequest("https://internal.127.0.0.1.xip.io:4443/packages/myguid", map[string]map[string]io.Reader{
+				request, e := httputil.NewPutRequest("https://internal.127.0.0.1.nip.io:4443/packages/myguid", map[string]map[string]io.Reader{
 					"package": map[string]io.Reader{"somefilename": CreateZip(map[string]string{"somefile": "lalala\n\n"})},
 				})
 				Expect(e).NotTo(HaveOccurred())
@@ -95,7 +95,7 @@ var _ = Describe("Accessing the bits-service", func() {
 				Expect(client.Do(request)).To(WithTransform(GetStatusCode, Equal(201)))
 
 				response, e := client.Do(
-					newGetRequest("https://internal.127.0.0.1.xip.io:4443/sign/packages/myguid", "the-username", "the-password"))
+					newGetRequest("https://internal.127.0.0.1.nip.io:4443/sign/packages/myguid", "the-username", "the-password"))
 				Ω(e).ShouldNot(HaveOccurred())
 				Expect(response.StatusCode).To(Equal(http.StatusOK))
 
@@ -120,7 +120,7 @@ var _ = Describe("Accessing the bits-service", func() {
 			Context("async=true", func() {
 				It("returns StatusAccepted", func() {
 					response, e := client.Do(
-						newGetRequest("https://internal.127.0.0.1.xip.io:4443/sign/packages/myguid?verb=put", "the-username", "the-password"))
+						newGetRequest("https://internal.127.0.0.1.nip.io:4443/sign/packages/myguid?verb=put", "the-username", "the-password"))
 					Expect(e).NotTo(HaveOccurred())
 					Expect(response.StatusCode).To(Equal(http.StatusOK))
 

@@ -18,8 +18,8 @@ logging:
   file: /tmp/bits-service.log
   syslog: vcap.bits-service
   level: debug
-public_endpoint: https://public.127.0.0.1.xip.io
-private_endpoint: https://internal.127.0.0.1.xip.io
+public_endpoint: https://public.127.0.0.1.nip.io
+private_endpoint: https://internal.127.0.0.1.nip.io
 secret: geheim
 port: 4443
 cert_file: cert_file
