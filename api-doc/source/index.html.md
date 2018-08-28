@@ -64,7 +64,7 @@ Parameter | Default | Description
 
 ### Request Body
 
-The request body must either be a multipart upload with the following form fields:
+The request body must either be a multipart upload with the following form fields
 
 `package: <formfile>` or `bits: <formfile>`
 
@@ -604,6 +604,7 @@ https://bits-service.example.com/signed/packages/test-package?md5=yBh47LwYRQ4d8S
 
 where `:path` is the URL path of the signed entity.
 
+
 ### Query Parameters
 Parameter | Default | Description
 --------- | ------- | -----------
@@ -619,8 +620,11 @@ curl -X PUT 'https://internal.example.com/signed/packages/bdf47b84-1349-4abd-956
   -F package=@package-file
 ```
 
-<aside class="notice">
-Signing URL does not imply that the resource exists.
+<aside class="notice">Notice:
+ <ul>
+  <li>Signing URL does not imply that the resource exists.</li>
+  <li>Resource endpoint `app_stash/matches` only supports `POST` as `verb` query parameter</li>
+ </ul>
 </aside>
 
 # Metrics
