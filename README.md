@@ -24,8 +24,6 @@ The CI config is in the [bits-service-ci](https://github.com/cloudfoundry-incuba
 
 ## Additional Notes
 
-This is a re-implementation of the [Bits-Service](https://github.com/cloudfoundry-incubator/bits-service) in [Go](https://golang.org).
-
 It can be used standalone or through its [BOSH-release](https://github.com/cloudfoundry-incubator/bits-service-release).
 
 ## Getting Started
@@ -35,11 +33,11 @@ Make sure you have a working [Go environment](https://golang.org/doc/install) an
 To install bitsgo:
 
 ```bash
-mkdir -p $GOPATH/src/github.com/petergtz
-cd $GOPATH/src/github.com/petergtz
+mkdir -p $GOPATH/src/github.com/cloudfoundry-incubator
+cd $GOPATH/src/github.com/cloudfoundry-incubator
 
 git clone https://github.com/cloudfoundry-incubator/bits-service.git
-cd bitsgo
+cd bits-service
 
 glide install
 
