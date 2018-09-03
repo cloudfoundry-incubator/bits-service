@@ -113,7 +113,7 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 
 			_, e = io.Copy(zipEntry, b)
 			if e != nil {
-				return errors.Wrapf(e, "Could not copy file to zip entry. SHA:", entry.Sha1)
+				return errors.Wrapf(e, "Could not copy file to zip entry. SHA: %v", entry.Sha1)
 			}
 			return nil
 		},

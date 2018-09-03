@@ -285,7 +285,7 @@ func (handler *ResourceHandler) uploadResource(tempFilename string, request *htt
 				return backoff.Permanent(e)
 			}
 
-			return errors.Wrapf(e, "Could not upload temporary file to blobstore", tempFilename)
+			return errors.Wrapf(e, "Could not upload temporary file to blobstore %v", tempFilename)
 		}
 		return nil
 	}, retryPolicy(), func(e error, delay time.Duration) {
