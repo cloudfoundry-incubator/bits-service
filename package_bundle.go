@@ -38,7 +38,7 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 			if !zipInputFileEntry.FileInfo().Mode().IsRegular() {
 				continue
 			}
-			zipFileEntryWriter, e := zipWriter.CreateHeader(zipEntryHeader(zipInputFileEntry.Name, zipInputFileEntry.FileInfo().Mode()))
+			zipFileEntryWriter, e := zipWriter.CreateHeader(zipEntryHeaderWithModifiedTime(zipInputFileEntry.Name, zipInputFileEntry.FileInfo().Mode(), zipInputFileEntry.FileHeader.Modified))
 			if e != nil {
 				return "", errors.Wrap(e, "Could not create header in zip file")
 			}
@@ -96,13 +96,14 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 	}
 
 	for _, entry := range bundlesPayload {
-		zipEntry, e := zipWriter.CreateHeader(zipEntryHeader(entry.Fn, fileModeFrom(entry.Mode)))
+		zipEntry, e := zipWriter.CreateHeader(zipEntryHeaderWithModifiedTime(entry.Fn, fileModeFrom(entry.Mode), time.Now()))
 		if e != nil {
 			return "", errors.Wrap(e, "Could create header in zip file")
 		}
 
 		e = backoff.RetryNotify(func() error {
 			b, e := blobstore.Get(entry.Sha1)
+
 			if e != nil {
 				if _, ok := e.(*NotFoundError); ok {
 					return backoff.Permanent(NewNotFoundErrorWithKey(entry.Sha1))
@@ -138,10 +139,11 @@ func fileModeFrom(s string) os.FileMode {
 	return os.FileMode(mode)
 }
 
-func zipEntryHeader(name string, mode os.FileMode) *zip.FileHeader {
+func zipEntryHeaderWithModifiedTime(name string, mode os.FileMode, modified time.Time) *zip.FileHeader {
 	header := &zip.FileHeader{
-		Name:   name,
-		Method: zip.Deflate,
+		Name:     name,
+		Method:   zip.Deflate,
+		Modified: modified,
 	}
 	header.SetMode(mode)
 	return header

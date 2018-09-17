@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
-	"github.com/pkg/errors"
-
-	"github.com/cloudfoundry-incubator/bits-service"
+	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 	inmemory "github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
 	. "github.com/cloudfoundry-incubator/bits-service/matchers"
 	. "github.com/cloudfoundry-incubator/bits-service/testutil"
 	. "github.com/petergtz/pegomock"
+	"github.com/pkg/errors"
 )
 
 var _ = Describe("CreateTempZipFileFrom", func() {
@@ -39,6 +39,65 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 		Expect(e).NotTo(HaveOccurred())
 		Expect(reader.File).To(HaveLen(1))
 		VerifyZipFileEntry(&reader.Reader, "filename1", "filename1 content")
+	})
+	Context("Handles the 'Modified time' property", func() {
+
+		var lastModifedFromTempFile time.Time
+
+		BeforeEach(func() {
+			Expect(blobstore.Put("abc", strings.NewReader("filename1 content"))).To(Succeed())
+
+			var e error
+			tempFileName, e := bitsgo.CreateTempZipFileFrom([]bitsgo.Fingerprint{
+				bitsgo.Fingerprint{
+					Sha1: "abc",
+					Fn:   "filename1",
+					Mode: "644",
+				},
+			}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService())
+			Expect(e).NotTo(HaveOccurred())
+
+			reader, e := zip.OpenReader(tempFileName)
+			Expect(e).NotTo(HaveOccurred())
+			Expect(reader.File).To(HaveLen(1))
+			lastModifedFromTempFile = reader.File[0].FileHeader.Modified
+		})
+
+		It("should not contain '1979-11-30'", func() {
+			Expect(dateFormatter(lastModifedFromTempFile)).NotTo(ContainSubstring("1979-11-30"))
+		})
+
+		It("should provide the current timestamp for files retrieved from the bundles_cache", func() {
+			d := time.Since(lastModifedFromTempFile)
+			Expect(d.Seconds()).Should(BeNumerically("<", 2), "We accept difference from 2s for cached files.")
+		})
+
+		It("should not be manipulated for uploaded files", func() {
+			tmpfile, modTime := createTmpFile()
+			defer os.Remove(tmpfile)
+
+			tmpfilereader, e := os.Open(tmpfile)
+			Expect(e).NotTo(HaveOccurred())
+
+			response := blobstore.Put("abc", tmpfilereader)
+			Expect(response).To(Succeed())
+
+			tempFileName, e := bitsgo.CreateTempZipFileFrom([]bitsgo.Fingerprint{
+				bitsgo.Fingerprint{
+					Sha1: "abc",
+					Fn:   "filename1",
+					Mode: "644",
+				},
+			}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService())
+			Expect(e).NotTo(HaveOccurred())
+
+			reader, e := zip.OpenReader(tempFileName)
+			Expect(e).NotTo(HaveOccurred())
+
+			lm := reader.File[0].FileHeader.Modified
+			Expect(dateFormatter(lm)).To(Equal(dateFormatter(modTime)))
+		})
+
 	})
 
 	Context("One error from blobstore", func() {
@@ -141,3 +200,18 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 		})
 	})
 })
+
+func createTmpFile() (string, time.Time) {
+	tmpfile, e := ioutil.TempFile("", "example")
+	Expect(e).NotTo(HaveOccurred())
+	_, e = tmpfile.Write([]byte("filename1 content"))
+	Expect(e).NotTo(HaveOccurred())
+	fileInfo, e := tmpfile.Stat()
+	Expect(e).NotTo(HaveOccurred())
+	Expect(tmpfile.Close()).To(Succeed())
+	return tmpfile.Name(), fileInfo.ModTime()
+}
+
+func dateFormatter(anyTimeFormat time.Time) string {
+	return anyTimeFormat.UTC().Format(time.UnixDate)
+}
