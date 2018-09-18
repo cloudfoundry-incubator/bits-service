@@ -10,6 +10,10 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	s3sdk "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/alibaba"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/azure"
@@ -207,14 +211,77 @@ var _ = Describe("Non-local blobstores", func() {
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &s3Config)).To(Succeed()) })
 		JustBeforeEach(func() { blobstore = s3.NewBlobstore(s3Config) })
 
-		itCanPutAndGetAResourceThere()
+		Context("Without Server Side Encryption", func() {
+			BeforeEach(func() {
+				// We explicitly set this to NONE, because we test Server Side Encryption in a separate Context.
+				s3Config.SSEKMSKeyID = ""
+			})
 
-		Context("With non-existing bucket", func() {
-			BeforeEach(func() { s3Config.Bucket += "non-existing" })
+			itCanPutAndGetAResourceThere()
 
-			ItDoesNotReturnNotFoundError()
+			Context("With non-existing bucket", func() {
+				BeforeEach(func() { s3Config.Bucket += "non-existing" })
+
+				ItDoesNotReturnNotFoundError()
+			})
 		})
 
+		Context("With Server Side Encryption", func() {
+			var s3Client *s3sdk.S3
+
+			JustBeforeEach(func() {
+				s3Client = s3sdk.New(session.Must(session.NewSession(&aws.Config{
+					Region:      aws.String(s3Config.Region),
+					Credentials: credentials.NewStaticCredentials(s3Config.AccessKeyID, s3Config.SecretAccessKey, ""),
+				})))
+			})
+
+			Context("AES256", func() {
+				BeforeEach(func() { s3Config.ServerSideEncryption = s3.AES256 })
+
+				It("puts the object with AES256 encryption", func() {
+					Expect(blobstore.Put(filepath, strings.NewReader("the file content"))).To(Succeed())
+
+					object, e := s3Client.GetObject(&s3sdk.GetObjectInput{
+						Bucket: &s3Config.Bucket,
+						Key:    &filepath,
+					})
+					Expect(e).NotTo(HaveOccurred())
+					Expect(object.ServerSideEncryption).To(Equal(aws.String(s3.AES256)))
+				})
+			})
+
+			Context("aws:kms", func() {
+				BeforeEach(func() {
+					s3Config.ServerSideEncryption = s3.AWSKMS
+				})
+
+				It("puts the object with aws:kms encryption", func() {
+					Expect(blobstore.Put(filepath, strings.NewReader("the file content"))).To(Succeed())
+
+					object, e := s3Client.GetObject(&s3sdk.GetObjectInput{
+						Bucket: &s3Config.Bucket,
+						Key:    &filepath,
+					})
+					Expect(e).NotTo(HaveOccurred())
+					Expect(object.ServerSideEncryption).To(Equal(aws.String(s3.AWSKMS)))
+					Expect(object.SSEKMSKeyId).To(Equal(aws.String(s3Config.SSEKMSKeyID)))
+				})
+
+				It("copies the object with aws:kms encryption", func() {
+					Expect(blobstore.Put(filepath, strings.NewReader("the file content"))).To(Succeed())
+					Expect(blobstore.Copy(filepath, filepath+"_copy")).To(Succeed())
+
+					object, e := s3Client.GetObject(&s3sdk.GetObjectInput{
+						Bucket: &s3Config.Bucket,
+						Key:    aws.String(filepath + "_copy"),
+					})
+					Expect(e).NotTo(HaveOccurred())
+					Expect(object.ServerSideEncryption).To(Equal(aws.String(s3.AWSKMS)))
+					Expect(object.SSEKMSKeyId).To(Equal(aws.String(s3Config.SSEKMSKeyID)))
+				})
+			})
+		})
 	})
 
 	Context("GCP", func() {

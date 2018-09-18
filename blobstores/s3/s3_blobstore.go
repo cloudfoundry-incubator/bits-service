@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -20,14 +21,21 @@ import (
 )
 
 type Blobstore struct {
-	s3Client *s3.S3
-	bucket   string
-	signer   S3Signer
+	s3Client             *s3.S3
+	bucket               string
+	signer               S3Signer
+	serverSideEncryption *string
+	sseKMSKeyID          *string
 }
 
 type S3Signer interface {
 	Sign(req *request.Request, bucket, path string, expires time.Time) (string, error)
 }
+
+const (
+	AES256 = "AES256"
+	AWSKMS = "aws:kms"
+)
 
 func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
 	return NewBlobstoreWithLogger(config, log.Log)
@@ -53,11 +61,25 @@ func NewBlobstoreWithLogger(config config.S3BlobstoreConfig, logger *zap.Sugared
 		log.Log.Infow("No AWS region specified for blobstore. Using a default value.", "bucket", config.Bucket, "default-region", config.Region)
 	}
 
-	return &Blobstore{
+	blobstore := &Blobstore{
 		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey, config.Host, logger, config.S3DebugLogLevel),
 		bucket:   config.Bucket,
 		signer:   s3Signer,
 	}
+
+	if config.ServerSideEncryption != "" {
+		if config.ServerSideEncryption != AES256 &&
+			config.ServerSideEncryption != AWSKMS {
+			panic(fmt.Errorf("Server Side Encryption value invalid (%v). Must be either empty, AES256, or aws:kms", config.ServerSideEncryption))
+		}
+		blobstore.serverSideEncryption = aws.String(config.ServerSideEncryption)
+		if config.ServerSideEncryption == AWSKMS {
+			validate.NotEmpty(config.SSEKMSKeyID)
+			blobstore.sseKMSKeyID = aws.String(config.SSEKMSKeyID)
+		}
+	}
+
+	return blobstore
 }
 
 func (blobstore *Blobstore) Exists(path string) (bool, error) {
@@ -109,9 +131,11 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	logger.Log.Debugw("Put to S3", "bucket", blobstore.bucket, "path", path)
 	_, e := blobstore.s3Client.PutObject(&s3.PutObjectInput{
-		Bucket: &blobstore.bucket,
-		Key:    &path,
-		Body:   src,
+		Bucket:               &blobstore.bucket,
+		Key:                  &path,
+		Body:                 src,
+		ServerSideEncryption: blobstore.serverSideEncryption,
+		SSEKMSKeyId:          blobstore.sseKMSKeyID,
 	})
 	if e != nil {
 		return errors.Wrapf(e, "Path %v", path)
@@ -125,9 +149,11 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 
 	logger.Log.Debugw("Copy in S3", "bucket", blobstore.bucket, "src", src, "dest", dest)
 	_, e := blobstore.s3Client.CopyObject(&s3.CopyObjectInput{
-		Key:        &dest,
-		CopySource: aws.String(blobstore.bucket + "/" + src),
-		Bucket:     &blobstore.bucket,
+		Key:                  &dest,
+		CopySource:           aws.String(blobstore.bucket + "/" + src),
+		Bucket:               &blobstore.bucket,
+		ServerSideEncryption: blobstore.serverSideEncryption,
+		SSEKMSKeyId:          blobstore.sseKMSKeyID,
 	})
 	if e != nil {
 		if isS3NotFoundError(e) {
@@ -184,8 +210,10 @@ func (signer *Blobstore) Sign(resource string, method string, expirationTime tim
 	switch strings.ToLower(method) {
 	case "put":
 		request, _ = signer.s3Client.PutObjectRequest(&s3.PutObjectInput{
-			Bucket: aws.String(signer.bucket),
-			Key:    aws.String(resource),
+			Bucket:               aws.String(signer.bucket),
+			Key:                  aws.String(resource),
+			ServerSideEncryption: signer.serverSideEncryption,
+			SSEKMSKeyId:          signer.sseKMSKeyID,
 		})
 	case "get":
 		request, _ = signer.s3Client.GetObjectRequest(&s3.GetObjectInput{
