@@ -120,6 +120,9 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 }
 
 func (blobstore *Blobstore) Copy(src, dest string) error {
+	// see https://forums.aws.amazon.com/thread.jspa?threadID=55746:
+	src = strings.Replace(src, "+", "%2B", -1)
+
 	logger.Log.Debugw("Copy in S3", "bucket", blobstore.bucket, "src", src, "dest", dest)
 	_, e := blobstore.s3Client.CopyObject(&s3.CopyObjectInput{
 		Key:        &dest,
