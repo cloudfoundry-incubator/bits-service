@@ -36,22 +36,24 @@ func newS3Client(region string, useIAMProfile bool, accessKeyID string, secretAc
 			logger.Errorw("Invalid S3 debug loglevel. Using default S3 log-level", "log-level", loglevelString, "default-log-level", "LogDebug")
 		}
 	}
-	s, e := session.NewSession(c)
-	if awsErr, isAwsErr := e.(awserr.Error); isAwsErr {
-		if awsErr.Code() == "NoCredentialProviders" && useIAMProfile {
-			logger.Fatalw("Blobstore is configured to use EC2 instance roles (use-iam-profiles), but no EC2 instance role could be found. "+
-				"Please make sure that an EC2 instance role is attached to the EC2 instance this service is running on.",
-				"use-iam-profiles", useIAMProfile,
-				"access-key-id", accessKeyID,
-				"secret-access-key-is-set", secretAccessKey != "",
-				"region", region,
-				"host", host)
-		}
+	s3Client := s3.New(session.Must(session.NewSession(c)))
+
+	// This priming is only done to make the service fail fast in case it was misconfigured instead of making it fail on the first request served.
+	_, e := s3Client.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String("dummy"),
+		Key:    aws.String("dummy"),
+	})
+	if awsErr, isAwsErr := e.(awserr.Error); isAwsErr && awsErr.Code() == "NoCredentialProviders" && useIAMProfile {
+		logger.Fatalw("Blobstore is configured to use EC2 instance roles (use-iam-profiles), but no EC2 instance role could be found. "+
+			"If you want to use EC2 instance roles, please make sure that an EC2 instance role is attached to the EC2 instance this service is running on. "+
+			"No access-key-id and no secret-access-key is needed in that case. See also: https://docs.cloudfoundry.org/deploying/common/cc-blobstore-config.html#fog-aws-iam.",
+			"use-iam-profiles", useIAMProfile,
+			"access-key-id", accessKeyID,
+			"secret-access-key-is-set", secretAccessKey != "",
+			"region", region,
+			"host", host)
 	}
-	if e != nil {
-		logger.Fatalw("Error while trying to create AWS client", "error", e)
-	}
-	return s3.New(s)
+	return s3Client
 }
 
 func isS3NotFoundError(e error) bool {
