@@ -121,6 +121,7 @@ type S3BlobstoreConfig struct {
 	S3DebugLogLevel      string `yaml:"s3_debug_log_level"`
 	ServerSideEncryption string `yaml:"server_side_encryption"`
 	SSEKMSKeyID          string `yaml:"server_side_encryption_aws_kms_key_id"`
+	UseIAMProfile        bool   `yaml:"use_iam_profile"`
 }
 
 type GCPBlobstoreConfig struct {

@@ -42,9 +42,11 @@ func NewBlobstore(config config.S3BlobstoreConfig) *Blobstore {
 }
 
 func NewBlobstoreWithLogger(config config.S3BlobstoreConfig, logger *zap.SugaredLogger) *Blobstore {
-	validate.NotEmpty(config.AccessKeyID)
+	if !config.UseIAMProfile {
+		validate.NotEmpty(config.AccessKeyID)
+		validate.NotEmpty(config.SecretAccessKey)
+	}
 	validate.NotEmpty(config.Bucket)
-	validate.NotEmpty(config.SecretAccessKey)
 
 	var s3Signer S3Signer = &signer.Default{}
 	if config.Host == "storage.googleapis.com" {
@@ -62,7 +64,7 @@ func NewBlobstoreWithLogger(config config.S3BlobstoreConfig, logger *zap.Sugared
 	}
 
 	blobstore := &Blobstore{
-		s3Client: newS3Client(config.Region, config.AccessKeyID, config.SecretAccessKey, config.Host, logger, config.S3DebugLogLevel),
+		s3Client: newS3Client(config.Region, config.UseIAMProfile, config.AccessKeyID, config.SecretAccessKey, config.Host, logger, config.S3DebugLogLevel),
 		bucket:   config.Bucket,
 		signer:   s3Signer,
 	}

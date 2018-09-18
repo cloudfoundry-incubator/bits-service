@@ -17,11 +17,13 @@ var loglevelTypes = map[string]aws.LogLevelType{
 	"LogDebugWithRequestErrors":  aws.LogDebugWithRequestErrors,
 }
 
-func newS3Client(region string, accessKeyID string, secretAccessKey string, host string, logger *zap.SugaredLogger, loglevelString string) *s3.S3 {
+func newS3Client(region string, useIAMProfile bool, accessKeyID string, secretAccessKey string, host string, logger *zap.SugaredLogger, loglevelString string) *s3.S3 {
 	c := &aws.Config{
-		Region:      aws.String(region),
-		Credentials: credentials.NewStaticCredentials(accessKeyID, secretAccessKey, ""),
-		Endpoint:    aws.String(host),
+		Region:   aws.String(region),
+		Endpoint: aws.String(host),
+	}
+	if !useIAMProfile {
+		c.Credentials = credentials.NewStaticCredentials(accessKeyID, secretAccessKey, "")
 	}
 	if loglevelString != "" {
 		c.Logger = aws.LoggerFunc(func(args ...interface{}) { logger.Debug(args...) })
@@ -34,7 +36,22 @@ func newS3Client(region string, accessKeyID string, secretAccessKey string, host
 			logger.Errorw("Invalid S3 debug loglevel. Using default S3 log-level", "log-level", loglevelString, "default-log-level", "LogDebug")
 		}
 	}
-	return s3.New(session.Must(session.NewSession(c)))
+	s, e := session.NewSession(c)
+	if awsErr, isAwsErr := e.(awserr.Error); isAwsErr {
+		if awsErr.Code() == "NoCredentialProviders" && useIAMProfile {
+			logger.Fatalw("Blobstore is configured to use EC2 instance roles (use-iam-profiles), but no EC2 instance role could be found. "+
+				"Please make sure that an EC2 instance role is attached to the EC2 instance this service is running on.",
+				"use-iam-profiles", useIAMProfile,
+				"access-key-id", accessKeyID,
+				"secret-access-key-is-set", secretAccessKey != "",
+				"region", region,
+				"host", host)
+		}
+	}
+	if e != nil {
+		logger.Fatalw("Error while trying to create AWS client", "error", e)
+	}
+	return s3.New(s)
 }
 
 func isS3NotFoundError(e error) bool {
