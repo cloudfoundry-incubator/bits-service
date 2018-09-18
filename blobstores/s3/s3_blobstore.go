@@ -90,7 +90,7 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	})
 	if e != nil {
 		if isS3NotFoundError(e) {
-			return nil, bitsgo.NewNotFoundError()
+			return nil, bitsgo.NewNotFoundErrorWithKey(path)
 		}
 		return nil, errors.Wrapf(e, "Path %v", path)
 	}
@@ -131,7 +131,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 	})
 	if e != nil {
 		if isS3NotFoundError(e) {
-			return bitsgo.NewNotFoundError()
+			return bitsgo.NewNotFoundErrorWithKey(src)
 		}
 		return errors.Wrapf(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.bucket)
 	}
@@ -145,7 +145,7 @@ func (blobstore *Blobstore) Delete(path string) error {
 	})
 	if e != nil {
 		if isS3NotFoundError(e) {
-			return bitsgo.NewNotFoundError()
+			return bitsgo.NewNotFoundErrorWithKey(path)
 		}
 		return errors.Wrapf(e, "Path %v", path)
 	}
