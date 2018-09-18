@@ -297,7 +297,6 @@ var _ = Describe("Non-local blobstores", func() {
 
 			ItDoesNotReturnNotFoundError()
 		})
-
 	})
 
 	Context("azure", func() {
@@ -313,7 +312,6 @@ var _ = Describe("Non-local blobstores", func() {
 
 			ItDoesNotReturnNotFoundError()
 		})
-
 	})
 
 	Context("openstack", func() {
@@ -329,8 +327,8 @@ var _ = Describe("Non-local blobstores", func() {
 
 			ItDoesNotReturnNotFoundError()
 		})
-
 	})
+
 	Context("alibaba", func() {
 		var alibabaConfig config.AlibabaBlobstoreConfig
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &alibabaConfig)).To(Succeed()) })
@@ -343,7 +341,6 @@ var _ = Describe("Non-local blobstores", func() {
 
 			ItDoesNotReturnNotFoundError()
 		})
-
 	})
 })
 
