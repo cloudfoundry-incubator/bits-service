@@ -240,6 +240,10 @@ var _ = Describe("Non-local blobstores", func() {
 				BeforeEach(func() { s3Config.ServerSideEncryption = s3.AES256 })
 
 				It("puts the object with AES256 encryption", func() {
+					if s3Config.Host != "" {
+						Skip("Not on AWS")
+					}
+
 					Expect(blobstore.Put(filepath, strings.NewReader("the file content"))).To(Succeed())
 
 					object, e := s3Client.GetObject(&s3sdk.GetObjectInput{
@@ -257,6 +261,10 @@ var _ = Describe("Non-local blobstores", func() {
 				})
 
 				It("puts the object with aws:kms encryption", func() {
+					if s3Config.Host != "" {
+						Skip("Not on AWS")
+					}
+
 					Expect(blobstore.Put(filepath, strings.NewReader("the file content"))).To(Succeed())
 
 					object, e := s3Client.GetObject(&s3sdk.GetObjectInput{
@@ -269,6 +277,10 @@ var _ = Describe("Non-local blobstores", func() {
 				})
 
 				It("copies the object with aws:kms encryption", func() {
+					if s3Config.Host != "" {
+						Skip("Not on AWS")
+					}
+
 					Expect(blobstore.Put(filepath, strings.NewReader("the file content"))).To(Succeed())
 					Expect(blobstore.Copy(filepath, filepath+"_copy")).To(Succeed())
 
