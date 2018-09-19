@@ -14,16 +14,16 @@ import (
 
 	"strconv"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/azure"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/gcp"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/openstack"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/s3"
 	"github.com/cloudfoundry-incubator/bits-service/config"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-var _ = XDescribe("Non-local blobstores SLOW TESTS", func() {
+var _ = Describe("Non-local blobstores SLOW TESTS", func() {
 
 	BeforeSuite(func() {
 		rand.Seed(time.Now().Unix())
@@ -94,13 +94,19 @@ var _ = XDescribe("Non-local blobstores SLOW TESTS", func() {
 	Context("S3", func() {
 		var s3Config config.S3BlobstoreConfig
 
-		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &s3Config)).To(Succeed()) })
+		BeforeEach(func() {
+			Expect(yaml.Unmarshal(configFileContent, &s3Config)).To(Succeed())
+
+			if strings.Contains(s3Config.Host, "google") {
+				Skip("Not running high-traffic tests on GCP yet.")
+			}
+		})
 		JustBeforeEach(func() { blobstore = s3.NewBlobstore(s3Config) })
 
 		slowTests()
 	})
 
-	Context("GCP", func() {
+	XContext("GCP", func() {
 		var gcpConfig config.GCPBlobstoreConfig
 
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &gcpConfig)).To(Succeed()) })
