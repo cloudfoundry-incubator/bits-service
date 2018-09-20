@@ -107,7 +107,7 @@ var _ = Describe("Non-local blobstores SLOW TESTS", func() {
 		slowTests()
 	})
 
-	PContext("GCP", func() {
+	Context("GCP", func() {
 		var gcpConfig config.GCPBlobstoreConfig
 
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &gcpConfig)).To(Succeed()) })
