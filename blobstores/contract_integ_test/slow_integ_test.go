@@ -14,6 +14,7 @@ import (
 
 	"strconv"
 
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/alibaba"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/azure"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/gcp"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/openstack"
@@ -106,7 +107,7 @@ var _ = Describe("Non-local blobstores SLOW TESTS", func() {
 		slowTests()
 	})
 
-	XContext("GCP", func() {
+	PContext("GCP", func() {
 		var gcpConfig config.GCPBlobstoreConfig
 
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &gcpConfig)).To(Succeed()) })
@@ -129,6 +130,15 @@ var _ = Describe("Non-local blobstores SLOW TESTS", func() {
 
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &openstackConfig)).To(Succeed()) })
 		JustBeforeEach(func() { blobstore = openstack.NewBlobstore(openstackConfig) })
+
+		slowTests()
+	})
+
+	Context("alibaba", func() {
+		var alibabaConfig config.AlibabaBlobstoreConfig
+
+		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &alibabaConfig)).To(Succeed()) })
+		JustBeforeEach(func() { blobstore = alibaba.NewBlobstore(alibabaConfig) })
 
 		slowTests()
 	})
