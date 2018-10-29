@@ -120,7 +120,10 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 }
 
 func (blobstore *Blobstore) Delete(path string) error {
-	e := blobstore.client.Bucket(blobstore.bucket).Object(path).Delete(context.TODO())
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
+	e := blobstore.client.Bucket(blobstore.bucket).Object(path).Delete(ctx)
 	if e != nil {
 		return blobstore.handleError(e, "Path %v", path)
 	}
