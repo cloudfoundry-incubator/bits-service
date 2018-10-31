@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/pkg/errors"
 
 	"github.com/cenkalti/backoff"
@@ -20,6 +22,7 @@ func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 	minimumSize, maximumSize uint64,
 	blobstore NoRedirectBlobstore,
 	metricsService MetricsService,
+	logger *zap.SugaredLogger,
 ) (tempFilename string, err error) {
 	tempZipFile, e := ioutil.TempFile("", "bundles")
 	if e != nil {

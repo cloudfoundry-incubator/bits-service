@@ -12,6 +12,7 @@ import (
 
 	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 	inmemory "github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
 	. "github.com/cloudfoundry-incubator/bits-service/matchers"
 	. "github.com/cloudfoundry-incubator/bits-service/testutil"
 	. "github.com/petergtz/pegomock"
@@ -32,7 +33,7 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 				Fn:   "filename1",
 				Mode: "644",
 			},
-		}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService())
+		}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService(), logger.Log)
 		Expect(e).NotTo(HaveOccurred())
 
 		reader, e := zip.OpenReader(tempFileName)
@@ -54,7 +55,7 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 					Fn:   "filename1",
 					Mode: "644",
 				},
-			}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService())
+			}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService(), logger.Log)
 			Expect(e).NotTo(HaveOccurred())
 
 			reader, e := zip.OpenReader(tempFileName)
@@ -88,7 +89,7 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 					Fn:   "filename1",
 					Mode: "644",
 				},
-			}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService())
+			}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService(), logger.Log)
 			Expect(e).NotTo(HaveOccurred())
 
 			reader, e := zip.OpenReader(tempFileName)
@@ -119,7 +120,7 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 						Fn:   "filename1",
 						Mode: "644",
 					},
-				}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService())
+				}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService(), logger.Log)
 				Expect(e).NotTo(HaveOccurred())
 
 				reader, e := zip.OpenReader(tempFileName)
@@ -153,7 +154,7 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 						Fn:   "filename2",
 						Mode: "644",
 					},
-				}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService())
+				}, nil, 0, math.MaxUint64, blobstore, NewMockMetricsService(), logger.Log)
 				Expect(e).NotTo(HaveOccurred())
 
 				reader, e := zip.OpenReader(tempFileName)
@@ -177,7 +178,7 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 			Expect(e).NotTo(HaveOccurred())
 			defer openZipFile.Close()
 
-			tempFilename, e := bitsgo.CreateTempZipFileFrom([]bitsgo.Fingerprint{}, &openZipFile.Reader, 15, 30, blobstore, NewMockMetricsService())
+			tempFilename, e := bitsgo.CreateTempZipFileFrom([]bitsgo.Fingerprint{}, &openZipFile.Reader, 15, 30, blobstore, NewMockMetricsService(), logger.Log)
 			Expect(e).NotTo(HaveOccurred())
 			os.Remove(tempFilename)
 
@@ -194,7 +195,7 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 			Expect(e).NotTo(HaveOccurred())
 			defer openZipFile.Close()
 
-			tempFilename, e := bitsgo.CreateTempZipFileFrom([]bitsgo.Fingerprint{}, &openZipFile.Reader, 15, 30, blobstore, NewMockMetricsService())
+			tempFilename, e := bitsgo.CreateTempZipFileFrom([]bitsgo.Fingerprint{}, &openZipFile.Reader, 15, 30, blobstore, NewMockMetricsService(), logger.Log)
 			Expect(e).NotTo(HaveOccurred(), "Error: %v", e)
 			os.Remove(tempFilename)
 		})

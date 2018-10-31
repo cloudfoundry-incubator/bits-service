@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/cenkalti/backoff"
 	"github.com/cloudfoundry-incubator/bits-service/logger"
 	"github.com/cloudfoundry-incubator/bits-service/util"
@@ -170,7 +172,7 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 	// TODO: this if-block maybe not be necessary at all.
 	//       The reason it's necessary right now is that we need zip handling only for packages. We treat other resources opaque.
 	if handler.resourceType == "package" {
-		tempFilename, e = handler.completePackageWithResources(request.FormValue("resources"), file, fileInfo.Size)
+		tempFilename, e = handler.completePackageWithResources(request.FormValue("resources"), file, fileInfo.Size, logger.From(request))
 		switch e.(type) {
 		case *inputError:
 			logger.From(request).Infow(e.Error())
@@ -224,7 +226,7 @@ type inputError struct {
 }
 
 // returns inputError or NoSpaceLeftError in case of error
-func (handler *ResourceHandler) completePackageWithResources(resources string, file multipart.File, fileSize int64) (tempfileName string, err error) {
+func (handler *ResourceHandler) completePackageWithResources(resources string, file multipart.File, fileSize int64, logger *zap.SugaredLogger) (tempfileName string, err error) {
 	var bundlesPayload []Fingerprint
 	if resources != "" {
 		e := json.Unmarshal([]byte(resources), &bundlesPayload)
@@ -241,7 +243,7 @@ func (handler *ResourceHandler) completePackageWithResources(resources string, f
 	}
 	util.PanicOnError(e)
 
-	tempFilename, e := CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.appStashBlobstore, handler.metricsService)
+	tempFilename, e := CreateTempZipFileFrom(bundlesPayload, zipReader, handler.minimumSize, handler.maximumSize, handler.appStashBlobstore, handler.metricsService, logger)
 	if _, noSpaceLeft := e.(*NoSpaceLeftError); noSpaceLeft {
 		return "", e
 	}
