@@ -125,11 +125,12 @@ type S3BlobstoreConfig struct {
 }
 
 type GCPBlobstoreConfig struct {
-	Bucket       string
-	PrivateKeyID string `yaml:"private_key_id"`
-	PrivateKey   string `yaml:"private_key"`
-	Email        string
-	TokenURL     string `yaml:"token_url"`
+	Bucket              string
+	PrivateKeyID        string `yaml:"private_key_id"`
+	PrivateKey          string `yaml:"private_key"`
+	Email               string
+	TokenURL            string `yaml:"token_url"`
+	RetryTimeoutSeconds int    `yaml:"retry_timeout_seconds"`
 }
 
 type AzureBlobstoreConfig struct {

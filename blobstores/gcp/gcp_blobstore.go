@@ -21,9 +21,10 @@ import (
 )
 
 type Blobstore struct {
-	client    *storage.Client
-	jwtConfig *jwt.Config
-	bucket    string
+	client       *storage.Client
+	jwtConfig    *jwt.Config
+	bucket       string
+	retryTimeout time.Duration
 }
 
 func NewBlobstore(config config.GCPBlobstoreConfig) *Blobstore {
@@ -46,15 +47,22 @@ func NewBlobstore(config config.GCPBlobstoreConfig) *Blobstore {
 	if err != nil {
 		panic(err)
 	}
+	if config.RetryTimeoutSeconds == 0 {
+		config.RetryTimeoutSeconds = 5
+	}
 	return &Blobstore{
-		client:    client,
-		bucket:    config.Bucket,
-		jwtConfig: jwtConfig,
+		client:       client,
+		bucket:       config.Bucket,
+		jwtConfig:    jwtConfig,
+		retryTimeout: time.Duration(config.RetryTimeoutSeconds) * time.Second,
 	}
 }
 
 func (blobstore *Blobstore) Exists(path string) (bool, error) {
-	_, e := blobstore.client.Bucket(blobstore.bucket).Object(path).NewReader(context.TODO())
+	ctx, cancel := context.WithTimeout(context.TODO(), blobstore.retryTimeout)
+	defer cancel()
+
+	_, e := blobstore.client.Bucket(blobstore.bucket).Object(path).NewReader(ctx)
 
 	if e != nil {
 		e = blobstore.handleError(e, "Failed to check for %v/%v", blobstore.bucket, path)
@@ -112,7 +120,11 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 
 func (blobstore *Blobstore) Copy(src, dest string) error {
 	logger.Log.Debugw("Copy in GCP", "bucket", blobstore.bucket, "src", src, "dest", dest)
-	_, e := blobstore.client.Bucket(blobstore.bucket).Object(dest).CopierFrom(blobstore.client.Bucket(blobstore.bucket).Object(src)).Run(context.TODO())
+
+	ctx, cancel := context.WithTimeout(context.TODO(), blobstore.retryTimeout)
+	defer cancel()
+
+	_, e := blobstore.client.Bucket(blobstore.bucket).Object(dest).CopierFrom(blobstore.client.Bucket(blobstore.bucket).Object(src)).Run(ctx)
 	if e != nil {
 		return blobstore.handleError(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.bucket)
 	}
@@ -120,7 +132,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 }
 
 func (blobstore *Blobstore) Delete(path string) error {
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), blobstore.retryTimeout)
 	defer cancel()
 
 	e := blobstore.client.Bucket(blobstore.bucket).Object(path).Delete(ctx)
