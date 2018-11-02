@@ -596,7 +596,7 @@ curl 'https://username:password@internal.example.com/sign/packages/bdf47b84-1349
 ```shell
 HTTP/1.1 200 OK
 
-https://bits-service.example.com/signed/packages/test-package?md5=yBh47LwYRQ4d8SG6mNsL4w&expires=1497357804
+https://bits-service.example.com/signed/packages/test-package?hash=313534313136363839352f7061636b616765732f6d79677569642067656865696de41965ab39e6fc7c04b662edc553cbb39fa62b2c5f4265dd38b241bee95eff40&expires=1497357804
 ```
 
 ### HTTP Request
@@ -616,7 +616,7 @@ Internal endpoint only
 > Example signed upload:
 
 ```shell
-curl -X PUT 'https://internal.example.com/signed/packages/bdf47b84-1349-4abd-9561-5004858dfa05?md5=YDjcMjytsnVEzoSxqpiC4A&expires=1492594615' \
+curl -X PUT 'https://internal.example.com/signed/packages/bdf47b84-1349-4abd-9561-5004858dfa05?hash=313534313136363839352f7061636b616765732f6d79677569642067656865696de41965ab39e6fc7c04b662edc553cbb39fa62b2c5f4265dd38b241bee95eff40&expires=1541166895' \
   -F package=@package-file
 ```
 
