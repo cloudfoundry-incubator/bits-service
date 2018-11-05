@@ -1,7 +1,6 @@
 package pathsigner_test
 
 import (
-	"crypto/md5"
 	"fmt"
 	"testing"
 	"time"
@@ -35,15 +34,6 @@ var _ = Describe("PathSigner", func() {
 
 	It("can sign a path and validate its signature", func() {
 		signedPath := signer.Sign("/some/path", time.Unix(200, 0))
-
-		Expect(signer.SignatureValid(httputil.MustParse(signedPath))).To(BeTrue())
-	})
-
-	It("validates legacy md5 sum signatures", func() {
-		path := "/some/path"
-		expires := time.Unix(200, 0)
-		signedPath := fmt.Sprintf("%s?md5=%x&expires=%v", path, md5.Sum([]byte(fmt.Sprintf("%v%v %v", expires.Unix(), path, signer.Secret))), expires.Unix())
-		println(signedPath)
 
 		Expect(signer.SignatureValid(httputil.MustParse(signedPath))).To(BeTrue())
 	})
