@@ -1,3 +1,4 @@
 .vscode
 **/*integration_test_config*.yml
 vendor
+api-doc/build
