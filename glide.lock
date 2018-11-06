@@ -1,8 +1,8 @@
 hash: 821faccf23ab466036328cdf3969b97955c3ce693e5f769cd111bc92b4ad1093
-updated: 2018-08-13T14:51:04.692031+02:00
+updated: 2018-11-05T16:04:39.610097+01:00
 imports:
 - name: cloud.google.com/go
-  version: 24c3c3d77a0907226ed74ef8515f8a23544c7dfa
+  version: 2de6e15cf9252ba6c2179d155dd6c991dc013956
   subpackages:
   - compute/metadata
   - iam
@@ -12,11 +12,9 @@ imports:
   - internal/version
   - storage
 - name: code.cloudfoundry.org/bytefmt
-  version: b31f603f5e1e047fdb38584e1a922dcc5c4de5c8
-- name: contrib.go.opencensus.io/exporter/stackdriver
-  version: 2b93072101d466aa4120b3c23c2e1b08af01541c
-  subpackages:
-  - propagation
+  version: 2aa6f33b730c79971cfc3c742f279195b0abc627
+- name: contrib.go.opencensus.io/exporter/ocagent
+  version: b8ece14a43f0cda76036504e4a4fd7fa27ce1869
 - name: github.com/alecthomas/template
   version: a0175ee3bccc567396460bf5acd36800cb10c49c
   subpackages:
@@ -24,11 +22,11 @@ imports:
 - name: github.com/alecthomas/units
   version: 2efee857e7cfd4f3d0138cc3cbb1b4966962b93a
 - name: github.com/aliyun/aliyun-oss-go-sdk
-  version: 36bf7aa2f916f274137aedd05d1d36f6a3c0f4a6
+  version: ddc87ec2145f324f91257266e657cd7fa0ff1c8c
   subpackages:
   - oss
 - name: github.com/aws/aws-sdk-go
-  version: 3c6470de8dadcb7b069981a8a084ffface365c36
+  version: 43cb5e9998123fb04bb1768ce27de117b2e3844b
   subpackages:
   - aws
   - aws/awserr
@@ -47,6 +45,8 @@ imports:
   - aws/request
   - aws/session
   - aws/signer/v4
+  - internal/ini
+  - internal/s3err
   - internal/sdkio
   - internal/sdkrand
   - internal/sdkuri
@@ -62,29 +62,35 @@ imports:
   - service/s3
   - service/sts
 - name: github.com/Azure/azure-sdk-for-go
-  version: 4e8cbbfb1aeab140cd0fa97fd16b64ee18c3ca6a
+  version: 580a14a5a4b8830727fda07d73bd6f69e64b14f8
   subpackages:
   - storage
   - version
 - name: github.com/Azure/go-autorest
-  version: 39013ecb48eaf6ced3f4e3e1d95515140ce6b3cf
+  version: 4e5fffdf007df29ed0862f9e01fafabf4396e851
   subpackages:
   - autorest
   - autorest/adal
   - autorest/azure
   - autorest/date
   - logger
+  - tracing
   - version
 - name: github.com/benbjohnson/clock
   version: 7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19
 - name: github.com/cenkalti/backoff
-  version: b7325b0f3f1097c6546ea5e83c4a23267e58ad71
+  version: 62661b46c4093e2c1f38d943e663db1a29873e80
+- name: github.com/census-instrumentation/opencensus-proto
+  version: a97eda6b3a5dde7ca8c70de1aacd1c3698037be1
+  subpackages:
+  - gen-go/agent/common/v1
+  - gen-go/agent/trace/v1
+  - gen-go/resource/v1
+  - gen-go/trace/v1
 - name: github.com/dgrijalva/jwt-go
-  version: 0b96aaa707760d6ab28d9b9d1913ff5993328bae
-- name: github.com/go-ini/ini
-  version: d58d458bec3cb5adec4b7ddb41131855eac0b33f
+  version: 3af4c746e1c248ee8491a3e0c6f7a9cd831e95f8
 - name: github.com/golang/protobuf
-  version: 89a0c16f4dc2a70c0ed864d8ef64878f24fdaa51
+  version: 1918e1ff6ffd2be7bed0553df8650672c3bfe80d
   subpackages:
   - proto
   - protoc-gen-go/descriptor
@@ -92,12 +98,11 @@ imports:
   - ptypes/any
   - ptypes/duration
   - ptypes/timestamp
+  - ptypes/wrappers
 - name: github.com/googleapis/gax-go
-  version: 1ef592c90f479e3ab30c6c2312e20e13881b7ea6
-- name: github.com/gorilla/context
-  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
+  version: 508d20c8e1806e19ef2195df64f597576bcb0dbc
 - name: github.com/gorilla/mux
-  version: e48e440e4c92e3251d812f8ce7858944dfa3331c
+  version: 3d80bc801bb034e17cae38591335b3b1110f1c47
 - name: github.com/hpcloud/tail
   version: a1dbeea552b7c8df4b542c66073e393de198a800
   subpackages:
@@ -110,9 +115,9 @@ imports:
 - name: github.com/marstr/guid
   version: 8bdf7d1a087ccc975cf37dd6507da50698fd19ca
 - name: github.com/ncw/swift
-  version: bd8b704d15b2f5357186ac39c863bd74eb837291
+  version: 6f342da371d063863f2f354f183e4ab0ef72d287
 - name: github.com/onsi/ginkgo
-  version: 3774a09d95489ccaa16032e0770d08ea77ba6184
+  version: aec9277ec956b65322f6ecee8196a5ff3a01be5f
   subpackages:
   - config
   - internal/codelocation
@@ -132,7 +137,7 @@ imports:
   - reporters/stenographer/support/go-isatty
   - types
 - name: github.com/onsi/gomega
-  version: 4bbecc8c2307673cacf6e7c9275015b6c87ebe48
+  version: 69d9b434d9ada3ae03b699d67a006533029cba9a
   subpackages:
   - format
   - gbytes
@@ -150,24 +155,26 @@ imports:
   - matchers/support/goraph/util
   - types
 - name: github.com/petergtz/pegomock
-  version: 278dd9bee02596f5347dcffe7736d1ff1794223c
+  version: 9750219ad78bfad9ba455ed537b518397a675228
   subpackages:
   - internal/verify
 - name: github.com/pkg/errors
-  version: 816c9085562cd7ee03e7f8188a1cfd942858cded
+  version: 059132a15dd08d6704c67711dae0cf35ab991756
 - name: github.com/satori/go.uuid
-  version: 36e9d2ebbde5e3f13ab2e25625fd453271d6522e
+  version: b2ce2384e17bbe0c6d34077efa39dbab3e09123b
 - name: github.com/tecnickcom/statsd
-  version: edb21daa58ce280eebcb7970408e586e259f0bb8
+  version: b5fbf096b31b1cb3cc0bcf887fbb0f1a5d3ee7e5
 - name: github.com/urfave/negroni
-  version: 95cb1ffd0769d77c3a2233a260452e85dadc44dc
+  version: 0af0d913cfc4cc6c389cc402eb70bf8a8fec374d
 - name: go.opencensus.io
-  version: 7b558058b7cc960667590e5413ef55157b06652e
+  version: 94fd1d08391b28f9c9f721b2a67fcf57bfd0a70e
   subpackages:
+  - exemplar
   - internal
   - internal/tagencoding
   - plugin/ochttp
   - plugin/ochttp/propagation/b3
+  - plugin/ochttp/propagation/tracecontext
   - stats
   - stats/internal
   - stats/view
@@ -175,12 +182,13 @@ imports:
   - trace
   - trace/internal
   - trace/propagation
+  - trace/tracestate
 - name: go.uber.org/atomic
   version: 1ea20fb1cbb1cc08cbd0d913a96dead89aa18289
 - name: go.uber.org/multierr
   version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
 - name: go.uber.org/zap
-  version: ff33455a0e382e8a81d14dd7c922020b6b5e7982
+  version: 67bc79d13d155c02fd008f721863ff8cc5f30659
   subpackages:
   - buffer
   - internal/bufferpool
@@ -188,7 +196,7 @@ imports:
   - internal/exit
   - zapcore
 - name: golang.org/x/net
-  version: c39426892332e1bb5ec0a434a079bf82f5d30c54
+  version: c10e9556a7bc0e7c942242b606f0acf024ad5d6a
   subpackages:
   - context
   - context/ctxhttp
@@ -202,18 +210,22 @@ imports:
   - internal/timeseries
   - trace
 - name: golang.org/x/oauth2
-  version: 3d292e4d0cdc3a0113e6d207bb137145ef1de42f
+  version: 232e45548389bd9357411a6922a07c5fd4068bda
   subpackages:
   - google
   - internal
   - jws
   - jwt
+- name: golang.org/x/sync
+  version: 1d60e4601c6fd243af51cc01ddf169918a5407ca
+  subpackages:
+  - semaphore
 - name: golang.org/x/sys
-  version: 98c5dad5d1a0e8a73845ecc8897d0bd56586511d
+  version: 9b800f95dbbc54abff0acf7ee32d88ba4e328c89
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 6e3c4e7365ddcc329f090f96e4348398f6310088
+  version: 6f44c5a2ea40ee3593d98cdcc905cc1fdaa660e2
   subpackages:
   - encoding
   - encoding/charmap
@@ -236,7 +248,7 @@ imports:
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/api
-  version: 0aa0a1f2c0c4478587971a63e931e711086a5271
+  version: 04bb50b6b83d0e72253821af8cf3252d8e866517
   subpackages:
   - gensupport
   - googleapi
@@ -246,9 +258,11 @@ imports:
   - iterator
   - option
   - storage/v1
+  - support/bundler
   - transport/http
+  - transport/http/internal/propagation
 - name: google.golang.org/appengine
-  version: 4216e58b9158e5f1c906f1aca75162a46a2ec88a
+  version: 4a4468ece617fc8205e99368fa2200e9d1fad421
   subpackages:
   - internal
   - internal/app_identity
@@ -260,18 +274,19 @@ imports:
   - internal/urlfetch
   - urlfetch
 - name: google.golang.org/genproto
-  version: 383e8b2c3b9e36c4076b235b32537292176bae20
+  version: c830210a61dfaa790e1920f8d0470fc27bc2efbe
   subpackages:
   - googleapis/api/annotations
   - googleapis/iam/v1
   - googleapis/rpc/code
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 07ef407d991f1004e6c3367c8f452ed9a02f17ff
+  version: 8f2842d4f02a3169c4ff997f95854c35175f20ba
   subpackages:
   - balancer
   - balancer/base
   - balancer/roundrobin
+  - binarylog/grpc_binarylog_v1
   - codes
   - connectivity
   - credentials
@@ -280,6 +295,7 @@ imports:
   - grpclog
   - internal
   - internal/backoff
+  - internal/binarylog
   - internal/channelz
   - internal/envconfig
   - internal/grpcrand
