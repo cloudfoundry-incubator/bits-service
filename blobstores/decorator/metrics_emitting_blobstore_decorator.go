@@ -18,7 +18,10 @@ func ForBlobstoreWithMetricsEmitter(delegate Blobstore, metricsService bitsgo.Me
 }
 
 func (decorator *MetricsEmittingBlobstoreDecorator) Exists(path string) (bool, error) {
-	return decorator.delegate.Exists(path)
+	startTime := time.Now()
+	exists, e := decorator.delegate.Exists(path)
+	decorator.metricsService.SendTimingMetric(decorator.resourceType+"-exists_in_blobstore-time", time.Since(startTime))
+	return exists, e
 }
 
 func (decorator *MetricsEmittingBlobstoreDecorator) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
@@ -41,7 +44,10 @@ func (decorator *MetricsEmittingBlobstoreDecorator) Put(path string, src io.Read
 }
 
 func (decorator *MetricsEmittingBlobstoreDecorator) Copy(src, dest string) error {
-	return decorator.delegate.Copy(src, dest)
+	startTime := time.Now()
+	e := decorator.delegate.Copy(src, dest)
+	decorator.metricsService.SendTimingMetric(decorator.resourceType+"-copy_in_blobstore-time", time.Since(startTime))
+	return e
 }
 
 func (decorator *MetricsEmittingBlobstoreDecorator) Delete(path string) error {
