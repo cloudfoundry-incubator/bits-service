@@ -243,6 +243,9 @@ var _ = Describe("Non-local blobstores", func() {
 					if s3Config.Host != "" {
 						Skip("Not on AWS")
 					}
+					if s3Config.SignatureVersion == 2 {
+						Skip("Server side encryption does not work with signature version 2")
+					}
 
 					Expect(blobstore.Put(filepath, strings.NewReader("the file content"))).To(Succeed())
 
@@ -264,6 +267,9 @@ var _ = Describe("Non-local blobstores", func() {
 					if s3Config.Host != "" {
 						Skip("Not on AWS")
 					}
+					if s3Config.SignatureVersion == 2 {
+						Skip("Server side encryption does not work with signature version 2")
+					}
 
 					Expect(blobstore.Put(filepath, strings.NewReader("the file content"))).To(Succeed())
 
@@ -279,6 +285,9 @@ var _ = Describe("Non-local blobstores", func() {
 				It("copies the object with aws:kms encryption", func() {
 					if s3Config.Host != "" {
 						Skip("Not on AWS")
+					}
+					if s3Config.SignatureVersion == 2 {
+						Skip("Server side encryption does not work with signature version 2")
 					}
 
 					Expect(blobstore.Put(filepath, strings.NewReader("the file content"))).To(Succeed())
