@@ -63,10 +63,32 @@ func NewBlobstoreWithLogger(config config.S3BlobstoreConfig, logger *zap.Sugared
 		log.Log.Infow("No AWS region specified for blobstore. Using a default value.", "bucket", config.Bucket, "default-region", config.Region)
 	}
 
+	if config.SignatureVersion == 2 {
+		if config.UseIAMProfile {
+			logger.Fatalw("Blobstore is configured to use EC2 instance roles (use-iam-profiles) and also to use S3 signature version 2 " +
+				"(https://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html). But EC2 instance roles are only supported with " +
+				"S3 signature version 4.")
+		}
+		if config.ServerSideEncryption != "" {
+			logger.Fatalw("Blobstore is configured to use server side encryption and also to use S3 signature version 2 " +
+				"(https://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html). But server side encryption is only supported with " +
+				"S3 signature version 4.")
+		}
+	}
+
 	blobstore := &Blobstore{
-		s3Client: newS3Client(config.Region, config.UseIAMProfile, config.AccessKeyID, config.SecretAccessKey, config.Host, logger, config.S3DebugLogLevel),
-		bucket:   config.Bucket,
-		signer:   s3Signer,
+		s3Client: newS3Client(config.Region,
+			config.UseIAMProfile,
+			config.AccessKeyID,
+			config.SecretAccessKey,
+			config.Host,
+			logger,
+			config.S3DebugLogLevel,
+			config.Bucket,
+			config.SignatureVersion,
+		),
+		bucket: config.Bucket,
+		signer: s3Signer,
 	}
 
 	if config.ServerSideEncryption != "" {

@@ -122,6 +122,7 @@ type S3BlobstoreConfig struct {
 	ServerSideEncryption string `yaml:"server_side_encryption"`
 	SSEKMSKeyID          string `yaml:"server_side_encryption_aws_kms_key_id"`
 	UseIAMProfile        bool   `yaml:"use_iam_profile"`
+	SignatureVersion     int    `yaml:"signature_version"`
 }
 
 type GCPBlobstoreConfig struct {
@@ -256,6 +257,11 @@ func LoadConfig(filename string) (config Config, err error) {
 	config.Packages.BlobstoreType = BlobstoreType(strings.ToLower(string(config.Packages.BlobstoreType)))
 	config.AppStash.BlobstoreType = BlobstoreType(strings.ToLower(string(config.AppStash.BlobstoreType)))
 	config.Buildpacks.BlobstoreType = BlobstoreType(strings.ToLower(string(config.Buildpacks.BlobstoreType)))
+
+	setSignatureVersionDefault(&config.AppStash)
+	setSignatureVersionDefault(&config.Buildpacks)
+	setSignatureVersionDefault(&config.Droplets)
+	setSignatureVersionDefault(&config.Packages)
 
 	var errs []string
 
@@ -402,5 +408,11 @@ func blobstoreConfigIsNil(blobstoreConfig BlobstoreConfig) bool {
 		return blobstoreConfig.AlibabaConfig == nil || *blobstoreConfig.AlibabaConfig == (AlibabaBlobstoreConfig{})
 	default:
 		return true
+	}
+}
+
+func setSignatureVersionDefault(c *BlobstoreConfig) {
+	if c.BlobstoreType == AWS && c.S3Config.SignatureVersion == 0 {
+		c.S3Config.SignatureVersion = 4
 	}
 }

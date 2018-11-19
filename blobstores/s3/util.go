@@ -4,8 +4,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/aws/signer/v4"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/cloudfoundry-incubator/bits-service/blobstores/s3/signer"
 	"go.uber.org/zap"
 )
 
@@ -17,7 +20,16 @@ var loglevelTypes = map[string]aws.LogLevelType{
 	"LogDebugWithRequestErrors":  aws.LogDebugWithRequestErrors,
 }
 
-func newS3Client(region string, useIAMProfile bool, accessKeyID string, secretAccessKey string, host string, logger *zap.SugaredLogger, loglevelString string) *s3.S3 {
+func newS3Client(region string,
+	useIAMProfile bool,
+	accessKeyID string,
+	secretAccessKey string,
+	host string,
+	logger *zap.SugaredLogger,
+	loglevelString string,
+	bucket string,
+	signatureVersion int,
+) *s3.S3 {
 	c := &aws.Config{
 		Region:   aws.String(region),
 		Endpoint: aws.String(host),
@@ -36,7 +48,20 @@ func newS3Client(region string, useIAMProfile bool, accessKeyID string, secretAc
 			logger.Errorw("Invalid S3 debug loglevel. Using default S3 log-level", "log-level", loglevelString, "default-log-level", "LogDebug")
 		}
 	}
-	s3Client := s3.New(session.Must(session.NewSession(c)))
+	ses := session.Must(session.NewSession(c))
+	s3Client := s3.New(ses)
+
+	if signatureVersion == 2 {
+		s3Client.Handlers.Sign.Swap(v4.SignRequestHandler.Name, request.NamedHandler{
+			Name: "v2.SignHandler",
+			Fn: (&signer.V2Signer{
+				Credentials: c.Credentials,
+				Debug:       *ses.Config.LogLevel,
+				Logger:      ses.Config.Logger,
+				Bucket:      bucket,
+			}).Sign,
+		})
+	}
 
 	// This priming is only done to make the service fail fast in case it was misconfigured instead of making it fail on the first request served.
 	_, e := s3Client.GetObject(&s3.GetObjectInput{
