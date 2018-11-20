@@ -208,7 +208,11 @@ var _ = Describe("Non-local blobstores", func() {
 	Context("S3", func() {
 		var s3Config config.S3BlobstoreConfig
 
-		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &s3Config)).To(Succeed()) })
+		BeforeEach(func() {
+			s3Config = config.S3BlobstoreConfig{}
+			Expect(yaml.Unmarshal(configFileContent, &s3Config)).To(Succeed())
+		})
+
 		JustBeforeEach(func() { blobstore = s3.NewBlobstore(s3Config) })
 
 		Context("Without Server Side Encryption", func() {
@@ -223,6 +227,17 @@ var _ = Describe("Non-local blobstores", func() {
 				BeforeEach(func() { s3Config.Bucket += "non-existing" })
 
 				ItDoesNotReturnNotFoundError()
+			})
+
+			Context("With signature version 2", func() {
+				BeforeEach(func() {
+					if s3Config.Host != "" {
+						Skip("Not on AWS")
+					}
+					s3Config.SignatureVersion = 2
+				})
+
+				itCanPutAndGetAResourceThere()
 			})
 		})
 
@@ -259,16 +274,11 @@ var _ = Describe("Non-local blobstores", func() {
 			})
 
 			Context("aws:kms", func() {
-				BeforeEach(func() {
-					s3Config.ServerSideEncryption = s3.AWSKMS
-				})
+				BeforeEach(func() { s3Config.ServerSideEncryption = s3.AWSKMS })
 
 				It("puts the object with aws:kms encryption", func() {
 					if s3Config.Host != "" {
 						Skip("Not on AWS")
-					}
-					if s3Config.SignatureVersion == 2 {
-						Skip("Server side encryption does not work with signature version 2")
 					}
 
 					Expect(blobstore.Put(filepath, strings.NewReader("the file content"))).To(Succeed())
@@ -285,9 +295,6 @@ var _ = Describe("Non-local blobstores", func() {
 				It("copies the object with aws:kms encryption", func() {
 					if s3Config.Host != "" {
 						Skip("Not on AWS")
-					}
-					if s3Config.SignatureVersion == 2 {
-						Skip("Server side encryption does not work with signature version 2")
 					}
 
 					Expect(blobstore.Put(filepath, strings.NewReader("the file content"))).To(Succeed())
