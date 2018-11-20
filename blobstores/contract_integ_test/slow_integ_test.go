@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 
 	"strconv"
@@ -20,6 +21,7 @@ import (
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/openstack"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/s3"
 	"github.com/cloudfoundry-incubator/bits-service/config"
+	"github.com/cloudfoundry-incubator/bits-service/logger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -90,6 +92,13 @@ var _ = Describe("Non-local blobstores SLOW TESTS", func() {
 		Expect(e).NotTo(HaveOccurred())
 
 		filepath = fmt.Sprintf("testfile-%v", time.Now())
+
+		cfg := zap.NewDevelopmentConfig()
+		cfg.DisableStacktrace = true
+		cfg.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
+		l, e := cfg.Build()
+		Expect(e).NotTo(HaveOccurred())
+		logger.SetLogger(l)
 	})
 
 	Context("S3", func() {
