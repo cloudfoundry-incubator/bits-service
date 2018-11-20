@@ -61,6 +61,7 @@ func newS3Client(region string,
 				Bucket:      bucket,
 			}).Sign,
 		})
+		logger.Infow("Using signature version 2 signing.")
 	}
 
 	// This priming is only done to make the service fail fast in case it was misconfigured instead of making it fail on the first request served.
