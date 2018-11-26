@@ -3,11 +3,11 @@ package routes
 import (
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/local"
 	"github.com/cloudfoundry-incubator/bits-service/middlewares"
 	"github.com/cloudfoundry-incubator/bits-service/util"
+	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
 )
 
@@ -71,7 +71,7 @@ func SetUpBuildpackRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHa
 func SetUpDropletRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHandler) {
 	router.Path("/droplets/{identifier:[a-z0-9\\-]+}").Methods("PUT").HandlerFunc(delegateTo(resourceHandler.AddOrReplaceWithDigestInHeader))
 	setUpDefaultMethodRoutes(
-		router.Path("/droplets/{identifier:.*}").Subrouter(), // TODO we could probably be more specific in the regex
+		router.Path("/droplets/{identifier:.+}").Subrouter(), // TODO we could probably be more specific in the regex
 		resourceHandler)
 }
 
@@ -96,12 +96,19 @@ func SetUpSignRoute(router *mux.Router,
 	signDropletURLHandler,
 	signBuildpackURLHandler,
 	signBuildpackCacheURLHandler,
-	signAppStashURLHandler *bitsgo.SignResourceHandler) {
-	router.Path("/sign/packages/{resource}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signPackageURLHandler))
-	router.Path("/sign/droplets/{resource:.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signDropletURLHandler))
-	router.Path("/sign/buildpacks/{resource}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackURLHandler))
-	router.Path("/sign/buildpack_cache/entries/{resource:.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackCacheURLHandler))
-	router.Path("/sign/app_stash/matches").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signAppStashURLHandler))
+	signAppStashURLHandler *bitsgo.SignResourceHandler,
+) {
+	signRouter := router.PathPrefix("/sign").Subrouter()
+
+	signRouter.Path("/packages/{resource:[a-z0-9\\-]+}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signPackageURLHandler))
+	signRouter.Path("/droplets/{resource:.+}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signDropletURLHandler))
+	signRouter.Path("/buildpacks/{resource:.+}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackURLHandler))
+	signRouter.Path("/buildpack_cache/entries/{resource:.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackCacheURLHandler))
+	signRouter.Path("/app_stash/matches").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signAppStashURLHandler))
+
+	signRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
 }
 
 func wrapWith(basicAuthMiddleware *middlewares.BasicAuthMiddleware, handler *bitsgo.SignResourceHandler) http.Handler {
