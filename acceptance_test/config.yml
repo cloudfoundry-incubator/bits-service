@@ -21,6 +21,11 @@ logging:
 public_endpoint: https://public.127.0.0.1.nip.io
 private_endpoint: https://internal.127.0.0.1.nip.io
 secret: geheim
+signing_keys:
+  - key_id: some_key_id
+    secret: some_secret
+  - key_id: some_other_key_id
+    secret: some_other_secret
 port: 4443
 cert_file: cert_file
 key_file: key_file

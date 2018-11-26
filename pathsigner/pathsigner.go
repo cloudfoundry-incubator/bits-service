@@ -20,11 +20,19 @@ type PathSignatureValidator interface {
 }
 
 type PathSignerValidator struct {
-	Secret string
-	Clock  clock.Clock
+	Secret      string
+	Clock       clock.Clock
+	SigningKeys map[string]string
 }
 
 func (signer *PathSignerValidator) Sign(path string, expires time.Time) string {
+	if len(signer.SigningKeys) > 0 {
+		var accessKeyID string
+		for accessKeyID = range signer.SigningKeys {
+			break
+		}
+		return fmt.Sprintf("%s?signature=%x&expires=%v&AccessKeyId=%v", path, signatureWithHMACFor(path, signer.SigningKeys[accessKeyID], expires), expires.Unix(), accessKeyID)
+	}
 	return fmt.Sprintf("%s?signature=%x&expires=%v", path, signatureWithHMACFor(path, signer.Secret, expires), expires.Unix())
 }
 
@@ -37,8 +45,18 @@ func (signer *PathSignerValidator) SignatureValid(u *url.URL) bool {
 		return false
 	}
 
-	if u.Query().Get("signature") != fmt.Sprintf("%x", signatureWithHMACFor(u.Path, signer.Secret, time.Unix(expires, 0))) {
-		return false
+	accessKeyID := u.Query().Get("AccessKeyId")
+	if accessKeyID != "" {
+		if _, exist := signer.SigningKeys[accessKeyID]; !exist {
+			return false
+		}
+		if u.Query().Get("signature") != fmt.Sprintf("%x", signatureWithHMACFor(u.Path, signer.SigningKeys[accessKeyID], time.Unix(expires, 0))) {
+			return false
+		}
+	} else {
+		if u.Query().Get("signature") != fmt.Sprintf("%x", signatureWithHMACFor(u.Path, signer.Secret, time.Unix(expires, 0))) {
+			return false
+		}
 	}
 	return true
 }

@@ -49,13 +49,17 @@ func main() {
 	logger := createLoggerWith(config.Logging.Level)
 	log.SetLogger(logger)
 
+	if config.Secret != "" {
+		log.Log.Infow("Config file uses deprecated \"secret\" property. Please consider using \"signing_keys\" instead.")
+	}
+
 	metricsService := statsd.NewMetricsService()
 
-	appStashBlobstore, signAppStashURLHandler := createAppStashBlobstore(config.AppStash, config.PublicEndpointUrl(), config.Port, config.Secret, log.Log, metricsService)
-	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpointUrl(), config.Port, config.Secret, "packages", log.Log, metricsService)
-	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, "droplets", log.Log, metricsService)
-	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpointUrl(), config.Port, config.Secret, "buildpacks", log.Log, metricsService)
-	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, log.Log, metricsService)
+	appStashBlobstore, signAppStashURLHandler := createAppStashBlobstore(config.AppStash, config.PublicEndpointUrl(), config.Port, config.Secret, config.SigningKeysMap(), log.Log, metricsService)
+	packageBlobstore, signPackageURLHandler := createBlobstoreAndSignURLHandler(config.Packages, config.PublicEndpointUrl(), config.Port, config.Secret, config.SigningKeysMap(), "packages", log.Log, metricsService)
+	dropletBlobstore, signDropletURLHandler := createBlobstoreAndSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, config.SigningKeysMap(), "droplets", log.Log, metricsService)
+	buildpackBlobstore, signBuildpackURLHandler := createBlobstoreAndSignURLHandler(config.Buildpacks, config.PublicEndpointUrl(), config.Port, config.Secret, config.SigningKeysMap(), "buildpacks", log.Log, metricsService)
+	buildpackCacheBlobstore, signBuildpackCacheURLHandler := createBuildpackCacheSignURLHandler(config.Droplets, config.PublicEndpointUrl(), config.Port, config.Secret, config.SigningKeysMap(), log.Log, metricsService)
 
 	go regularlyEmitGoRoutines(metricsService)
 
@@ -63,7 +67,7 @@ func main() {
 		config.PrivateEndpointUrl().Host,
 		config.PublicEndpointUrl().Host,
 		middlewares.NewBasicAuthMiddleWare(basicAuthCredentialsFrom(config.SigningUsers)...),
-		&middlewares.SignatureVerificationMiddleware{&pathsigner.PathSignerValidator{config.Secret, clock.New()}},
+		&middlewares.SignatureVerificationMiddleware{&pathsigner.PathSignerValidator{config.Secret, clock.New(), config.SigningKeysMap()}},
 		signPackageURLHandler,
 		signDropletURLHandler,
 		signBuildpackURLHandler,
@@ -176,8 +180,8 @@ func basicAuthCredentialsFrom(configCredententials []config.Credential) (basicAu
 	return
 }
 
-func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, resourceType string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
-	localResourceSigner := createLocalResourceSigner(publicEndpoint, port, secret, resourceType)
+func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, signingKeys map[string]string, resourceType string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
+	localResourceSigner := createLocalResourceSigner(publicEndpoint, port, secret, signingKeys, resourceType)
 	switch blobstoreConfig.BlobstoreType {
 	case config.Local:
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
@@ -265,8 +269,8 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 	}
 }
 
-func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
-	localResourceSigner := createLocalResourceSigner(publicEndpoint, port, secret, "buildpack_cache/entries")
+func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, signingKeys map[string]string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
+	localResourceSigner := createLocalResourceSigner(publicEndpoint, port, secret, signingKeys, "buildpack_cache/entries")
 	switch blobstoreConfig.BlobstoreType {
 	case config.Local:
 		log.Log.Infow("Creating local blobstore", "path-prefix", blobstoreConfig.LocalConfig.PathPrefix)
@@ -376,20 +380,20 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 	}
 }
 
-func createLocalResourceSigner(publicEndpoint *url.URL, port int, secret string, resourceType string) bitsgo.ResourceSigner {
+func createLocalResourceSigner(publicEndpoint *url.URL, port int, secret string, signingKeys map[string]string, resourceType string) bitsgo.ResourceSigner {
 	return &local.LocalResourceSigner{
 		DelegateEndpoint:   fmt.Sprintf("%v://%v:%v", publicEndpoint.Scheme, publicEndpoint.Host, port),
-		Signer:             &pathsigner.PathSignerValidator{secret, clock.New()},
+		Signer:             &pathsigner.PathSignerValidator{secret, clock.New(), signingKeys},
 		ResourcePathPrefix: "/" + resourceType + "/",
 	}
 }
 
-func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.NoRedirectBlobstore, *bitsgo.SignResourceHandler) {
+func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, signingKeys map[string]string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.NoRedirectBlobstore, *bitsgo.SignResourceHandler) {
 	signAppStashMatchesHandler := bitsgo.NewSignResourceHandler(
 		nil, // signing for get is not necessary for app_stash
 		&local.LocalResourceSigner{
 			DelegateEndpoint:   fmt.Sprintf("%v://%v:%v", publicEndpoint.Scheme, publicEndpoint.Host, port),
-			Signer:             &pathsigner.PathSignerValidator{secret, clock.New()},
+			Signer:             &pathsigner.PathSignerValidator{secret, clock.New(), signingKeys},
 			ResourcePathPrefix: "/app_stash/matches",
 		})
 

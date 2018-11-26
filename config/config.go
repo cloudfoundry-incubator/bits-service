@@ -28,11 +28,15 @@ type Config struct {
 	PublicEndpoint  string `yaml:"public_endpoint"`
 	PrivateEndpoint string `yaml:"private_endpoint"`
 	Secret          string
-	Port            int
-	SigningUsers    []Credential `yaml:"signing_users"`
-	MaxBodySize     string       `yaml:"max_body_size"`
-	CertFile        string       `yaml:"cert_file"`
-	KeyFile         string       `yaml:"key_file"`
+	SigningKeys     []struct {
+		KeyID  string `yaml:"key_id"`
+		Secret string
+	} `yaml:"signing_keys"`
+	Port         int
+	SigningUsers []Credential `yaml:"signing_users"`
+	MaxBodySize  string       `yaml:"max_body_size"`
+	CertFile     string       `yaml:"cert_file"`
+	KeyFile      string       `yaml:"key_file"`
 
 	CCUpdater *CCUpdaterConfig `yaml:"cc_updater"`
 
@@ -53,6 +57,14 @@ func (config *Config) PrivateEndpointUrl() *url.URL {
 		panic("Unexpected error: " + e.Error())
 	}
 	return u
+}
+
+func (config *Config) SigningKeysMap() map[string]string {
+	result := make(map[string]string, 3)
+	for _, signingKey := range config.SigningKeys {
+		result[signingKey.KeyID] = signingKey.Secret
+	}
+	return result
 }
 
 type BlobstoreConfig struct {
@@ -362,6 +374,10 @@ func LoadConfig(filename string) (config Config, err error) {
 
 	if config.AppStashConfig.MinimumSizeBytes() > config.AppStashConfig.MaximumSizeBytes() {
 		errs = append(errs, "app_stash_config.maximum_size must be greater than app_stash_config.minimum_size")
+	}
+
+	if config.Secret == "" && len(config.SigningKeys) == 0 {
+		errs = append(errs, "Must provide either \"secret\" or \"signing_keys\" with at least one element.")
 	}
 
 	// TODO validate CACertsPaths

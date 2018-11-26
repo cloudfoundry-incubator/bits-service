@@ -6,11 +6,11 @@ import (
 	"os"
 	"testing"
 
+	. "github.com/cloudfoundry-incubator/bits-service/config"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	. "github.com/cloudfoundry-incubator/bits-service/config"
 )
 
 func TestConfig(t *testing.T) {
@@ -166,6 +166,7 @@ cert_file: /some/path
 public_endpoint: https://public.127.0.0.1.nip.io
 private_endpoint: https://internal.127.0.0.1.nip.io
 port: 8000
+secret: geheim
 key_file: /some/path
 cert_file: /some/path
 app_stash_config:
