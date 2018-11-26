@@ -1,4 +1,4 @@
-package local_test
+package middlewares_test
 
 import (
 	"net/http"
@@ -14,10 +14,10 @@ import (
 	"time"
 
 	. "github.com/cloudfoundry-incubator/bits-service/blobstores/local"
+	. "github.com/cloudfoundry-incubator/bits-service/middlewares"
 	"github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo"
+
 	"github.com/onsi/gomega"
-	. "github.com/onsi/gomega"
 )
 
 func TestLocalBlobstore(t *testing.T) {

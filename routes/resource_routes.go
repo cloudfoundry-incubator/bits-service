@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/cloudfoundry-incubator/bits-service"
-	"github.com/cloudfoundry-incubator/bits-service/blobstores/local"
 	"github.com/cloudfoundry-incubator/bits-service/middlewares"
 	"github.com/cloudfoundry-incubator/bits-service/util"
 	"github.com/gorilla/mux"
@@ -12,7 +11,7 @@ import (
 )
 
 func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlewares.BasicAuthMiddleware,
-	signatureVerificationMiddleware *local.SignatureVerificationMiddleware,
+	signatureVerificationMiddleware *middlewares.SignatureVerificationMiddleware,
 	signPackageURLHandler,
 	signDropletURLHandler,
 	signBuildpackURLHandler,

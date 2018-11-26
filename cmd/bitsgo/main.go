@@ -63,7 +63,7 @@ func main() {
 		config.PrivateEndpointUrl().Host,
 		config.PublicEndpointUrl().Host,
 		middlewares.NewBasicAuthMiddleWare(basicAuthCredentialsFrom(config.SigningUsers)...),
-		&local.SignatureVerificationMiddleware{&pathsigner.PathSignerValidator{config.Secret, clock.New()}},
+		&middlewares.SignatureVerificationMiddleware{&pathsigner.PathSignerValidator{config.Secret, clock.New()}},
 		signPackageURLHandler,
 		signDropletURLHandler,
 		signBuildpackURLHandler,
