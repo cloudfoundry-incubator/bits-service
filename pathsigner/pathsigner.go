@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -25,15 +26,22 @@ type PathSignerValidator struct {
 	Secret      string
 	Clock       clock.Clock
 	SigningKeys map[string]string
+	ActiveKeyID string
+}
+
+func Validate(signer *PathSignerValidator) *PathSignerValidator {
+	if signer.Secret == "" && len(signer.SigningKeys) == 0 {
+		panic(errors.New("must provide either \"Secret\" or \"SigningKeys\" with at least one element"))
+	}
+	if len(signer.SigningKeys) > 0 && signer.ActiveKeyID == "" {
+		panic(errors.New("when providing SigningKeys, you must also provide ActiveKeyID"))
+	}
+	return signer
 }
 
 func (signer *PathSignerValidator) Sign(path string, expires time.Time) string {
 	if len(signer.SigningKeys) > 0 {
-		var accessKeyID string
-		for accessKeyID = range signer.SigningKeys {
-			break
-		}
-		return fmt.Sprintf("%s?signature=%x&expires=%v&AccessKeyId=%v", path, signatureWithHMACFor(path, signer.SigningKeys[accessKeyID], expires), expires.Unix(), accessKeyID)
+		return fmt.Sprintf("%s?signature=%x&expires=%v&AccessKeyId=%v", path, signatureWithHMACFor(path, signer.SigningKeys[signer.ActiveKeyID], expires), expires.Unix(), signer.ActiveKeyID)
 	}
 	return fmt.Sprintf("%s?signature=%x&expires=%v", path, signatureWithHMACFor(path, signer.Secret, expires), expires.Unix())
 }

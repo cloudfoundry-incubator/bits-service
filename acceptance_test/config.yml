@@ -26,6 +26,7 @@ signing_keys:
     secret: some_secret
   - key_id: some_other_key_id
     secret: some_other_secret
+active_key_id: some_other_key_id
 port: 4443
 cert_file: cert_file
 key_file: key_file

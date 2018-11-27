@@ -32,6 +32,7 @@ type Config struct {
 		KeyID  string `yaml:"key_id"`
 		Secret string
 	} `yaml:"signing_keys"`
+	ActiveKeyID  string `yaml:"active_key_id"`
 	Port         int
 	HttpEnabled  bool         `yaml:"enable_http"`
 	HttpPort     int          `yaml:"http_port"`
@@ -380,6 +381,10 @@ func LoadConfig(filename string) (config Config, err error) {
 
 	if config.Secret == "" && len(config.SigningKeys) == 0 {
 		errs = append(errs, "Must provide either \"secret\" or \"signing_keys\" with at least one element.")
+	}
+
+	if len(config.SigningKeys) > 0 && config.ActiveKeyID == "" {
+		errs = append(errs, "When providing signing_keys, you must also provide active_key_id.")
 	}
 
 	// TODO validate CACertsPaths

@@ -8,6 +8,7 @@ import (
 	"github.com/benbjohnson/clock"
 	. "github.com/benbjohnson/clock"
 	"github.com/cloudfoundry-incubator/bits-service/httputil"
+	"github.com/cloudfoundry-incubator/bits-service/pathsigner"
 	. "github.com/cloudfoundry-incubator/bits-service/pathsigner"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo"
@@ -33,7 +34,7 @@ var _ = Describe("PathSigner", func() {
 
 	Context("Only secret is used. SigningKeys is empty", func() {
 		BeforeEach(func() {
-			signer = &PathSignerValidator{Secret: "thesecret", Clock: clock}
+			signer = pathsigner.Validate(&PathSignerValidator{Secret: "thesecret", Clock: clock})
 		})
 
 		It("can sign a path and validate its signature", func() {
@@ -66,7 +67,7 @@ var _ = Describe("PathSigner", func() {
 
 	Context("SigningKeys is empty. Secret is irrelevant.", func() {
 		BeforeEach(func() {
-			signer = &PathSignerValidator{
+			signer = pathsigner.Validate(&PathSignerValidator{
 				Secret: "thesecret",
 				Clock:  clock,
 				SigningKeys: map[string]string{
@@ -74,13 +75,14 @@ var _ = Describe("PathSigner", func() {
 					"key2": "secret2",
 					"key3": "secret3",
 				},
-			}
+				ActiveKeyID: "key2",
+			})
 		})
 
 		It("can sign a path and validate its signature", func() {
 			signedPath := signer.Sign("/some/path", time.Unix(200, 0))
 
-			Expect(signedPath).To(ContainSubstring("AccessKeyId="))
+			Expect(signedPath).To(ContainSubstring("AccessKeyId=key2"))
 			Expect(signer.SignatureValid(httputil.MustParse(signedPath))).To(BeTrue())
 		})
 
