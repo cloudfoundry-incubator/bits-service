@@ -93,11 +93,6 @@ func main() {
 		address = "0.0.0.0"
 	}
 
-	log.Log.Infow("Starting server",
-		"ip-address", address,
-		"port", config.Port,
-		"public-endpoint", config.PublicEndpointUrl().Host,
-		"private-endpoint", config.PrivateEndpointUrl().Host)
 	httpServer := &http.Server{
 		Handler: negroni.New(
 			middlewares.NewMetricsMiddleware(metricsService),
@@ -105,41 +100,65 @@ func main() {
 			&middlewares.MultipartMiddleware{},
 			&middlewares.PanicMiddleware{},
 			negroni.Wrap(handler)),
-		Addr:         fmt.Sprintf("%v:%v", address, config.Port),
 		WriteTimeout: 60 * time.Minute,
 		ReadTimeout:  60 * time.Minute,
 		ErrorLog:     log.NewStdLog(logger),
-		// TLSConfig taken from https://blog.cloudflare.com/exposing-go-on-the-internet/
-		TLSConfig: &tls.Config{
-			PreferServerCipherSuites: true,
-			CurvePreferences: []tls.CurveID{
-				tls.CurveP256,
-				tls.X25519,
-			},
-			MinVersion: tls.VersionTLS12,
-			CipherSuites: []uint16{
-				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
-				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+	}
+	if config.HttpEnabled {
+		go listenAndServe(httpServer, address, config)
+	}
+	listenAndServeTLS(httpServer, address, config)
+}
 
-				// Best disabled, as they don't provide Forward Secrecy,
-				// but might be necessary for some clients
-				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+func listenAndServe(httpServer *http.Server, address string, c config.Config) {
+	httpServer.Addr = fmt.Sprintf("%v:%v", address, c.HttpPort)
+	log.Log.Infow("Starting HTTP server",
+		"ip-address", address,
+		"port", c.HttpPort,
+		"public-endpoint", c.PublicEndpointUrl().Host,
+		"private-endpoint", c.PrivateEndpointUrl().Host)
+	e := httpServer.ListenAndServe()
+	log.Log.Fatalw("HTTP server crashed", "error", e)
+}
 
-				// These are in the golang default cipher suite as well (disabled for now)
-				// tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-				// tls.TLS_RSA_WITH_AES_256_CBC_SHA,
-				// tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-				// tls.TLS_RSA_WITH_AES_128_CBC_SHA,
-			},
+func listenAndServeTLS(httpServer *http.Server, address string, c config.Config) {
+	httpServer.Addr = fmt.Sprintf("%v:%v", address, c.Port)
+	// TLSConfig taken from https://blog.cloudflare.com/exposing-go-on-the-internet/
+	httpServer.TLSConfig = &tls.Config{
+		PreferServerCipherSuites: true,
+		CurvePreferences: []tls.CurveID{
+			tls.CurveP256,
+			tls.X25519,
+		},
+		MinVersion: tls.VersionTLS12,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+
+			// Best disabled, as they don't provide Forward Secrecy,
+			// but might be necessary for some clients
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+
+			// These are in the golang default cipher suite as well (disabled for now)
+			// tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+			// tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			// tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+			// tls.TLS_RSA_WITH_AES_128_CBC_SHA,
 		},
 	}
-	e = httpServer.ListenAndServeTLS(config.CertFile, config.KeyFile)
-	log.Log.Fatalw("http server crashed", "error", e)
+
+	log.Log.Infow("Starting HTTPS server",
+		"ip-address", address,
+		"port", c.Port,
+		"public-endpoint", c.PublicEndpointUrl().Host,
+		"private-endpoint", c.PrivateEndpointUrl().Host)
+	e := httpServer.ListenAndServeTLS(c.CertFile, c.KeyFile)
+	log.Log.Fatalw("HTTPS server crashed", "error", e)
 }
 
 func createLoggerWith(logLevel string) *zap.Logger {

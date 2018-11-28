@@ -33,6 +33,8 @@ type Config struct {
 		Secret string
 	} `yaml:"signing_keys"`
 	Port         int
+	HttpEnabled  bool         `yaml:"enable_http"`
+	HttpPort     int          `yaml:"http_port"`
 	SigningUsers []Credential `yaml:"signing_users"`
 	MaxBodySize  string       `yaml:"max_body_size"`
 	CertFile     string       `yaml:"cert_file"`

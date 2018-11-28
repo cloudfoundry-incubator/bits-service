@@ -1,18 +1,14 @@
-package main_test
+package acceptance_test
 
 import (
 	"archive/zip"
 	"bytes"
-	"crypto/tls"
-	"crypto/x509"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"os/exec"
 	"testing"
-	"time"
 
+	acceptance "github.com/cloudfoundry-incubator/bits-service/acceptance_test"
 	"github.com/cloudfoundry-incubator/bits-service/httputil"
 	. "github.com/cloudfoundry-incubator/bits-service/testutil"
 	"github.com/onsi/ginkgo"
@@ -24,7 +20,7 @@ import (
 
 func TestEndToEnd(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "EndToEnd")
+	ginkgo.RunSpecs(t, "EndToEnd HTTPS")
 }
 
 var _ = Describe("Accessing the bits-service", func() {
@@ -35,22 +31,8 @@ var _ = Describe("Accessing the bits-service", func() {
 	)
 
 	BeforeSuite(func() {
-		pathToWebserver, err := gexec.Build("github.com/cloudfoundry-incubator/bits-service/cmd/bitsgo")
-		Ω(err).ShouldNot(HaveOccurred())
-
-		os.Setenv("BITS_LISTEN_ADDR", "127.0.0.1")
-		session, err = gexec.Start(exec.Command(pathToWebserver, "--config", "config.yml"), GinkgoWriter, GinkgoWriter)
-		Ω(err).ShouldNot(HaveOccurred())
-		time.Sleep(200 * time.Millisecond)
-		Expect(session.ExitCode()).To(Equal(-1), "Webserver error message: %s", string(session.Err.Contents()))
-
-		caCert, err := ioutil.ReadFile("ca_cert")
-		Ω(err).ShouldNot(HaveOccurred())
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-		client = &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
-			RootCAs: caCertPool,
-		}}}
+		session = acceptance.StartServer("config.yml")
+		client = acceptance.CreateTLSClient("ca_cert")
 	})
 
 	AfterSuite(func() {

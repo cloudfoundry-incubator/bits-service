@@ -1,0 +1,37 @@
+buildpacks:
+  blobstore_type: local
+  local_config:
+    path_prefix: /tmp/buildpacks
+droplets:
+  blobstore_type: local
+  local_config:
+    path_prefix: /tmp/droplets
+packages:
+  blobstore_type: local
+  local_config:
+    path_prefix: /tmp/packages
+app_stash:
+  blobstore_type: local
+  local_config:
+    path_prefix: /tmp/app_stash
+logging:
+  file: /tmp/bits-service.log
+  syslog: vcap.bits-service
+  level: debug
+public_endpoint: https://public.127.0.0.1.nip.io
+private_endpoint: https://internal.127.0.0.1.nip.io
+secret: geheim
+signing_keys:
+  - key_id: some_key_id
+    secret: some_secret
+  - key_id: some_other_key_id
+    secret: some_other_secret
+port: 4444
+cert_file: ../cert_file
+key_file: ../key_file
+signing_users:
+  - username: the-username
+    password: the-password
+metrics_log_destination: /tmp/bitsgo_metrics.log
+enable_http: true
+http_port: 8888
