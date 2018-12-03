@@ -3,6 +3,8 @@ package pathsigner
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -45,16 +47,21 @@ func (signer *PathSignerValidator) SignatureValid(u *url.URL) bool {
 		return false
 	}
 
+	querySignature, e := hex.DecodeString(u.Query().Get("signature"))
+	if e != nil {
+		return false
+	}
+
 	accessKeyID := u.Query().Get("AccessKeyId")
 	if accessKeyID != "" {
 		if _, exist := signer.SigningKeys[accessKeyID]; !exist {
 			return false
 		}
-		if u.Query().Get("signature") != fmt.Sprintf("%x", signatureWithHMACFor(u.Path, signer.SigningKeys[accessKeyID], time.Unix(expires, 0))) {
+		if subtle.ConstantTimeCompare(querySignature, signatureWithHMACFor(u.Path, signer.SigningKeys[accessKeyID], time.Unix(expires, 0))) == 0 {
 			return false
 		}
 	} else {
-		if u.Query().Get("signature") != fmt.Sprintf("%x", signatureWithHMACFor(u.Path, signer.Secret, time.Unix(expires, 0))) {
+		if subtle.ConstantTimeCompare(querySignature, signatureWithHMACFor(u.Path, signer.Secret, time.Unix(expires, 0))) == 0 {
 			return false
 		}
 	}

@@ -1,6 +1,9 @@
 package middlewares
 
-import "net/http"
+import (
+	"crypto/subtle"
+	"net/http"
+)
 
 type Credential struct {
 	Username, Password string
@@ -49,7 +52,8 @@ func (middleware *BasicAuthMiddleware) ServeHTTP(responseWriter http.ResponseWri
 
 func (middleware *BasicAuthMiddleware) authorized(username, password string) bool {
 	for _, credential := range middleware.credentials {
-		if username == credential.Username && password == credential.Password {
+		if subtle.ConstantTimeCompare([]byte(username), []byte(credential.Username)) == 1 &&
+			subtle.ConstantTimeCompare([]byte(password), []byte(credential.Password)) == 1 {
 			return true
 		}
 	}
