@@ -70,5 +70,6 @@ func (signer *PathSignerValidator) SignatureValid(u *url.URL) bool {
 
 func signatureWithHMACFor(path string, secret string, expires time.Time) []byte {
 	hash := hmac.New(sha256.New, []byte(secret))
-	return hash.Sum([]byte(fmt.Sprintf("%v%v %v", expires.Unix(), path, secret)))
+	hash.Write([]byte(fmt.Sprintf("%v%v %v", expires.Unix(), path, secret)))
+	return hash.Sum(nil)
 }
