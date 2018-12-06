@@ -15,30 +15,30 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
+var (
+	session *gexec.Session
+	client  *http.Client
+)
+
 func TestEndToEnd(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "EndToEnd HTTP")
-}
 
-var _ = Describe("Accessing the bits-service through HTTP", func() {
-
-	var (
-		session *gexec.Session
-		client  *http.Client
-	)
-
-	BeforeEach(func() {
+	BeforeSuite(func() {
 		session = acceptance.StartServer("config.yml")
 		client = &http.Client{}
 	})
 
-	AfterEach(func() {
+	AfterSuite(func() {
 		if session != nil {
 			session.Kill()
 		}
 		gexec.CleanupBuildArtifacts()
 	})
 
+	ginkgo.RunSpecs(t, "EndToEnd HTTP")
+}
+
+var _ = Describe("Accessing the bits-service through HTTP", func() {
 	Context("through private host", func() {
 		Context("HTTP", func() {
 

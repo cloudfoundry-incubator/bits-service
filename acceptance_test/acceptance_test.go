@@ -18,17 +18,13 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
+var (
+	session *gexec.Session
+	client  *http.Client
+)
+
 func TestEndToEnd(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "EndToEnd HTTPS")
-}
-
-var _ = Describe("Accessing the bits-service", func() {
-
-	var (
-		session *gexec.Session
-		client  *http.Client
-	)
 
 	BeforeSuite(func() {
 		session = acceptance.StartServer("config.yml")
@@ -42,6 +38,10 @@ var _ = Describe("Accessing the bits-service", func() {
 		gexec.CleanupBuildArtifacts()
 	})
 
+	ginkgo.RunSpecs(t, "EndToEnd HTTPS")
+}
+
+var _ = Describe("Accessing the bits-service", func() {
 	Context("through private host", func() {
 		It("return http.StatusNotFound for a package that does not exist", func() {
 			Expect(client.Get("https://internal.127.0.0.1.nip.io:4443/packages/notexistent")).
