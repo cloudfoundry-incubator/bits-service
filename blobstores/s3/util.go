@@ -13,11 +13,12 @@ import (
 )
 
 var loglevelTypes = map[string]aws.LogLevelType{
-	"LogDebug":                   aws.LogDebug,
-	"LogDebugWithSigning":        aws.LogDebugWithSigning,
-	"LogDebugWithHTTPBody":       aws.LogDebugWithHTTPBody,
-	"LogDebugWithRequestRetries": aws.LogDebugWithRequestRetries,
-	"LogDebugWithRequestErrors":  aws.LogDebugWithRequestErrors,
+	"LogDebug":                    aws.LogDebug,
+	"LogDebugWithSigning":         aws.LogDebugWithSigning,
+	"LogDebugWithHTTPBody":        aws.LogDebugWithHTTPBody,
+	"LogDebugWithRequestRetries":  aws.LogDebugWithRequestRetries,
+	"LogDebugWithRequestErrors":   aws.LogDebugWithRequestErrors,
+	"LogDebugWithEventStreamBody": aws.LogDebugWithEventStreamBody,
 }
 
 func newS3Client(region string,
