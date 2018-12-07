@@ -20,6 +20,8 @@ type Config struct {
 	Packages   BlobstoreConfig
 	AppStash   BlobstoreConfig `yaml:"app_stash"`
 
+	RootFS BlobstoreConfig `yaml:"rootfs"`
+
 	// BuildpackCache is a Pseudo blobstore, because in reality it is using the Droplets blobstore.
 	// However, we want to be able to control its max_body_size.
 	BuildpackCache BlobstoreConfig `yaml:"buildpack_cache"`
@@ -44,6 +46,8 @@ type Config struct {
 	CCUpdater *CCUpdaterConfig `yaml:"cc_updater"`
 
 	AppStashConfig AppStashConfig `yaml:"app_stash_config"`
+
+	EnableRegistry bool `yaml:"enable_registry"`
 }
 
 func (config *Config) PublicEndpointUrl() *url.URL {
@@ -277,6 +281,16 @@ func LoadConfig(filename string) (config Config, err error) {
 	setSignatureVersionDefault(&config.Buildpacks)
 	setSignatureVersionDefault(&config.Droplets)
 	setSignatureVersionDefault(&config.Packages)
+
+	if config.EnableRegistry {
+		// TODO: overriding this with local blobstore for now, until we have a proper mechanism for rootfs
+		if config.RootFS.LocalConfig == nil {
+			config.RootFS = BlobstoreConfig{
+				BlobstoreType: Local,
+				LocalConfig:   &LocalBlobstoreConfig{PathPrefix: "/"},
+			}
+		}
+	}
 
 	var errs []string
 

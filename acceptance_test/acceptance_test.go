@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 
 	acceptance "github.com/cloudfoundry-incubator/bits-service/acceptance_test"
@@ -27,6 +28,12 @@ func TestEndToEnd(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
 	BeforeSuite(func() {
+		err := os.MkdirAll("/tmp/eirinifs/assets", 0755)
+		Ω(err).ShouldNot(HaveOccurred())
+		file, err := os.Create("/tmp/eirinifs/assets/eirinifs.tar")
+		Ω(err).ShouldNot(HaveOccurred())
+		file.Close()
+
 		session = acceptance.StartServer("config.yml")
 		client = acceptance.CreateTLSClient("ca_cert")
 	})
@@ -36,6 +43,7 @@ func TestEndToEnd(t *testing.T) {
 			session.Kill()
 		}
 		gexec.CleanupBuildArtifacts()
+		os.Remove("/tmp/eirinifs/assets/eirinifs.tar")
 	})
 
 	ginkgo.RunSpecs(t, "EndToEnd HTTPS")

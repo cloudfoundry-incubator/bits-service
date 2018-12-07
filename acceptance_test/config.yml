@@ -34,3 +34,8 @@ signing_users:
   - username: the-username
     password: the-password
 metrics_log_destination: /tmp/bitsgo_metrics.log
+enable_registry: true
+rootfs:
+  blobstore_type: local
+  local_config:
+    path_prefix: /tmp/eirinifs

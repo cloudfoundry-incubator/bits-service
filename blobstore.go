@@ -24,6 +24,11 @@ func NewNotFoundErrorWithMessage(message string) *NotFoundError {
 	return &NotFoundError{error: fmt.Errorf(message)}
 }
 
+func IsNotFoundError(e error) bool {
+	_, notFound := e.(*NotFoundError)
+	return notFound
+}
+
 type NoSpaceLeftError struct {
 	error
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/middlewares"
+	registry "github.com/cloudfoundry-incubator/bits-service/oci_registry"
 	"github.com/cloudfoundry-incubator/bits-service/util"
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
@@ -18,7 +19,7 @@ func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlew
 	signBuildpackCacheURLHandler,
 	signAppStashURLHandler *bitsgo.SignResourceHandler,
 	appstashHandler *bitsgo.AppStashHandler,
-	packageHandler, buildpackHandler, dropletHandler, buildpackCacheHandler *bitsgo.ResourceHandler) http.Handler {
+	packageHandler, buildpackHandler, dropletHandler, buildpackCacheHandler *bitsgo.ResourceHandler) *mux.Router {
 
 	rootRouter := mux.NewRouter()
 
@@ -135,4 +136,15 @@ func delegateWithQueryParamsExtractedTo(delegate func(http.ResponseWriter, *http
 		mux.Vars(request)["verb"] = request.URL.Query().Get("verb")
 		delegate(responseWriter, request, mux.Vars(request))
 	}
+}
+
+func AddImageHandler(rootRouter *mux.Router, handler *registry.ImageHandler) {
+	ociRouter := mux.NewRouter()
+	rootRouter.PathPrefix("/v2").Handler(ociRouter)
+
+	ociRouter.Path("/v2").Methods(http.MethodGet).HandlerFunc(handler.ServeAPIVersion)
+	ociRouter.Path("/v2/").Methods(http.MethodGet).HandlerFunc(handler.ServeAPIVersion)
+	ociRouter.Path("/v2/{name:[a-z0-9/\\.\\-_]+}/manifests/{tag}").Methods(http.MethodGet).HandlerFunc(handler.ServeManifest)
+	ociRouter.Path("/v2/{space}/{name}/manifests/{tag}").Methods(http.MethodGet).HandlerFunc(handler.ServeManifest)
+	ociRouter.Path("/v2/{name:[a-z0-9/\\.\\-_]+}/blobs/{digest}").Methods(http.MethodGet).HandlerFunc(handler.ServeLayer)
 }
