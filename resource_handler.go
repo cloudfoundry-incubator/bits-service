@@ -210,6 +210,10 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 		}, "")
 	} else {
 		e = handler.uploadResource(tempFilename, request, params["identifier"], false, sha1, sha256)
+		if IsNotFoundError(e) {
+			writeResponseBasedOn("", nil, responseWriter, request, http.StatusConflict, nil, nil, "")
+			return
+		}
 		writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{
 			Guid:      params["identifier"],
 			State:     "READY",
@@ -299,6 +303,9 @@ func (handler *ResourceHandler) uploadResource(tempFilename string, request *htt
 		return handle(e, async, request)
 	}
 	e = handler.updater.NotifyUploadSucceeded(identifier, hex.EncodeToString(sha1Sum), hex.EncodeToString(sha256Sum))
+	if IsNotFoundError(e) {
+		return e
+	}
 	if e != nil {
 		return handle(errors.Wrapf(e, "Could not notify Cloud Controller about successful upload"), async, request)
 	}

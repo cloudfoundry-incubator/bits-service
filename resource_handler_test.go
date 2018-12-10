@@ -228,6 +228,20 @@ var _ = Describe("ResourceHandler", func() {
 					updater.VerifyWasCalled(Never()).NotifyUploadFailed(AnyString(), anyError())
 					blobstore.VerifyWasCalledOnce().Put(EqString("someguid"), anyReadSeeker())
 				})
+
+				Context("error is NotFoundError", func() {
+					It("has uploaded the resource, returns StatusConflict", func() {
+						When(updater.NotifyUploadSucceeded(AnyString(), AnyString(), AnyString())).ThenReturn(bitsgo.NewNotFoundError())
+
+						handler.AddOrReplace(responseWriter,
+							newTestRequest("test-resource", "some-filename", CreateZip(map[string]string{"file1": "content1"}).String()),
+							map[string]string{"identifier": "someguid"})
+
+						Expect(responseWriter.Code).To(Equal(http.StatusConflict))
+						updater.VerifyWasCalled(Never()).NotifyUploadFailed(AnyString(), anyError())
+						blobstore.VerifyWasCalledOnce().Put(EqString("someguid"), anyReadSeeker())
+					})
+				})
 			})
 
 			Context("NotifyUploadFailed returns an error", func() {
