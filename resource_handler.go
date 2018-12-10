@@ -439,19 +439,13 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 		return
 	case error:
 		panic(e)
-		return
 	}
 	if redirectLocation != "" {
 		redirect(responseWriter, redirectLocation)
 		return
 	}
 	if body != nil {
-		defer body.Close()
-		var buffer bytes.Buffer
-		sha := sha1.New()
-		_, e := io.Copy(io.MultiWriter(&buffer, sha), body)
-		util.PanicOnError(e)
-		eTag := hex.EncodeToString(sha.Sum(nil))
+		buffer, eTag := bufferAndEtagFrom(body)
 		logger.From(request).Debugw("Cache check", "if-none-modify", ifNoneModify, "etag", eTag)
 		responseWriter.Header().Set("ETag", eTag)
 		if ifNoneModify == eTag {
@@ -459,7 +453,7 @@ func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.
 			return
 		}
 		responseWriter.WriteHeader(statusCode)
-		io.Copy(responseWriter, &buffer)
+		io.Copy(responseWriter, buffer)
 		return
 	}
 	if jsonBody != nil {
@@ -482,4 +476,15 @@ func badRequest(responseWriter http.ResponseWriter, request *http.Request, messa
 	logger.From(request).Infow("Bad request", "body", responseBody)
 	responseWriter.WriteHeader(http.StatusBadRequest)
 	util.FprintDescriptionAndCodeAsJSON(responseWriter, 290003, message, args...)
+}
+
+func bufferAndEtagFrom(body io.ReadCloser) (buffer *bytes.Buffer, eTag string) {
+	defer body.Close()
+	var buf bytes.Buffer
+	sha := sha1.New()
+	_, e := io.Copy(io.MultiWriter(&buf, sha), body)
+	util.PanicOnError(e)
+	eTag = hex.EncodeToString(sha.Sum(nil))
+	buffer = &buf
+	return
 }
