@@ -10,6 +10,7 @@ import (
 
 	"cloud.google.com/go/storage"
 
+	"github.com/cenkalti/backoff"
 	"github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/validate"
 	"github.com/cloudfoundry-incubator/bits-service/config"
@@ -58,12 +59,22 @@ func NewBlobstore(config config.GCPBlobstoreConfig) *Blobstore {
 	}
 }
 
+// The Golang GCP API is limited in the way it does retries:
+// By default, it retries forever, with no safe-guard against "hanging" requests. By decorating
+// the context passed to all functions with a timeout, it's now safe-guarded, but there is now
+// no way to cut off connections and retry. It's because the timeout decorator now causes the retry
+// mechanism to break out of the retry loop. The retry mechanism was not written with "hanging"
+// requests in mind, that simply need to be cut off and retried.
+// Therefore, we must add the retry here in all functions ontop of the built-in retry.
+
 func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), blobstore.retryTimeout)
 	defer cancel()
 
-	_, e := blobstore.client.Bucket(blobstore.bucket).Object(path).NewReader(ctx)
-
+	e := WithRetries(4, func() error {
+		_, e := blobstore.client.Bucket(blobstore.bucket).Object(path).Attrs(ctx)
+		return TimeoutOrPermanent(e)
+	})
 	if e != nil {
 		e = blobstore.handleError(e, "Failed to check for %v/%v", blobstore.bucket, path)
 		if _, ok := e.(*bitsgo.NotFoundError); ok {
@@ -124,7 +135,10 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), blobstore.retryTimeout)
 	defer cancel()
 
-	_, e := blobstore.client.Bucket(blobstore.bucket).Object(dest).CopierFrom(blobstore.client.Bucket(blobstore.bucket).Object(src)).Run(ctx)
+	e := WithRetries(4, func() error {
+		_, e := blobstore.client.Bucket(blobstore.bucket).Object(dest).CopierFrom(blobstore.client.Bucket(blobstore.bucket).Object(src)).Run(ctx)
+		return TimeoutOrPermanent(e)
+	})
 	if e != nil {
 		return blobstore.handleError(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.bucket)
 	}
@@ -135,7 +149,10 @@ func (blobstore *Blobstore) Delete(path string) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), blobstore.retryTimeout)
 	defer cancel()
 
-	e := blobstore.client.Bucket(blobstore.bucket).Object(path).Delete(ctx)
+	e := WithRetries(4, func() error {
+		e := blobstore.client.Bucket(blobstore.bucket).Object(path).Delete(ctx)
+		return TimeoutOrPermanent(e)
+	})
 	if e != nil {
 		return blobstore.handleError(e, "Path %v", path)
 	}
@@ -181,6 +198,17 @@ func (blobstore *Blobstore) Sign(resource string, method string, expirationTime 
 	}
 	logger.Log.Debugw("Signed URL", "verb", method, "signed-url", signedURL)
 	return
+}
+
+func WithRetries(numRetries uint64, f func() error) error {
+	return backoff.Retry(f, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), numRetries))
+}
+
+func TimeoutOrPermanent(e error) error {
+	if timeoutError, isTimeoutError := e.(interface{ Timeout() bool }); isTimeoutError && timeoutError.Timeout() {
+		return e
+	}
+	return backoff.Permanent(e)
 }
 
 func (blobstore *Blobstore) handleError(e error, context string, args ...interface{}) error {
