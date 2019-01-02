@@ -41,6 +41,7 @@ func NewBlobstore(config config.OpenstackBlobstoreConfig) *Blobstore {
 		Region:       config.Region,
 		Internal:     config.Internal,
 		EndpointType: swift.EndpointType(config.EndpointType),
+		Tenant:       config.Tenant,
 	}
 
 	e := swiftConn.Authenticate()
