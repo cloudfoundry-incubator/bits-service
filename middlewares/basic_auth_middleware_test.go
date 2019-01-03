@@ -4,22 +4,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"testing"
 
 	"github.com/cloudfoundry-incubator/bits-service/middlewares"
 	. "github.com/cloudfoundry-incubator/bits-service/testutil"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
-	"github.com/petergtz/pegomock"
 	. "github.com/petergtz/pegomock"
 	"github.com/urfave/negroni"
 )
-
-func TestBasicAuthMiddleWare(t *testing.T) {
-	gomega.RegisterFailHandler(ginkgo.Fail)
-	pegomock.RegisterMockFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "Basic Auth Middleware")
-}
 
 var _ = Describe("BasicAuthMiddle", func() {
 

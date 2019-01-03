@@ -10,11 +10,13 @@ import (
 	"github.com/cloudfoundry-incubator/bits-service/middlewares"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
+	"github.com/petergtz/pegomock"
 )
 
 func TestMiddleWares(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "Basic Auth Middleware")
+	pegomock.RegisterMockFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "Middleware")
 }
 
 var _ = Describe("BodySizeLimitMiddleWare", func() {
