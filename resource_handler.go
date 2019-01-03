@@ -66,7 +66,7 @@ type responseBody struct {
 	Sha256    string    `json:"sha256"`
 }
 
-func NewResourceHandler(blobstore Blobstore, appStashBlobstore Blobstore, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64) *ResourceHandler {
+func NewResourceHandler(blobstore Blobstore, appStashBlobstore Blobstore, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64, shouldProxyGetRequests bool) *ResourceHandler {
 	return NewResourceHandlerWithUpdater(
 		blobstore,
 		appStashBlobstore,
@@ -74,10 +74,11 @@ func NewResourceHandler(blobstore Blobstore, appStashBlobstore Blobstore, resour
 		resourceType,
 		metricsService,
 		maxBodySizeLimit,
+		shouldProxyGetRequests,
 	)
 }
 
-func NewResourceHandlerWithUpdater(blobstore Blobstore, appStashBlobstore Blobstore, updater Updater, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64) *ResourceHandler {
+func NewResourceHandlerWithUpdater(blobstore Blobstore, appStashBlobstore Blobstore, updater Updater, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64, shouldProxyGetRequests bool) *ResourceHandler {
 	return NewResourceHandlerWithUpdaterAndSizeThresholds(
 		blobstore,
 		appStashBlobstore,
@@ -86,7 +87,7 @@ func NewResourceHandlerWithUpdater(blobstore Blobstore, appStashBlobstore Blobst
 		metricsService,
 		maxBodySizeLimit,
 		0, math.MaxUint64,
-		false,
+		shouldProxyGetRequests,
 	)
 }
 

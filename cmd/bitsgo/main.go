@@ -91,9 +91,9 @@ func main() {
 			config.AppStashConfig.MaximumSizeBytes(),
 			config.ShouldProxyGetRequests,
 		),
-		bitsgo.NewResourceHandler(buildpackBlobstore, appStashBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes()),
-		bitsgo.NewResourceHandler(dropletBlobstore, appStashBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes()),
-		bitsgo.NewResourceHandler(buildpackCacheBlobstore, appStashBlobstore, "buildpack_cache", metricsService, config.BuildpackCache.MaxBodySizeBytes()))
+		bitsgo.NewResourceHandler(buildpackBlobstore, appStashBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes(), config.ShouldProxyGetRequests),
+		bitsgo.NewResourceHandler(dropletBlobstore, appStashBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes(), config.ShouldProxyGetRequests),
+		bitsgo.NewResourceHandler(buildpackCacheBlobstore, appStashBlobstore, "buildpack_cache", metricsService, config.BuildpackCache.MaxBodySizeBytes(), config.ShouldProxyGetRequests))
 
 	if config.EnableRegistry {
 		routes.AddImageHandler(handler, &oci_registry.ImageHandler{

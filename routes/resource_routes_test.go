@@ -144,7 +144,7 @@ var _ = Describe("routes", func() {
 		BeforeEach(func() {
 			SetUpPackageRoutes(
 				router,
-				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), appstashBlobstore, "package", statsd.NewMetricsService(), 0))
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), appstashBlobstore, "package", statsd.NewMetricsService(), 0, false))
 		})
 		ItSupportsMethodsGetPutDeleteFor("/packages/theguid", "package", "th/eg/theguid")
 	})
@@ -153,7 +153,7 @@ var _ = Describe("routes", func() {
 		BeforeEach(func() {
 			SetUpDropletRoutes(
 				router,
-				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), appstashBlobstore, "droplet", statsd.NewMetricsService(), 0))
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), appstashBlobstore, "droplet", statsd.NewMetricsService(), 0, false))
 		})
 
 		Context("With digest in URL (/droplets/{guid}/{checksum})", func() {
@@ -188,7 +188,7 @@ var _ = Describe("routes", func() {
 		BeforeEach(func() {
 			SetUpBuildpackRoutes(
 				router,
-				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), appstashBlobstore, "buildpack", statsd.NewMetricsService(), 0))
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(blobstore), appstashBlobstore, "buildpack", statsd.NewMetricsService(), 0, false))
 		})
 		ItSupportsMethodsGetPutDeleteFor("/buildpacks/theguid", "buildpack", "th/eg/theguid")
 	})
@@ -197,7 +197,7 @@ var _ = Describe("routes", func() {
 		BeforeEach(func() {
 			SetUpBuildpackCacheRoutes(
 				router,
-				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(decorator.ForBlobstoreWithPathPrefixing(blobstore, "buildpack_cache/")), appstashBlobstore, "buildpack_cache", statsd.NewMetricsService(), 0))
+				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(decorator.ForBlobstoreWithPathPrefixing(blobstore, "buildpack_cache/")), appstashBlobstore, "buildpack_cache", statsd.NewMetricsService(), 0, false))
 		})
 		Context("Method GET", func() {
 			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
