@@ -58,17 +58,17 @@ func (m *ImageHandler) ServeLayer(w http.ResponseWriter, r *http.Request) {
 }
 
 type BitsImageManager struct {
-	rootFSBlobstore   bitsgo.NoRedirectBlobstore
-	dropletBlobstore  bitsgo.NoRedirectBlobstore
-	digestLookupStore bitsgo.NoRedirectBlobstore
+	rootFSBlobstore   bitsgo.Blobstore
+	dropletBlobstore  bitsgo.Blobstore
+	digestLookupStore bitsgo.Blobstore
 	rootfsSize        int64
 	rootfsDigest      string
 }
 
 func NewBitsImageManager(
-	rootFSBlobstore bitsgo.NoRedirectBlobstore,
-	dropletBlobstore bitsgo.NoRedirectBlobstore,
-	digestLookupStore bitsgo.NoRedirectBlobstore) *BitsImageManager {
+	rootFSBlobstore bitsgo.Blobstore,
+	dropletBlobstore bitsgo.Blobstore,
+	digestLookupStore bitsgo.Blobstore) *BitsImageManager {
 
 	rootfsReader, e := rootFSBlobstore.Get("assets/eirinifs.tar")
 	if bitsgo.IsNotFoundError(e) {

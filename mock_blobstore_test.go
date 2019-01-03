@@ -19,7 +19,7 @@ func NewMockBlobstore() *MockBlobstore {
 
 func (mock *MockBlobstore) Exists(path string) (bool, error) {
 	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockMockBlobstore().")
+		panic("mock must not be nil. Use myMock := NewMockBlobstore().")
 	}
 	params := []pegomock.Param{path}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("Exists", params, []reflect.Type{reflect.TypeOf((*bool)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
@@ -38,7 +38,7 @@ func (mock *MockBlobstore) Exists(path string) (bool, error) {
 
 func (mock *MockBlobstore) HeadOrRedirectAsGet(path string) (string, error) {
 	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockMockBlobstore().")
+		panic("mock must not be nil. Use myMock := NewMockBlobstore().")
 	}
 	params := []pegomock.Param{path}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("HeadOrRedirectAsGet", params, []reflect.Type{reflect.TypeOf((*string)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
@@ -57,7 +57,7 @@ func (mock *MockBlobstore) HeadOrRedirectAsGet(path string) (string, error) {
 
 func (mock *MockBlobstore) GetOrRedirect(path string) (io.ReadCloser, string, error) {
 	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockMockBlobstore().")
+		panic("mock must not be nil. Use myMock := NewMockBlobstore().")
 	}
 	params := []pegomock.Param{path}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("GetOrRedirect", params, []reflect.Type{reflect.TypeOf((*io.ReadCloser)(nil)).Elem(), reflect.TypeOf((*string)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
@@ -80,7 +80,7 @@ func (mock *MockBlobstore) GetOrRedirect(path string) (io.ReadCloser, string, er
 
 func (mock *MockBlobstore) Get(path string) (io.ReadCloser, error) {
 	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockMockBlobstore().")
+		panic("mock must not be nil. Use myMock := NewMockBlobstore().")
 	}
 	params := []pegomock.Param{path}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("Get", params, []reflect.Type{reflect.TypeOf((*io.ReadCloser)(nil)).Elem(), reflect.TypeOf((*error)(nil)).Elem()})
@@ -99,7 +99,7 @@ func (mock *MockBlobstore) Get(path string) (io.ReadCloser, error) {
 
 func (mock *MockBlobstore) Put(path string, src io.ReadSeeker) error {
 	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockMockBlobstore().")
+		panic("mock must not be nil. Use myMock := NewMockBlobstore().")
 	}
 	params := []pegomock.Param{path, src}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("Put", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
@@ -114,7 +114,7 @@ func (mock *MockBlobstore) Put(path string, src io.ReadSeeker) error {
 
 func (mock *MockBlobstore) Copy(src string, dest string) error {
 	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockMockBlobstore().")
+		panic("mock must not be nil. Use myMock := NewMockBlobstore().")
 	}
 	params := []pegomock.Param{src, dest}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("Copy", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
@@ -129,7 +129,7 @@ func (mock *MockBlobstore) Copy(src string, dest string) error {
 
 func (mock *MockBlobstore) Delete(path string) error {
 	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockMockBlobstore().")
+		panic("mock must not be nil. Use myMock := NewMockBlobstore().")
 	}
 	params := []pegomock.Param{path}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("Delete", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})
@@ -144,7 +144,7 @@ func (mock *MockBlobstore) Delete(path string) error {
 
 func (mock *MockBlobstore) DeleteDir(prefix string) error {
 	if mock == nil {
-		panic("mock must not be nil. Use myMock := NewMockMockBlobstore().")
+		panic("mock must not be nil. Use myMock := NewMockBlobstore().")
 	}
 	params := []pegomock.Param{prefix}
 	result := pegomock.GetGenericMockFrom(mock).Invoke("DeleteDir", params, []reflect.Type{reflect.TypeOf((*error)(nil)).Elem()})

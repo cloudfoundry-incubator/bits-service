@@ -26,7 +26,7 @@ import (
 var _ = Describe("ResourceHandler", func() {
 	var (
 		blobstore         *MockBlobstore
-		appStashBlobstore *MockNoRedirectBlobstore
+		appStashBlobstore *MockBlobstore
 		handler           *bitsgo.ResourceHandler
 		updater           *MockUpdater
 		responseWriter    *httptest.ResponseRecorder
@@ -34,7 +34,7 @@ var _ = Describe("ResourceHandler", func() {
 
 	BeforeEach(func() {
 		blobstore = NewMockBlobstore()
-		appStashBlobstore = NewMockNoRedirectBlobstore()
+		appStashBlobstore = NewMockBlobstore()
 		updater = NewMockUpdater()
 		handler = NewResourceHandlerWithUpdater(blobstore, appStashBlobstore, updater, "test-resource", NewMockMetricsService(), 0)
 		responseWriter = httptest.NewRecorder()

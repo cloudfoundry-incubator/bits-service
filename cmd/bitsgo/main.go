@@ -89,6 +89,7 @@ func main() {
 			config.Packages.MaxBodySizeBytes(),
 			config.AppStashConfig.MinimumSizeBytes(),
 			config.AppStashConfig.MaximumSizeBytes(),
+			config.ShouldProxyGetRequests,
 		),
 		bitsgo.NewResourceHandler(buildpackBlobstore, appStashBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes()),
 		bitsgo.NewResourceHandler(dropletBlobstore, appStashBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes()),
@@ -98,16 +99,12 @@ func main() {
 		routes.AddImageHandler(handler, &oci_registry.ImageHandler{
 			ImageManager: oci_registry.NewBitsImageManager(
 				createRootFSBlobstore(config.RootFS),
-				// TODO: This type assertion is a quick hack to get a NoRedirectBlobstore interface.
-				// Of course, the clean solution would be to have createBlobstoreAndSignURLHandler
-				// return a "combined" Blobstore/NoRedirectBlobstore interface.
-				// But this needs more thought first.
-				dropletBlobstore.(bitsgo.NoRedirectBlobstore),
+				dropletBlobstore,
 				// TODO: We should use a differently decorated blobstore for digestLookupStore:
 				// We want one with a non-partitioned prefix, so real droplets and
 				// oci-droplet layers (i.e. droplets with adjusted path prefixes)
 				// are easily distinguishable from their paths in the blobstore.
-				dropletBlobstore.(bitsgo.NoRedirectBlobstore),
+				dropletBlobstore,
 			),
 		})
 	}
@@ -436,7 +433,7 @@ func createLocalResourceSigner(publicEndpoint *url.URL, port int, secret string,
 	}
 }
 
-func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, signingKeys map[string]string, activeKeyID string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.NoRedirectBlobstore, *bitsgo.SignResourceHandler) {
+func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpoint *url.URL, port int, secret string, signingKeys map[string]string, activeKeyID string, logger *zap.SugaredLogger, metricsService bitsgo.MetricsService) (bitsgo.Blobstore, *bitsgo.SignResourceHandler) {
 	signAppStashMatchesHandler := bitsgo.NewSignResourceHandler(
 		nil, // signing for get is not necessary for app_stash
 		&local.LocalResourceSigner{
@@ -529,7 +526,7 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpo
 	}
 }
 
-func createRootFSBlobstore(blobstoreConfig config.BlobstoreConfig) bitsgo.NoRedirectBlobstore {
+func createRootFSBlobstore(blobstoreConfig config.BlobstoreConfig) bitsgo.Blobstore {
 	if blobstoreConfig.BlobstoreType != config.Local {
 		log.Log.Fatalw("RootFS blobstore currently only allows local blobstores", "blobstore-type", blobstoreConfig.BlobstoreType)
 	}

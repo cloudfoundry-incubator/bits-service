@@ -20,14 +20,14 @@ import (
 )
 
 type AppStashHandler struct {
-	blobstore        NoRedirectBlobstore
+	blobstore        Blobstore
 	maxBodySizeLimit uint64
 	minimumSize      uint64
 	maximumSize      uint64
 	metricsService   MetricsService
 }
 
-func NewAppStashHandlerWithSizeThresholds(blobstore NoRedirectBlobstore, maxBodySizeLimit uint64, minimumSize uint64, maximumSize uint64, metricsService MetricsService) *AppStashHandler {
+func NewAppStashHandlerWithSizeThresholds(blobstore Blobstore, maxBodySizeLimit uint64, minimumSize uint64, maximumSize uint64, metricsService MetricsService) *AppStashHandler {
 	return &AppStashHandler{
 		blobstore:        blobstore,
 		maxBodySizeLimit: maxBodySizeLimit,
@@ -124,7 +124,7 @@ func (handler *AppStashHandler) PostEntries(responseWriter http.ResponseWriter, 
 	responseWriter.Write(receipt)
 }
 
-func copyTo(blobstore NoRedirectBlobstore, zipFileEntry *zip.File) (sha string, err error) {
+func copyTo(blobstore Blobstore, zipFileEntry *zip.File) (sha string, err error) {
 	unzippedReader, e := zipFileEntry.Open()
 	if e != nil {
 		return "", errors.WithStack(e)

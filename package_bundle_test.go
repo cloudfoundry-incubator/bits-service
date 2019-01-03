@@ -102,10 +102,10 @@ var _ = Describe("CreateTempZipFileFrom", func() {
 	})
 
 	Context("One error from blobstore", func() {
-		var blobstore *MockNoRedirectBlobstore
+		var blobstore *MockBlobstore
 
 		BeforeEach(func() {
-			blobstore = NewMockNoRedirectBlobstore()
+			blobstore = NewMockBlobstore()
 		})
 
 		Context("Error in Blobstore.Get", func() {

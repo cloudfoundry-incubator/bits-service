@@ -8,11 +8,11 @@ import (
 )
 
 type PrefixingPathBlobstoreDecorator struct {
-	delegate Blobstore
+	delegate bitsgo.Blobstore
 	prefix   string
 }
 
-func ForBlobstoreWithPathPrefixing(delegate Blobstore, prefix string) *PrefixingPathBlobstoreDecorator {
+func ForBlobstoreWithPathPrefixing(delegate bitsgo.Blobstore, prefix string) *PrefixingPathBlobstoreDecorator {
 	return &PrefixingPathBlobstoreDecorator{delegate, prefix}
 }
 

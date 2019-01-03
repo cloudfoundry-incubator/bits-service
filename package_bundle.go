@@ -20,7 +20,7 @@ import (
 func CreateTempZipFileFrom(bundlesPayload []Fingerprint,
 	zipReader *zip.Reader,
 	minimumSize, maximumSize uint64,
-	blobstore NoRedirectBlobstore,
+	blobstore Blobstore,
 	metricsService MetricsService,
 	logger *zap.SugaredLogger,
 ) (tempFilename string, err error) {

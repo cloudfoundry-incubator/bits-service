@@ -8,12 +8,12 @@ import (
 )
 
 type MetricsEmittingBlobstoreDecorator struct {
-	delegate       Blobstore
+	delegate       bitsgo.Blobstore
 	metricsService bitsgo.MetricsService
 	resourceType   string
 }
 
-func ForBlobstoreWithMetricsEmitter(delegate Blobstore, metricsService bitsgo.MetricsService, resourceType string) *MetricsEmittingBlobstoreDecorator {
+func ForBlobstoreWithMetricsEmitter(delegate bitsgo.Blobstore, metricsService bitsgo.MetricsService, resourceType string) *MetricsEmittingBlobstoreDecorator {
 	return &MetricsEmittingBlobstoreDecorator{delegate, metricsService, resourceType}
 }
 

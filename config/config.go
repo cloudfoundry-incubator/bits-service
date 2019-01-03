@@ -48,6 +48,8 @@ type Config struct {
 	AppStashConfig AppStashConfig `yaml:"app_stash_config"`
 
 	EnableRegistry bool `yaml:"enable_registry"`
+
+	ShouldProxyGetRequests bool `yaml:"proxy_get_requests"`
 }
 
 func (config *Config) PublicEndpointUrl() *url.URL {

@@ -46,14 +46,15 @@ func (u *NullUpdater) NotifyUploadSucceeded(guid string, sha1 string, sha2 strin
 func (u *NullUpdater) NotifyUploadFailed(guid string, e error) error                     { return nil }
 
 type ResourceHandler struct {
-	blobstore         Blobstore
-	appStashBlobstore NoRedirectBlobstore
-	resourceType      string
-	metricsService    MetricsService
-	maxBodySizeLimit  uint64
-	updater           Updater
-	minimumSize       uint64
-	maximumSize       uint64
+	blobstore              Blobstore
+	appStashBlobstore      Blobstore
+	resourceType           string
+	metricsService         MetricsService
+	maxBodySizeLimit       uint64
+	updater                Updater
+	minimumSize            uint64
+	maximumSize            uint64
+	shouldProxyGetRequests bool
 }
 
 type responseBody struct {
@@ -65,7 +66,7 @@ type responseBody struct {
 	Sha256    string    `json:"sha256"`
 }
 
-func NewResourceHandler(blobstore Blobstore, appStashBlobstore NoRedirectBlobstore, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64) *ResourceHandler {
+func NewResourceHandler(blobstore Blobstore, appStashBlobstore Blobstore, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64) *ResourceHandler {
 	return NewResourceHandlerWithUpdater(
 		blobstore,
 		appStashBlobstore,
@@ -76,7 +77,7 @@ func NewResourceHandler(blobstore Blobstore, appStashBlobstore NoRedirectBlobsto
 	)
 }
 
-func NewResourceHandlerWithUpdater(blobstore Blobstore, appStashBlobstore NoRedirectBlobstore, updater Updater, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64) *ResourceHandler {
+func NewResourceHandlerWithUpdater(blobstore Blobstore, appStashBlobstore Blobstore, updater Updater, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64) *ResourceHandler {
 	return NewResourceHandlerWithUpdaterAndSizeThresholds(
 		blobstore,
 		appStashBlobstore,
@@ -85,19 +86,21 @@ func NewResourceHandlerWithUpdater(blobstore Blobstore, appStashBlobstore NoRedi
 		metricsService,
 		maxBodySizeLimit,
 		0, math.MaxUint64,
+		false,
 	)
 }
 
-func NewResourceHandlerWithUpdaterAndSizeThresholds(blobstore Blobstore, appStashBlobstore NoRedirectBlobstore, updater Updater, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64, minimumSize, maximumSize uint64) *ResourceHandler {
+func NewResourceHandlerWithUpdaterAndSizeThresholds(blobstore Blobstore, appStashBlobstore Blobstore, updater Updater, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64, minimumSize, maximumSize uint64, shouldProxyGetRequests bool) *ResourceHandler {
 	return &ResourceHandler{
-		blobstore:         blobstore,
-		appStashBlobstore: appStashBlobstore,
-		resourceType:      resourceType,
-		metricsService:    metricsService,
-		maxBodySizeLimit:  maxBodySizeLimit,
-		updater:           updater,
-		maximumSize:       maximumSize,
-		minimumSize:       minimumSize,
+		blobstore:              blobstore,
+		appStashBlobstore:      appStashBlobstore,
+		resourceType:           resourceType,
+		metricsService:         metricsService,
+		maxBodySizeLimit:       maxBodySizeLimit,
+		updater:                updater,
+		maximumSize:            maximumSize,
+		minimumSize:            minimumSize,
+		shouldProxyGetRequests: shouldProxyGetRequests,
 	}
 }
 
@@ -392,12 +395,31 @@ func sourceGuidFrom(request *http.Request, responseWriter http.ResponseWriter) s
 }
 
 func (handler *ResourceHandler) HeadOrRedirectAsGet(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	if handler.shouldProxyGetRequests {
+		exists, e := handler.blobstore.Exists(params["identifier"])
+		util.PanicOnError(e)
+		if exists {
+			responseWriter.WriteHeader(http.StatusOK)
+		} else {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		}
+		return
+	}
 	redirectLocation, e := handler.blobstore.HeadOrRedirectAsGet(params["identifier"])
 	writeResponseBasedOn(redirectLocation, e, responseWriter, request, http.StatusOK, nil, nil, "")
 }
 
 func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
-	body, redirectLocation, e := handler.blobstore.GetOrRedirect(params["identifier"])
+	var (
+		redirectLocation string
+		e                error
+		body             io.ReadCloser
+	)
+	if handler.shouldProxyGetRequests {
+		body, e = handler.blobstore.Get(params["identifier"])
+	} else {
+		body, redirectLocation, e = handler.blobstore.GetOrRedirect(params["identifier"])
+	}
 	writeResponseBasedOn(redirectLocation, e, responseWriter, request, http.StatusOK, body, nil, request.Header.Get("If-None-Modify"))
 }
 

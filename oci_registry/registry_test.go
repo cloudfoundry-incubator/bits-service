@@ -25,9 +25,9 @@ var _ = Describe("Registry", func() {
 	var (
 		fakeServer        *httptest.Server
 		serverURL         string
-		rootFSBlobstore   bitsgo.NoRedirectBlobstore
-		dropletBlobstore  bitsgo.NoRedirectBlobstore
-		digestLookupStore bitsgo.NoRedirectBlobstore
+		rootFSBlobstore   bitsgo.Blobstore
+		dropletBlobstore  bitsgo.Blobstore
+		digestLookupStore bitsgo.Blobstore
 		droplet           []byte
 	)
 	BeforeSuite(func() {

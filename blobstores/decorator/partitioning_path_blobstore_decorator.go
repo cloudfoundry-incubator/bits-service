@@ -9,22 +9,12 @@ import (
 	"github.com/cloudfoundry-incubator/bits-service"
 )
 
-type Blobstore interface {
-	// Can't do the following until it is added in Go: (See also https://github.com/golang/go/issues/6977)
-	// routes.Blobstore
-	// routes.NoRedirectBlobstore
-
-	// Instead doing:
-	bitsgo.Blobstore
-	Get(path string) (body io.ReadCloser, err error)
-}
-
-func ForBlobstoreWithPathPartitioning(delegate Blobstore) *PartitioningPathBlobstoreDecorator {
+func ForBlobstoreWithPathPartitioning(delegate bitsgo.Blobstore) *PartitioningPathBlobstoreDecorator {
 	return &PartitioningPathBlobstoreDecorator{delegate}
 }
 
 type PartitioningPathBlobstoreDecorator struct {
-	delegate Blobstore
+	delegate bitsgo.Blobstore
 }
 
 func (decorator *PartitioningPathBlobstoreDecorator) Exists(path string) (bool, error) {
