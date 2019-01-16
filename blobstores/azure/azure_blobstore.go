@@ -3,8 +3,13 @@ package azure
 import (
 	"encoding/base64"
 	"io"
+	"io/ioutil"
 	"strings"
 	"time"
+
+	"github.com/cenkalti/backoff"
+
+	"github.com/Azure/go-autorest/autorest"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -31,6 +36,49 @@ func NewBlobstore(config config.AzureBlobstoreConfig) *Blobstore {
 	return NewBlobstoreWithDetails(config, 50<<20, 5000)
 }
 
+// NetworkErrorRetryingSender is a replacement for the storage.DefaultSender.
+// storage.DefaultSender does not retry on network errors which is rarely what we want in
+// a production system.
+type NetworkErrorRetryingSender struct{}
+
+var retryableStatusCodes = []int{
+	http.StatusRequestTimeout,      // 408
+	http.StatusInternalServerError, // 500
+	http.StatusBadGateway,          // 502
+	http.StatusServiceUnavailable,  // 503
+	http.StatusGatewayTimeout,      // 504
+}
+
+// Send is mostly emulating storage.DefaultSender.Send, so most code was copied.
+// But we use the backoff library for convenience and retry on errors returned from
+// HTTPClient.Do.
+func (sender *NetworkErrorRetryingSender) Send(c *storage.Client, req *http.Request) (*http.Response, error) {
+	rr := autorest.NewRetriableRequest(req)
+	var resp *http.Response
+
+	err := backoff.Retry(func() error {
+		err := rr.Prepare()
+		if err != nil {
+			return backoff.Permanent(err)
+		}
+		resp, err = c.HTTPClient.Do(rr.Request())
+		// We deliberately mark errors *not* as permanent, because an error
+		// here means network connectivity or similar. This is different to the
+		// storage.DefaultSender which on any error.
+		if err != nil {
+			return err
+		}
+		if !autorest.ResponseHasStatusCode(resp, retryableStatusCodes...) {
+			return backoff.Permanent(err)
+		}
+		io.Copy(ioutil.Discard, resp.Body)
+		resp.Body.Close()
+		return nil
+	}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 5))
+
+	return resp, err
+}
+
 func NewBlobstoreWithDetails(config config.AzureBlobstoreConfig, putBlockSize int64, maxListResults uint) *Blobstore {
 	validate.NotEmpty(config.AccountKey)
 	validate.NotEmpty(config.AccountName)
@@ -45,6 +93,7 @@ func NewBlobstoreWithDetails(config config.AzureBlobstoreConfig, putBlockSize in
 	if e != nil {
 		logger.Log.Fatalw("Could not instantiate Azure Basic Client", "error", e)
 	}
+	client.Sender = &NetworkErrorRetryingSender{}
 	return &Blobstore{
 		client:         client.GetBlobService(),
 		containerName:  config.ContainerName,
