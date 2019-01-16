@@ -193,27 +193,102 @@ var _ = Describe("routes", func() {
 		ItSupportsMethodsGetPutDeleteFor("/buildpacks/theguid", "buildpack", "th/eg/theguid")
 	})
 
-	Describe("/buildpack_cache/entries/{app_guid}/{stack_name}", func() {
+	Describe("/buildpack_cache/entries", func() {
 		BeforeEach(func() {
 			SetUpBuildpackCacheRoutes(
 				router,
 				bitsgo.NewResourceHandler(decorator.ForBlobstoreWithPathPartitioning(decorator.ForBlobstoreWithPathPrefixing(blobstore, "buildpack_cache/")), appstashBlobstore, "buildpack_cache", statsd.NewMetricsService(), 0, false))
 		})
-		Context("Method GET", func() {
-			It("returns StatusNotFound when blobstore returns NotFoundError", func() {
-				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/buildpack_cache/entries/theguid/thestackname", nil))
 
-				Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
+		Context("GET /buildpack_cache/entries/{app_guid}/{stack_name}", func() {
+			Context("blobstore returns blob", func() {
+				It("returns StatusOK and fills body with contents from file located at the partitioned path", func() {
+					blobstoreEntries["buildpack_cache/th/eg/theguid/thestackname"] = []byte("thecontent")
+
+					router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/buildpack_cache/entries/theguid/thestackname", nil))
+
+					Expect(*responseWriter).To(HaveStatusCodeAndBody(
+						Equal(http.StatusOK),
+						Equal("thecontent")))
+				})
 			})
 
-			It("returns StatusOK and fills body with contents from file located at the partitioned path", func() {
-				blobstoreEntries["buildpack_cache/th/eg/theguid/thestackname"] = []byte("thecontent")
+			Context("blobstore returns NotFoundError", func() {
+				It("returns StatusNotFound", func() {
+					router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/buildpack_cache/entries/theguid/thestackname", nil))
 
-				router.ServeHTTP(responseWriter, httptest.NewRequest("GET", "/buildpack_cache/entries/theguid/thestackname", nil))
+					Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
+				})
+			})
 
-				Expect(*responseWriter).To(HaveStatusCodeAndBody(
-					Equal(http.StatusOK),
-					Equal("thecontent")))
+		})
+
+		Context("DELETE", func() {
+			Context("no blobs", func() {
+				Context("/buildpack_cache/entries", func() {
+					It("returns http.StatusNoContent", func() {
+						router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", "/buildpack_cache/entries", nil))
+
+						Expect(responseWriter.Code).To(Equal(http.StatusNoContent))
+						Expect(blobstoreEntries).To(BeEmpty())
+					})
+				})
+
+				Context("/buildpack_cache/entries/", func() {
+					It("returns http.StatusNoContent", func() {
+						router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", "/buildpack_cache/entries/", nil))
+
+						Expect(responseWriter.Code).To(Equal(http.StatusNoContent))
+						Expect(blobstoreEntries).To(BeEmpty())
+					})
+				})
+			})
+
+			Context("there are some blobs", func() {
+				BeforeEach(func() {
+					blobstoreEntries["buildpack_cache/ab/cd/abcdef/ghijkl"] = []byte("Some content")
+					blobstoreEntries["buildpack_cache/mn/op/mnopqrst/uvwxyz"] = []byte("Some content")
+				})
+
+				Context("/buildpack_cache/entries", func() {
+					It("returns http.StatusNoContent", func() {
+						router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", "/buildpack_cache/entries", nil))
+
+						Expect(responseWriter.Code).To(Equal(http.StatusNoContent))
+						Expect(blobstoreEntries).To(BeEmpty())
+					})
+				})
+
+				Context("/buildpack_cache/entries/", func() {
+					It("returns http.StatusNoContent", func() {
+						router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", "/buildpack_cache/entries/", nil))
+
+						Expect(responseWriter.Code).To(Equal(http.StatusNoContent))
+						Expect(blobstoreEntries).To(BeEmpty())
+					})
+				})
+			})
+
+			Context("/buildpack_cache/entries/theguid/thestackname", func() {
+				Context("blob does not exist", func() {
+					It("returns http.StatusNoContent", func() {
+						router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", "/buildpack_cache/entries/theguid/thestackname", nil))
+
+						Expect(responseWriter.Code).To(Equal(http.StatusNotFound))
+					})
+				})
+
+				Context("blob does exist", func() {
+					It("returns http.StatusNoContent and blob is deleted", func() {
+						blobstoreEntries["buildpack_cache/th/eg/theguid/thestackname"] = []byte("Some content")
+
+						router.ServeHTTP(responseWriter, httptest.NewRequest("DELETE", "/buildpack_cache/entries/theguid/thestackname", nil))
+
+						Expect(responseWriter.Code).To(Equal(http.StatusNoContent))
+						Expect(blobstoreEntries).To(BeEmpty())
+					})
+				})
+
 			})
 		})
 	})

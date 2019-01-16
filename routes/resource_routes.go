@@ -77,6 +77,7 @@ func SetUpDropletRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHand
 
 func SetUpBuildpackCacheRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHandler) {
 	router.Path("/buildpack_cache/entries").Methods("DELETE").HandlerFunc(delegateTo(resourceHandler.DeleteDir))
+	router.Path("/buildpack_cache/entries/").Methods("DELETE").HandlerFunc(delegateTo(resourceHandler.DeleteDir))
 	router.Path("/buildpack_cache/entries/{identifier}").Methods("DELETE").HandlerFunc(delegateTo(resourceHandler.DeleteDir))
 	setUpDefaultMethodRoutes(router.Path("/buildpack_cache/entries/{identifier:.*}").Subrouter(), resourceHandler)
 }
