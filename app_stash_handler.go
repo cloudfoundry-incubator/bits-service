@@ -46,13 +46,13 @@ func (handler *AppStashHandler) PostMatches(responseWriter http.ResponseWriter, 
 	var fingerprints []Fingerprint
 	e = json.Unmarshal(body, &fingerprints)
 	if e != nil {
-		logger.From(request).Debugw("Invalid body", "body", string(body), "error", e)
+		logger.From(request).Debugw("Invalid body", "error", e, "body", string(body))
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 		fmt.Fprintf(responseWriter, "Invalid body %s", body)
 		return
 	}
 	if len(fingerprints) == 0 {
-		logger.From(request).Debugw("Empty list", "body", string(body), "error", e)
+		logger.From(request).Debugw("Empty list", "error", e, "body", string(body))
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 		util.FprintDescriptionAsJSON(responseWriter, "The request is semantically invalid: must be a non-empty array.")
 		return
