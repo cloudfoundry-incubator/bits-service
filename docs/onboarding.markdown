@@ -7,8 +7,8 @@
 * Add team member to a group with access to the [github repo](https://github.com/cloudfoundry-incubator/bits-service) (ask the PM)
 * Add public SSH key to [github.com](https://help.github.com/articles/connecting-to-github-with-ssh/) and verify
 * Create a [SL](https://control.softlayer.com) account (ask the PM)
-* Create a [new VPN password](https://control.softlayer.com/account/user/profile) (DIY)
-* Set up the [VPN client](http://knowledgelayer.softlayer.com/procedure/ssl-vpn-mac-os-x-1010) (DIY)
+* Create a [new VPN password](https://control.softlayer.com/account/user/profile) (In the user settings of your Softlayer Account you can set up the VPN password in the 'Log In Settings' section)
+* Set up the VPN client  - Install "Motion Pro Plus" from AppStore directly and follow the [instructions](https://console.bluemix.net/docs/infrastructure/iaas-vpn/standalone-vpn-clients.html)
 * Get access to shared Lastpass folder (ask the PM or anchor)
 * Invite team member to Bluemix Flintstone Account, Cloud Foundry Flintstone Org, performance tests Space
 * [Install git hooks](#install-git-hooks)
