@@ -33,13 +33,13 @@
 
     ```
     ssh -L 25555:192.168.50.4:25555 root@10.155.248.181
-    # And in another terminal:
+    # And in another terminal :
     bosh target https://localhost:25555
     ```
 
 # Concourse
 
-Our pipeline is public at [flintstone.ci.cf-app.com](https://flintstone.ci.cf-app.com).
+Our pipeline is public at [flintstone.ci.cf-app.com](https://ci.flintstone.cf.cloud.ibm.com).
 
 ```
 # name the target 'flintstone' and login with password from the Lastpass CLI.
