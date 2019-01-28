@@ -38,21 +38,21 @@ var _ = Describe("PathSigner", func() {
 		})
 
 		It("can sign a path and validate its signature", func() {
-			signedPath := signer.Sign("/some/path", time.Unix(200, 0))
+			signedPath := signer.Sign("GET", "/some/path", time.Unix(200, 0))
 
-			Expect(signer.SignatureValid(httputil.MustParse(signedPath))).To(BeTrue())
+			Expect(signer.SignatureValid("GET", httputil.MustParse(signedPath))).To(BeTrue())
 		})
 
 		It("can sign a path and will not validate a path when it has expired", func() {
-			signedPath := signer.Sign("/some/path", time.Unix(200, 0))
+			signedPath := signer.Sign("GET", "/some/path", time.Unix(200, 0))
 
 			clock.Add(time.Hour)
 
-			Expect(signer.SignatureValid(httputil.MustParse(signedPath))).To(BeFalse())
+			Expect(signer.SignatureValid("GET", httputil.MustParse(signedPath))).To(BeFalse())
 		})
 
 		It("can sign a path and will not allow to tamper with the expiration time", func() {
-			signedPath := signer.Sign("/some/path", time.Unix(200, 0))
+			signedPath := signer.Sign("GET", "/some/path", time.Unix(200, 0))
 
 			clock.Add(time.Hour)
 
@@ -61,11 +61,11 @@ var _ = Describe("PathSigner", func() {
 			q.Set("expires", fmt.Sprintf("%v", clock.Now().Add(time.Hour).Unix()))
 			u.RawQuery = q.Encode()
 
-			Expect(signer.SignatureValid(u)).To(BeFalse())
+			Expect(signer.SignatureValid("GET", u)).To(BeFalse())
 		})
 	})
 
-	Context("SigningKeys is empty. Secret is irrelevant.", func() {
+	Context("SigningKeys is used. Secret is irrelevant.", func() {
 		BeforeEach(func() {
 			signer = pathsigner.Validate(&PathSignerValidator{
 				Secret: "thesecret",
@@ -80,34 +80,42 @@ var _ = Describe("PathSigner", func() {
 		})
 
 		It("can sign a path and validate its signature", func() {
-			signedPath := signer.Sign("/some/path", time.Unix(200, 0))
+			signedPath := signer.Sign("GET", "/some/path", time.Unix(200, 0))
 
 			Expect(signedPath).To(ContainSubstring("AccessKeyId=key2"))
-			Expect(signer.SignatureValid(httputil.MustParse(signedPath))).To(BeTrue())
+			Expect(signer.SignatureValid("GET", httputil.MustParse(signedPath))).To(BeTrue())
 		})
 
 		It("can sign a path and will not allow to tamper with the signature", func() {
-			signedPath := signer.Sign("/some/path", time.Unix(200, 0))
+			signedPath := signer.Sign("GET", "/some/path", time.Unix(200, 0))
 
 			u := httputil.MustParse(signedPath)
 			q := u.Query()
 			q.Set("signature", "InventedSignature")
 			u.RawQuery = q.Encode()
 
-			Expect(signer.SignatureValid(u)).To(BeFalse())
+			Expect(signer.SignatureValid("GET", u)).To(BeFalse())
 		})
 
 		It("can sign a path and will not allow to tamper with the AccessKeyId", func() {
-			signedPath := signer.Sign("/some/path", time.Unix(200, 0))
+			signedPath := signer.Sign("GET", "/some/path", time.Unix(200, 0))
 
 			u := httputil.MustParse(signedPath)
 			q := u.Query()
 			q.Set("AccessKeyId", "SomethingElse")
 			u.RawQuery = q.Encode()
 
-			Expect(signer.SignatureValid(u)).To(BeFalse())
+			Expect(signer.SignatureValid("GET", u)).To(BeFalse())
 		})
 
+		Context("Signing and validation method differs", func() {
+			It("fails signature validation", func() {
+				signedPath := signer.Sign("GET", "/some/path", time.Unix(200, 0))
+
+				Expect(signedPath).To(ContainSubstring("AccessKeyId=key2"))
+				Expect(signer.SignatureValid("PUT", httputil.MustParse(signedPath))).To(BeFalse())
+			})
+		})
 	})
 
 })

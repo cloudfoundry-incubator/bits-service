@@ -48,7 +48,7 @@ var _ = Describe("Signing URLs", func() {
 
 	It("signs and verifies URLs", func() {
 		// signing
-		responseBody := handler.Sign("path", "get", mockClock.Now().Add(1*time.Hour))
+		responseBody := handler.Sign("path", "GET", mockClock.Now().Add(1*time.Hour))
 
 		Expect(responseBody).To(ContainSubstring("http://example.com/my/path?signature="))
 		Expect(responseBody).To(ContainSubstring("expires"))

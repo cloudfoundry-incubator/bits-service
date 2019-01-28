@@ -15,5 +15,5 @@ type LocalResourceSigner struct {
 }
 
 func (signer *LocalResourceSigner) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {
-	return fmt.Sprintf("%s%s", signer.DelegateEndpoint, signer.Signer.Sign(signer.ResourcePathPrefix+resource, expirationTime))
+	return fmt.Sprintf("%s%s", signer.DelegateEndpoint, signer.Signer.Sign(method, signer.ResourcePathPrefix+resource, expirationTime))
 }

@@ -9,17 +9,18 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/benbjohnson/clock"
 )
 
 type PathSigner interface {
-	Sign(path string, expires time.Time) string
+	Sign(method string, path string, expires time.Time) string
 }
 
 type PathSignatureValidator interface {
-	SignatureValid(u *url.URL) bool
+	SignatureValid(method string, u *url.URL) bool
 }
 
 type PathSignerValidator struct {
@@ -39,14 +40,16 @@ func Validate(signer *PathSignerValidator) *PathSignerValidator {
 	return signer
 }
 
-func (signer *PathSignerValidator) Sign(path string, expires time.Time) string {
+func (signer *PathSignerValidator) Sign(method string, path string, expires time.Time) string {
+	method = strings.ToUpper(method)
 	if len(signer.SigningKeys) > 0 {
-		return fmt.Sprintf("%s?signature=%x&expires=%v&AccessKeyId=%v", path, signatureWithHMACFor(path, signer.SigningKeys[signer.ActiveKeyID], expires), expires.Unix(), signer.ActiveKeyID)
+		return fmt.Sprintf("%s?signature=%x&expires=%v&AccessKeyId=%v", path, signatureWithHMACFor(method, path, signer.SigningKeys[signer.ActiveKeyID], expires), expires.Unix(), signer.ActiveKeyID)
 	}
-	return fmt.Sprintf("%s?signature=%x&expires=%v", path, signatureWithHMACFor(path, signer.Secret, expires), expires.Unix())
+	return fmt.Sprintf("%s?signature=%x&expires=%v", path, signatureWithHMACFor(method, path, signer.Secret, expires), expires.Unix())
 }
 
-func (signer *PathSignerValidator) SignatureValid(u *url.URL) bool {
+func (signer *PathSignerValidator) SignatureValid(method string, u *url.URL) bool {
+	method = strings.ToUpper(method)
 	expires, e := strconv.ParseInt(u.Query().Get("expires"), 10, 64)
 	if e != nil {
 		return false
@@ -65,19 +68,19 @@ func (signer *PathSignerValidator) SignatureValid(u *url.URL) bool {
 		if _, exist := signer.SigningKeys[accessKeyID]; !exist {
 			return false
 		}
-		if subtle.ConstantTimeCompare(querySignature, signatureWithHMACFor(u.Path, signer.SigningKeys[accessKeyID], time.Unix(expires, 0))) == 0 {
+		if subtle.ConstantTimeCompare(querySignature, signatureWithHMACFor(method, u.Path, signer.SigningKeys[accessKeyID], time.Unix(expires, 0))) == 0 {
 			return false
 		}
 	} else {
-		if subtle.ConstantTimeCompare(querySignature, signatureWithHMACFor(u.Path, signer.Secret, time.Unix(expires, 0))) == 0 {
+		if subtle.ConstantTimeCompare(querySignature, signatureWithHMACFor(method, u.Path, signer.Secret, time.Unix(expires, 0))) == 0 {
 			return false
 		}
 	}
 	return true
 }
 
-func signatureWithHMACFor(path string, secret string, expires time.Time) []byte {
+func signatureWithHMACFor(method string, path string, secret string, expires time.Time) []byte {
 	hash := hmac.New(sha256.New, []byte(secret))
-	hash.Write([]byte(fmt.Sprintf("%v%v %v", expires.Unix(), path, secret)))
+	hash.Write([]byte(fmt.Sprintf("%v %v %v %v", method, path, secret, expires.Unix())))
 	return hash.Sum(nil)
 }

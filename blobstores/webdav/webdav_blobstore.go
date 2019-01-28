@@ -68,7 +68,7 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	response, e := blobstore.httpClient.Get(blobstore.webdavPrivateEndpoint + "/" + path)
 
 	if e != nil {
-		return nil, errors.Wrapf(e, "path=%v")
+		return nil, errors.Wrapf(e, "path=%v", path)
 	}
 	if response.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("Unexpected status code %v. Expected status OK", response.Status)

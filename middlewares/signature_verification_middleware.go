@@ -15,7 +15,7 @@ func (middleware *SignatureVerificationMiddleware) ServeHTTP(responseWriter http
 		responseWriter.WriteHeader(403)
 		return
 	}
-	if !middleware.SignatureValidator.SignatureValid(request.URL) {
+	if !middleware.SignatureValidator.SignatureValid(request.Method, request.URL) {
 		responseWriter.WriteHeader(403)
 		return
 	}
