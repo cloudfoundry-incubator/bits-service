@@ -166,7 +166,7 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	for _, name := range names {
 		e = blobstore.Delete(name)
 		if e != nil {
-			if _, isNotFoundError := e.(*bitsgo.NotFoundError); !isNotFoundError {
+			if !bitsgo.IsNotFoundError(e) {
 				deletionErrs = append(deletionErrs, e)
 			}
 		}
