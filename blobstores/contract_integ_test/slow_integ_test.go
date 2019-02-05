@@ -43,13 +43,17 @@ var _ = Describe("Non-local blobstores SLOW TESTS", func() {
 			filename, expectedMd5sum := createTempFileWithRandomContent(500 << 20)
 			defer os.Remove(filename)
 
+			By("500MB file created.")
+
 			file, e := os.Open(filename)
 			Expect(e).NotTo(HaveOccurred())
 			defer file.Close()
 
+			By("500MB file opened.")
 			e = blobstore.Put(filepath, file)
 			Expect(e).NotTo(HaveOccurred())
 			defer blobstore.Delete(filepath)
+			By("500MB file uploaded.")
 
 			reader, e := blobstore.Get(filepath)
 			Expect(e).NotTo(HaveOccurred())

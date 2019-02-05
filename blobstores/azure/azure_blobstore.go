@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -129,7 +130,9 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 }
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
-	logger.Log.Debugw("Put", "bucket", blobstore.containerName, "path", path)
+	l := logger.Log.With("put-request-id", rand.Int63())
+	l.Debugw("Put", "bucket", blobstore.containerName, "path", path)
+
 	blob := blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(path)
 
 	e := blob.CreateBlockBlob(nil)
@@ -141,6 +144,9 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	eof := false
 	for i := 0; !eof; i++ {
 		// using information from https://docs.microsoft.com/en-us/rest/api/storageservices/understanding-block-blobs--append-blobs--and-page-blobs
+		if i >= 50000 {
+			return errors.New("block blob cannot have more than 50,000 blocks")
+		}
 		block := storage.Block{
 			ID:     base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%05d", i))),
 			Status: storage.BlockStatusUncommitted,
@@ -155,14 +161,17 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 			}
 		}
 		if numBytesRead == 0 {
+			l.Debugw("Empty read", "block-index", i, "block-id", block.ID, "is-eof", eof)
 			continue
 		}
+		l.Debugw("PutBlock", "block-index", i, "block-id", block.ID, "block-size", numBytesRead, "is-eof", eof)
 		e = blob.PutBlock(block.ID, data[:numBytesRead], nil)
 		if e != nil {
 			return errors.Wrapf(e, "put block failed: %v", path)
 		}
 		uncommittedBlocksList = append(uncommittedBlocksList, block)
 	}
+	l.Debugw("PutBlockList", "uncommitted-block-list", uncommittedBlocksList)
 	e = blob.PutBlockList(uncommittedBlocksList, nil)
 	if e != nil {
 		return errors.Wrapf(e, "put block list failed: %v", path)
