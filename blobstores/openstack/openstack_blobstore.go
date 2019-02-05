@@ -76,10 +76,6 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
-	return blobstore.swiftConn.ObjectTempUrl(blobstore.containerName, path, blobstore.accountMetaTempURLKey, "GET", time.Now().Add(time.Hour)), nil
-}
-
 func (blobstore *Blobstore) containerExists() bool {
 	_, _, e := blobstore.swiftConn.Container(blobstore.containerName)
 	return e != swift.ContainerNotFound
@@ -103,8 +99,7 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 }
 
 func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
-	signedUrl, e := blobstore.HeadOrRedirectAsGet(path)
-	return nil, signedUrl, e
+	return nil, blobstore.swiftConn.ObjectTempUrl(blobstore.containerName, path, blobstore.accountMetaTempURLKey, "GET", time.Now().Add(time.Hour)), nil
 }
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {

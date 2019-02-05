@@ -85,15 +85,6 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
-	return storage.SignedURL(blobstore.bucket, path, &storage.SignedURLOptions{
-		GoogleAccessID: blobstore.jwtConfig.Email,
-		PrivateKey:     blobstore.jwtConfig.PrivateKey,
-		Method:         "GET",
-		Expires:        time.Now().Add(time.Hour),
-	})
-}
-
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	logger.Log.Debugw("Get from GCP", "bucket", blobstore.bucket, "path", path)
 	reader, e := blobstore.client.Bucket(blobstore.bucket).Object(path).NewReader(context.TODO())
@@ -104,7 +95,12 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 }
 
 func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
-	signedUrl, e := blobstore.HeadOrRedirectAsGet(path)
+	signedUrl, e := storage.SignedURL(blobstore.bucket, path, &storage.SignedURLOptions{
+		GoogleAccessID: blobstore.jwtConfig.Email,
+		PrivateKey:     blobstore.jwtConfig.PrivateKey,
+		Method:         "GET",
+		Expires:        time.Now().Add(time.Hour),
+	})
 	return nil, signedUrl, e
 }
 

@@ -34,19 +34,6 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
-	logger.Log.Debugw("Head", "local-path", filepath.Join(blobstore.pathPrefix, path))
-	_, e := os.Stat(filepath.Join(blobstore.pathPrefix, path))
-
-	if os.IsNotExist(e) {
-		return "", bitsgo.NewNotFoundError()
-	}
-	if e != nil {
-		return "", fmt.Errorf("Error while opening file %v. Caused by: %v", path, e)
-	}
-	return "", nil
-}
-
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	logger.Log.Debugw("GetNoRedirect", "local-path", filepath.Join(blobstore.pathPrefix, path))
 	file, e := os.Open(filepath.Join(blobstore.pathPrefix, path))

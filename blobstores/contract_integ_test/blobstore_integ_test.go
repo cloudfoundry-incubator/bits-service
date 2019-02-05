@@ -39,15 +39,13 @@ var _ = Describe("Non-local blobstores", func() {
 	itCanPutAndGetAResourceThere := func() {
 
 		It("can put and get a resource there", func() {
-			redirectLocation, e := blobstore.HeadOrRedirectAsGet(filepath)
-			Expect(redirectLocation, e).NotTo(BeEmpty())
-			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
+			Expect(blobstore.Exists(filepath)).To(BeFalse())
 
 			body, e := blobstore.Get(filepath)
 			Expect(e).To(BeAssignableToTypeOf(&bitsgo.NotFoundError{}))
 			Expect(body).To(BeNil())
 
-			body, redirectLocation, e = blobstore.GetOrRedirect(filepath)
+			body, redirectLocation, e := blobstore.GetOrRedirect(filepath)
 			Expect(redirectLocation, e).NotTo(BeEmpty())
 			Expect(body).To(BeNil())
 			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
@@ -55,9 +53,7 @@ var _ = Describe("Non-local blobstores", func() {
 			e = blobstore.Put(filepath, strings.NewReader("the file content"))
 			Expect(e).NotTo(HaveOccurred())
 
-			redirectLocation, e = blobstore.HeadOrRedirectAsGet(filepath)
-			Expect(redirectLocation, e).NotTo(BeEmpty())
-			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusOK))
+			Expect(blobstore.Exists(filepath)).To(BeTrue())
 
 			body, e = blobstore.Get(filepath)
 			Expect(e).NotTo(HaveOccurred())
@@ -71,9 +67,7 @@ var _ = Describe("Non-local blobstores", func() {
 			e = blobstore.Delete(filepath)
 			Expect(e).NotTo(HaveOccurred())
 
-			redirectLocation, e = blobstore.HeadOrRedirectAsGet(filepath)
-			Expect(redirectLocation, e).NotTo(BeEmpty())
-			Expect(http.Get(redirectLocation)).To(HaveStatusCode(http.StatusNotFound))
+			Expect(blobstore.Exists(filepath)).To(BeFalse())
 
 			body, e = blobstore.Get(filepath)
 			Expect(e).To(BeAssignableToTypeOf(&bitsgo.NotFoundError{}))

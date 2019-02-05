@@ -21,10 +21,6 @@ func (decorator *PartitioningPathBlobstoreDecorator) Exists(path string) (bool, 
 	return decorator.delegate.Exists(pathFor(path))
 }
 
-func (decorator *PartitioningPathBlobstoreDecorator) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
-	return decorator.delegate.HeadOrRedirectAsGet(pathFor(path))
-}
-
 func (decorator *PartitioningPathBlobstoreDecorator) Get(path string) (body io.ReadCloser, err error) {
 	return decorator.delegate.Get(pathFor(path))
 }

@@ -29,14 +29,6 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return hasKey, nil
 }
 
-func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
-	_, hasKey := blobstore.Entries[path]
-	if !hasKey {
-		return "", bitsgo.NewNotFoundError()
-	}
-	return "", nil
-}
-
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	entry, hasKey := blobstore.Entries[path]
 	if !hasKey {

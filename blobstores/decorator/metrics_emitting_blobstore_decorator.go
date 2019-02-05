@@ -24,10 +24,6 @@ func (decorator *MetricsEmittingBlobstoreDecorator) Exists(path string) (bool, e
 	return exists, e
 }
 
-func (decorator *MetricsEmittingBlobstoreDecorator) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
-	return decorator.delegate.HeadOrRedirectAsGet(path)
-}
-
 func (decorator *MetricsEmittingBlobstoreDecorator) Get(path string) (body io.ReadCloser, err error) {
 	return decorator.delegate.Get(path)
 }

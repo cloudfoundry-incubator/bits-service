@@ -40,7 +40,6 @@ func NewNoSpaceLeftError() *NoSpaceLeftError {
 //go:generate pegomock generate --use-experimental-model-gen --package bitsgo_test Blobstore
 type Blobstore interface {
 	Exists(path string) (bool, error)
-	HeadOrRedirectAsGet(path string) (redirectLocation string, err error)
 
 	// Implementers must return *NotFoundError when the resource cannot be found
 	GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error)

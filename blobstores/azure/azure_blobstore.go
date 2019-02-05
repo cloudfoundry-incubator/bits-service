@@ -110,13 +110,6 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return exists, nil
 }
 
-func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
-	return blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(path).GetSASURI(storage.BlobSASOptions{
-		BlobServiceSASPermissions: storage.BlobServiceSASPermissions{Read: true},
-		SASOptions:                storage.SASOptions{Expiry: time.Now().Add(time.Hour)},
-	})
-}
-
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	logger.Log.Debugw("Get", "bucket", blobstore.containerName, "path", path)
 
@@ -128,7 +121,10 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 }
 
 func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redirectLocation string, err error) {
-	signedUrl, e := blobstore.HeadOrRedirectAsGet(path)
+	signedUrl, e := blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(path).GetSASURI(storage.BlobSASOptions{
+		BlobServiceSASPermissions: storage.BlobServiceSASPermissions{Read: true},
+		SASOptions:                storage.SASOptions{Expiry: time.Now().Add(time.Hour)},
+	})
 	return nil, signedUrl, e
 }
 

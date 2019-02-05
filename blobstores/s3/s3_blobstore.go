@@ -120,14 +120,6 @@ func (blobstore *Blobstore) Exists(path string) (bool, error) {
 	return true, nil
 }
 
-func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (redirectLocation string, err error) {
-	request, _ := blobstore.s3Client.GetObjectRequest(&s3.GetObjectInput{
-		Bucket: &blobstore.bucket,
-		Key:    &path,
-	})
-	return blobstore.signer.Sign(request, blobstore.bucket, path, time.Now().Add(time.Hour))
-}
-
 func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 	logger.Log.Debugw("Get from S3", "bucket", blobstore.bucket, "path", path)
 	output, e := blobstore.s3Client.GetObject(&s3.GetObjectInput{

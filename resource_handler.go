@@ -395,19 +395,14 @@ func sourceGuidFrom(request *http.Request, responseWriter http.ResponseWriter) s
 	return payload.SourceGuid
 }
 
-func (handler *ResourceHandler) HeadOrRedirectAsGet(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
-	if handler.shouldProxyGetRequests {
-		exists, e := handler.blobstore.Exists(params["identifier"])
-		util.PanicOnError(e)
-		if exists {
-			responseWriter.WriteHeader(http.StatusOK)
-		} else {
-			responseWriter.WriteHeader(http.StatusNotFound)
-		}
-		return
+func (handler *ResourceHandler) Head(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	exists, e := handler.blobstore.Exists(params["identifier"])
+	util.PanicOnError(e)
+	if exists {
+		responseWriter.WriteHeader(http.StatusOK)
+	} else {
+		responseWriter.WriteHeader(http.StatusNotFound)
 	}
-	redirectLocation, e := handler.blobstore.HeadOrRedirectAsGet(params["identifier"])
-	writeResponseBasedOn(redirectLocation, e, responseWriter, request, http.StatusOK, nil, nil, "")
 }
 
 func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {

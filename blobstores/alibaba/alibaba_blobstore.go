@@ -108,12 +108,8 @@ func (blobstore *Blobstore) Get(path string) (io.ReadCloser, error) {
 }
 
 func (blobstore *Blobstore) GetOrRedirect(path string) (io.ReadCloser, string, error) {
-	signedURL, err := blobstore.HeadOrRedirectAsGet(path)
+	signedURL, err := blobstore.bucket.SignURL(path, oss.HTTPGet, getValidityPeriod(time.Now().Add(1*time.Hour)))
 	return nil, signedURL, err
-}
-
-func (blobstore *Blobstore) HeadOrRedirectAsGet(path string) (string, error) {
-	return blobstore.bucket.SignURL(path, oss.HTTPGet, getValidityPeriod(time.Now().Add(1*time.Hour)))
 }
 
 func (blobstore *Blobstore) Put(path string, rs io.ReadSeeker) error {

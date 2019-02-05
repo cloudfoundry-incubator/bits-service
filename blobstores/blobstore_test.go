@@ -11,12 +11,13 @@ import (
 
 	"github.com/onsi/gomega"
 
-	. "github.com/onsi/gomega"
+	"os"
+
 	"github.com/cloudfoundry-incubator/bits-service"
 	inmemory "github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/local"
 	"github.com/cloudfoundry-incubator/bits-service/config"
-	"os"
+	. "github.com/onsi/gomega"
 )
 
 func TestInMemoryBlobstore(t *testing.T) {
@@ -31,15 +32,9 @@ var _ = Describe("Blobstore", func() {
 		It("can be modified by its methods", func() {
 			Expect(blobstore.Exists("/some/path")).To(BeFalse())
 
-			redirectLocation, e := blobstore.HeadOrRedirectAsGet("/some/path")
-			Expect(redirectLocation).To(BeEmpty())
-			Expect(e).To(BeAssignableToTypeOf(bitsgo.NewNotFoundError()))
-
 			Expect(blobstore.Put("/some/path", strings.NewReader("some string"))).To(Succeed())
 
 			Expect(blobstore.Exists("/some/path")).To(BeTrue())
-
-			Expect(blobstore.HeadOrRedirectAsGet("/some/path")).To(BeEmpty())
 
 			body, redirectLocation, e := blobstore.GetOrRedirect("/some/path")
 			Expect(redirectLocation, e).To(BeEmpty())
@@ -59,10 +54,6 @@ var _ = Describe("Blobstore", func() {
 			Expect(blobstore.Exists("/some/path")).To(BeFalse())
 
 			Expect(blobstore.Exists("/some/other/path")).To(BeTrue())
-
-			redirectLocation, e = blobstore.HeadOrRedirectAsGet("/some/path")
-			Expect(redirectLocation).To(BeEmpty())
-			Expect(e).To(BeAssignableToTypeOf(bitsgo.NewNotFoundError()))
 
 			Expect(blobstore.DeleteDir("/some")).To(Succeed())
 			Expect(blobstore.Exists("/some/other/path")).To(BeFalse())
