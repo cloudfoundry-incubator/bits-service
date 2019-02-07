@@ -5,3 +5,5 @@ func PanicOnError(e error) {
 		panic(e)
 	}
 }
+
+var Must = PanicOnError

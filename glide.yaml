@@ -30,6 +30,9 @@ import:
 - package: github.com/aliyun/aliyun-oss-go-sdk
   subpackages:
   - oss
+- package: golang.org/x/sync
+  subpackages:
+  - semaphore
 testImport:
 - package: github.com/onsi/ginkgo
 - package: github.com/petergtz/pegomock

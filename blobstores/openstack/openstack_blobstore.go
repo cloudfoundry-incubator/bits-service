@@ -1,8 +1,12 @@
 package openstack
 
 import (
+	"context"
 	"io"
+	"sync"
 	"time"
+
+	"github.com/cloudfoundry-incubator/bits-service/util"
 
 	"github.com/ncw/swift"
 
@@ -12,11 +16,12 @@ import (
 
 	"strings"
 
-	"github.com/cloudfoundry-incubator/bits-service"
+	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/validate"
 	"github.com/cloudfoundry-incubator/bits-service/config"
 	"github.com/cloudfoundry-incubator/bits-service/logger"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/semaphore"
 )
 
 type Blobstore struct {
@@ -157,20 +162,44 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	if e != nil {
 		return errors.Wrapf(e, "Container: '%v', prefix: '%v'", blobstore.containerName, prefix)
 	}
-	deletionErrs := []error{}
-	for _, name := range names {
-		e = blobstore.Delete(name)
-		if e != nil {
-			if !bitsgo.IsNotFoundError(e) {
-				deletionErrs = append(deletionErrs, e)
-			}
-		}
-	}
+	const numWorkers = 10
+	deletionErrs := DeleteInParallel(names, numWorkers, func(name string) error {
+		return blobstore.Delete(name)
+	})
+
 	if len(deletionErrs) != 0 {
 		return errors.Errorf("Prefix '%v', errors from deleting: %v", prefix, deletionErrs)
 	}
 
 	return nil
+}
+
+// Visible for testing only
+func DeleteInParallel(names []string, numWorkers int64, deletetionFunc func(name string) error) []error {
+	var errMutex sync.Mutex
+	deletionErrs := []error{}
+
+	ctx := context.TODO()
+	sem := semaphore.NewWeighted(numWorkers)
+	for _, name := range names {
+		util.Must(sem.Acquire(ctx, 1))
+
+		go func(name string) {
+			defer sem.Release(1)
+
+			e := deletetionFunc(name)
+			if e != nil {
+				if !bitsgo.IsNotFoundError(e) {
+					errMutex.Lock()
+					defer errMutex.Unlock()
+					deletionErrs = append(deletionErrs, e)
+				}
+			}
+		}(name)
+	}
+	util.Must(sem.Acquire(ctx, numWorkers))
+
+	return deletionErrs
 }
 
 func (blobstore *Blobstore) Sign(resource string, method string, expirationTime time.Time) (signedURL string) {
