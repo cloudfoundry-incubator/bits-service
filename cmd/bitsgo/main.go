@@ -14,7 +14,7 @@ import (
 	"github.com/cloudfoundry-incubator/bits-service/oci_registry"
 
 	"github.com/benbjohnson/clock"
-	"github.com/cloudfoundry-incubator/bits-service"
+	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/alibaba"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/azure"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/decorator"
@@ -118,8 +118,8 @@ func main() {
 		Handler: negroni.New(
 			middlewares.NewMetricsMiddleware(metricsService),
 			middlewares.NewZapLoggerMiddleware(log.Log),
-			&middlewares.MultipartMiddleware{},
 			&middlewares.PanicMiddleware{},
+			&middlewares.MultipartMiddleware{},
 			negroni.Wrap(handler)),
 		WriteTimeout: 60 * time.Minute,
 		ReadTimeout:  60 * time.Minute,
