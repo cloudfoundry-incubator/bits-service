@@ -19,7 +19,7 @@ import (
 
 	"fmt"
 
-	"github.com/cloudfoundry-incubator/bits-service"
+	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/validate"
 	"github.com/cloudfoundry-incubator/bits-service/config"
 	"github.com/cloudfoundry-incubator/bits-service/logger"
@@ -130,14 +130,15 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 }
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
-	l := logger.Log.With("put-request-id", rand.Int63())
+	putRequestID := rand.Int63()
+	l := logger.Log.With("put-request-id", putRequestID)
 	l.Debugw("Put", "bucket", blobstore.containerName, "path", path)
 
 	blob := blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(path)
 
 	e := blob.CreateBlockBlob(nil)
 	if e != nil {
-		return errors.Wrapf(e, "create block blob failed. container: %v, path: %v", blobstore.containerName, path)
+		return errors.Wrapf(e, "create block blob failed. container: %v, path: %v, put-request-id: %v", blobstore.containerName, path, putRequestID)
 	}
 
 	uncommittedBlocksList := make([]storage.Block, 0)
@@ -145,7 +146,7 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	for i := 0; !eof; i++ {
 		// using information from https://docs.microsoft.com/en-us/rest/api/storageservices/understanding-block-blobs--append-blobs--and-page-blobs
 		if i >= 50000 {
-			return errors.New("block blob cannot have more than 50,000 blocks")
+			return errors.Errorf("block blob cannot have more than 50,000 blocks. path: %v, put-request-id: %v", path, putRequestID)
 		}
 		block := storage.Block{
 			ID:     base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%05d", i))),
@@ -157,7 +158,7 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 			if e.Error() == "EOF" {
 				eof = true
 			} else {
-				return errors.Wrapf(e, "put block failed: %v", path)
+				return errors.Wrapf(e, "put block failed. path: %v, put-request-id: %v", path, putRequestID)
 			}
 		}
 		if numBytesRead == 0 {
@@ -167,14 +168,14 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 		l.Debugw("PutBlock", "block-index", i, "block-id", block.ID, "block-size", numBytesRead, "is-eof", eof)
 		e = blob.PutBlock(block.ID, data[:numBytesRead], nil)
 		if e != nil {
-			return errors.Wrapf(e, "put block failed: %v", path)
+			return errors.Wrapf(e, "put block failed. path: %v, put-request-id: %v", path, putRequestID)
 		}
 		uncommittedBlocksList = append(uncommittedBlocksList, block)
 	}
 	l.Debugw("PutBlockList", "uncommitted-block-list", uncommittedBlocksList)
 	e = blob.PutBlockList(uncommittedBlocksList, nil)
 	if e != nil {
-		return errors.Wrapf(e, "put block list failed: %v", path)
+		return errors.Wrapf(e, "put block list failed. path: %v, put-request-id: %v", path, putRequestID)
 	}
 
 	return nil
