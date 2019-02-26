@@ -65,7 +65,7 @@ func (sender *NetworkErrorRetryingSender) Send(c *storage.Client, req *http.Requ
 		resp, err = c.HTTPClient.Do(rr.Request())
 		// We deliberately mark errors *not* as permanent, because an error
 		// here means network connectivity or similar. This is different to the
-		// storage.DefaultSender which on any error.
+		// storage.DefaultSender which stops on any error.
 		if err != nil {
 			return err
 		}
