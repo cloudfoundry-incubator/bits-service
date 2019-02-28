@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	s3sdk "github.com/aws/aws-sdk-go/service/s3"
-	"github.com/cloudfoundry-incubator/bits-service"
+	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/alibaba"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/azure"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/gcp"
@@ -325,7 +325,7 @@ var _ = Describe("Non-local blobstores", func() {
 		var azureConfig config.AzureBlobstoreConfig
 
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &azureConfig)).To(Succeed()) })
-		JustBeforeEach(func() { blobstore = azure.NewBlobstore(azureConfig) })
+		JustBeforeEach(func() { blobstore = azure.NewBlobstore(azureConfig, NewMockMetricsService()) })
 
 		itCanPutAndGetAResourceThere()
 

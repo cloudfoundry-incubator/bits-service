@@ -31,10 +31,11 @@ type Blobstore struct {
 	client         storage.BlobStorageClient
 	putBlockSize   int64
 	maxListResults uint
+	metricsService bitsgo.MetricsService
 }
 
-func NewBlobstore(config config.AzureBlobstoreConfig) *Blobstore {
-	return NewBlobstoreWithDetails(config, 50<<20, 5000)
+func NewBlobstore(config config.AzureBlobstoreConfig, metricsService bitsgo.MetricsService) *Blobstore {
+	return NewBlobstoreWithDetails(config, 50<<20, 5000, metricsService)
 }
 
 // NetworkErrorRetryingSender is a replacement for the storage.DefaultSender.
@@ -80,11 +81,14 @@ func (sender *NetworkErrorRetryingSender) Send(c *storage.Client, req *http.Requ
 	return resp, err
 }
 
-func NewBlobstoreWithDetails(config config.AzureBlobstoreConfig, putBlockSize int64, maxListResults uint) *Blobstore {
+func NewBlobstoreWithDetails(config config.AzureBlobstoreConfig, putBlockSize int64, maxListResults uint, metricsService bitsgo.MetricsService) *Blobstore {
 	validate.NotEmpty(config.AccountKey)
 	validate.NotEmpty(config.AccountName)
 	validate.NotEmpty(config.ContainerName)
 	validate.NotEmpty(config.EnvironmentName())
+	if metricsService == nil {
+		panic("metricsService must not be nil")
+	}
 
 	environment, e := azure.EnvironmentFromName(config.EnvironmentName())
 	if e != nil {
@@ -100,6 +104,7 @@ func NewBlobstoreWithDetails(config config.AzureBlobstoreConfig, putBlockSize in
 		containerName:  config.ContainerName,
 		putBlockSize:   putBlockSize,
 		maxListResults: maxListResults,
+		metricsService: metricsService,
 	}
 }
 
@@ -166,14 +171,24 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 			continue
 		}
 		l.Debugw("PutBlock", "block-index", i, "block-id", block.ID, "block-size", numBytesRead, "is-eof", eof)
-		e = blob.PutBlock(block.ID, data[:numBytesRead], nil)
+		e = backoff.RetryNotify(func() error {
+			return blob.PutBlock(block.ID, data[:numBytesRead], nil)
+		}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 2), func(error, time.Duration) {
+			l.Infow("Retry PutBlock", "block-index", i, "block-id", block.ID, "block-size", numBytesRead, "is-eof", eof)
+			blobstore.metricsService.SendCounterMetric("put-block-retry", 1)
+		})
 		if e != nil {
 			return errors.Wrapf(e, "put block failed. path: %v, put-request-id: %v", path, putRequestID)
 		}
 		uncommittedBlocksList = append(uncommittedBlocksList, block)
 	}
 	l.Debugw("PutBlockList", "uncommitted-block-list", uncommittedBlocksList)
-	e = blob.PutBlockList(uncommittedBlocksList, nil)
+	e = backoff.RetryNotify(func() error {
+		return blob.PutBlockList(uncommittedBlocksList, nil)
+	}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 2), func(error, time.Duration) {
+		l.Infow("Retry PutBlockList", "uncommitted-block-list", uncommittedBlocksList)
+		blobstore.metricsService.SendCounterMetric("put-block-list-retry", 1)
+	})
 	if e != nil {
 		return errors.Wrapf(e, "put block list failed. path: %v, put-request-id: %v", path, putRequestID)
 	}

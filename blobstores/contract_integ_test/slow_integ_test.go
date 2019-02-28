@@ -133,7 +133,7 @@ var _ = Describe("Non-local blobstores SLOW TESTS", func() {
 		var azureConfig config.AzureBlobstoreConfig
 
 		BeforeEach(func() { Expect(yaml.Unmarshal(configFileContent, &azureConfig)).To(Succeed()) })
-		JustBeforeEach(func() { blobstore = azure.NewBlobstore(azureConfig) })
+		JustBeforeEach(func() { blobstore = azure.NewBlobstore(azureConfig, NewMockMetricsService()) })
 
 		slowTests()
 	})

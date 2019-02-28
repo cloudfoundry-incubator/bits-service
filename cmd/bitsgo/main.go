@@ -257,12 +257,12 @@ func createBlobstoreAndSignURLHandler(blobstoreConfig config.BlobstoreConfig, pu
 		log.Log.Infow("Creating Azure blobstore", "container", blobstoreConfig.AzureConfig.ContainerName)
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithMetricsEmitter(
-					azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+					azure.NewBlobstore(*blobstoreConfig.AzureConfig, metricsService),
 					metricsService,
 					resourceType)),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
-					azure.NewBlobstore(*blobstoreConfig.AzureConfig)),
+					azure.NewBlobstore(*blobstoreConfig.AzureConfig, metricsService)),
 				localResourceSigner)
 	case config.OpenStack:
 		log.Log.Infow("Creating Openstack blobstore", "container", blobstoreConfig.OpenstackConfig.ContainerName)
@@ -357,14 +357,14 @@ func createBuildpackCacheSignURLHandler(blobstoreConfig config.BlobstoreConfig, 
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
 					decorator.ForBlobstoreWithMetricsEmitter(
-						azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+						azure.NewBlobstore(*blobstoreConfig.AzureConfig, metricsService),
 						metricsService,
 						"buildpack_cache"),
 					"buildpack_cache/")),
 			bitsgo.NewSignResourceHandler(
 				decorator.ForResourceSignerWithPathPartitioning(
 					decorator.ForResourceSignerWithPathPrefixing(
-						azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+						azure.NewBlobstore(*blobstoreConfig.AzureConfig, metricsService),
 						"buildpack_cache")),
 				localResourceSigner)
 	case config.OpenStack:
@@ -483,7 +483,7 @@ func createAppStashBlobstore(blobstoreConfig config.BlobstoreConfig, publicEndpo
 		return decorator.ForBlobstoreWithPathPartitioning(
 				decorator.ForBlobstoreWithPathPrefixing(
 					decorator.ForBlobstoreWithMetricsEmitter(
-						azure.NewBlobstore(*blobstoreConfig.AzureConfig),
+						azure.NewBlobstore(*blobstoreConfig.AzureConfig, metricsService),
 						metricsService,
 						"app_stash"),
 					"app_bits_cache/")),
