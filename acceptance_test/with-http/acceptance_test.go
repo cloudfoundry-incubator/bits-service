@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	. "github.com/cloudfoundry-incubator/bits-service/acceptance_test"
 	acceptance "github.com/cloudfoundry-incubator/bits-service/acceptance_test"
 	"github.com/cloudfoundry-incubator/bits-service/httputil"
 	. "github.com/cloudfoundry-incubator/bits-service/testutil"
@@ -12,29 +13,11 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gexec"
-)
-
-var (
-	session *gexec.Session
-	client  *http.Client
 )
 
 func TestEndToEnd(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-
-	BeforeSuite(func() {
-		session = acceptance.StartServer("config.yml")
-		client = &http.Client{}
-	})
-
-	AfterSuite(func() {
-		if session != nil {
-			session.Kill()
-		}
-		gexec.CleanupBuildArtifacts()
-	})
-
+	acceptance.SetUpAndTearDownServer()
 	ginkgo.RunSpecs(t, "EndToEnd HTTP")
 }
 
@@ -43,6 +26,8 @@ var _ = Describe("Accessing the bits-service through HTTP", func() {
 		Context("HTTP", func() {
 
 			It("return http.StatusOK for a package that does exist", func() {
+				client := &http.Client{}
+
 				request, e := httputil.NewPutRequest("http://internal.127.0.0.1.nip.io:8888/packages/myguid", map[string]map[string]io.Reader{
 					"package": map[string]io.Reader{"somefilename": CreateZip(map[string]string{"somefile": "lalala\n\n"})},
 				})
@@ -57,7 +42,7 @@ var _ = Describe("Accessing the bits-service through HTTP", func() {
 
 		Context("HTTPS", func() {
 			It("return http.StatusOK for a package that does exist", func() {
-				client = acceptance.CreateTLSClient("../ca_cert")
+				client := acceptance.CreateTLSClient("../ca_cert")
 
 				request, e := httputil.NewPutRequest("https://internal.127.0.0.1.nip.io:4444/packages/myguid", map[string]map[string]io.Reader{
 					"package": map[string]io.Reader{"somefilename": CreateZip(map[string]string{"somefile": "lalala\n\n"})},
@@ -73,5 +58,3 @@ var _ = Describe("Accessing the bits-service through HTTP", func() {
 
 	})
 })
-
-func GetStatusCode(response *http.Response) int { return response.StatusCode }

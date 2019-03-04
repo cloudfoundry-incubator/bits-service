@@ -26,11 +26,12 @@ type Config struct {
 	// However, we want to be able to control its max_body_size.
 	BuildpackCache BlobstoreConfig `yaml:"buildpack_cache"`
 
-	Logging         LoggingConfig
-	PublicEndpoint  string `yaml:"public_endpoint"`
-	PrivateEndpoint string `yaml:"private_endpoint"`
-	Secret          string
-	SigningKeys     []struct {
+	Logging          LoggingConfig
+	PublicEndpoint   string `yaml:"public_endpoint"`
+	PrivateEndpoint  string `yaml:"private_endpoint"`
+	RegistryEndpoint string `yaml:"registry_endpoint"`
+	Secret           string
+	SigningKeys      []struct {
 		KeyID  string `yaml:"key_id"`
 		Secret string
 	} `yaml:"signing_keys"`
@@ -53,17 +54,24 @@ type Config struct {
 }
 
 func (config *Config) PublicEndpointUrl() *url.URL {
-	u, e := url.Parse(config.PublicEndpoint)
-	if e != nil {
-		panic("Unexpected error: " + e.Error())
-	}
-	return u
+	return validateEndpoint(config.PublicEndpoint, "public")
 }
 
 func (config *Config) PrivateEndpointUrl() *url.URL {
-	u, e := url.Parse(config.PrivateEndpoint)
+	return validateEndpoint(config.PrivateEndpoint, "private")
+}
+
+func (config *Config) RegistryEndpointUrl() *url.URL {
+	return validateEndpoint(config.RegistryEndpoint, "registry")
+}
+
+func validateEndpoint(endpoint string, endpointType string) *url.URL {
+	u, e := url.Parse(endpoint)
 	if e != nil {
-		panic("Unexpected error: " + e.Error())
+		panic("Unexpected error while parsing " + endpointType + "_endpoint \"" + endpoint + "\": " + e.Error())
+	}
+	if u.String() == "" {
+		panic(endpointType + "_endpoint must not be empty")
 	}
 	return u
 }

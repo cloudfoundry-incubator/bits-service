@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/cloudfoundry-incubator/bits-service/util"
+
 	"github.com/onsi/gomega/gexec"
 
 	. "github.com/onsi/ginkgo"
@@ -29,10 +31,37 @@ func StartServer(configYamlFile string) (session *gexec.Session) {
 
 func CreateTLSClient(caCertFile string) *http.Client {
 	caCert, err := ioutil.ReadFile(caCertFile)
-	Ω(err).ShouldNot(HaveOccurred())
+	util.PanicOnError(err)
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 	return &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{
 		RootCAs: caCertPool,
 	}}}
 }
+
+func SetUpAndTearDownServer() {
+	var session *gexec.Session
+
+	BeforeSuite(func() {
+		session = StartServer("config.yml")
+	})
+
+	AfterSuite(func() {
+		if session != nil {
+			session.Kill()
+		}
+		gexec.CleanupBuildArtifacts()
+		os.Remove("/tmp/eirinifs/assets/eirinifs.tar")
+		time.Sleep(2 * time.Second)
+	})
+}
+
+func CreateFakeEiriniFS() {
+	err := os.MkdirAll("/tmp/eirinifs/assets", 0755)
+	util.PanicOnError(err)
+	file, err := os.Create("/tmp/eirinifs/assets/eirinifs.tar")
+	util.PanicOnError(err)
+	file.Close()
+}
+
+func GetStatusCode(response *http.Response) int { return response.StatusCode }

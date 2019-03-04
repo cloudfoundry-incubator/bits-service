@@ -64,7 +64,10 @@ func main() {
 
 	go regularlyEmitGoRoutines(metricsService)
 
-	var ociImageHandler *oci_registry.ImageHandler
+	var (
+		ociImageHandler      *oci_registry.ImageHandler
+		registryEndpointHost = ""
+	)
 	if config.EnableRegistry {
 		ociImageHandler = &oci_registry.ImageHandler{
 			ImageManager: oci_registry.NewBitsImageManager(
@@ -77,11 +80,19 @@ func main() {
 				dropletBlobstore,
 			),
 		}
+		registryEndpointHost = config.RegistryEndpointUrl().Host
+		log.Log.Infow("Starting with OCI image registry",
+			"registry-host", registryEndpointHost,
+			"http-enabled", config.HttpEnabled,
+			"http-port", config.HttpPort,
+			"https-port", config.Port,
+		)
 	}
 
 	handler := routes.SetUpAllRoutes(
 		config.PrivateEndpointUrl().Host,
 		config.PublicEndpointUrl().Host,
+		registryEndpointHost,
 		middlewares.NewBasicAuthMiddleWare(basicAuthCredentialsFrom(config.SigningUsers)...),
 		&middlewares.SignatureVerificationMiddleware{pathsigner.Validate(&pathsigner.PathSignerValidator{
 			config.Secret,

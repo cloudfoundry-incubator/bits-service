@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/negroni"
 )
 
-func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlewares.BasicAuthMiddleware,
+func SetUpAllRoutes(privateHost, publicHost, registryHost string, basicAuthMiddleware *middlewares.BasicAuthMiddleware,
 	signatureVerificationMiddleware *middlewares.SignatureVerificationMiddleware,
 	signPackageURLHandler,
 	signDropletURLHandler,
@@ -25,8 +25,7 @@ func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlew
 
 	rootRouter := mux.NewRouter()
 
-	internalRouter := mux.NewRouter()
-	rootRouter.Host(privateHost).Handler(internalRouter)
+	internalRouter := rootRouter.Host(privateHost).Subrouter()
 
 	SetUpSignRoute(internalRouter, basicAuthMiddleware,
 		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler, signAppStashURLHandler)
@@ -37,25 +36,23 @@ func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlew
 	SetUpDropletRoutes(internalRouter, dropletHandler)
 	SetUpBuildpackCacheRoutes(internalRouter, buildpackCacheHandler)
 
-	publicRouter := mux.NewRouter()
-	rootRouter.Host(publicHost).Handler(negroni.New(
-		signatureVerificationMiddleware,
-		negroni.Wrap(publicRouter),
-	))
+	publicRouter := rootRouter.Host(publicHost).Subrouter()
+	publicRouter.Use(middlewares.GorillaMiddlewareFrom(signatureVerificationMiddleware))
+
 	SetUpAppStashRoutes(publicRouter, appstashHandler)
 	SetUpPackageRoutes(publicRouter, packageHandler)
 	SetUpBuildpackRoutes(publicRouter, buildpackHandler)
 	SetUpDropletRoutes(publicRouter, dropletHandler)
 	SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheHandler)
 
+	if ociImageHandler != nil {
+		AddImageHandler(rootRouter.Host(registryHost).Subrouter(), ociImageHandler)
+	}
+
 	rootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		util.FprintDescriptionAsJSON(w, "Invalid host '%v'. External clients should use hostname '%v.'", r.Host, publicHost)
 	})
-
-	if ociImageHandler != nil {
-		AddImageHandler(internalRouter, ociImageHandler)
-	}
 
 	return rootRouter
 }
@@ -145,10 +142,7 @@ func delegateWithQueryParamsExtractedTo(delegate func(http.ResponseWriter, *http
 	}
 }
 
-func AddImageHandler(rootRouter *mux.Router, handler *registry.ImageHandler) {
-	ociRouter := mux.NewRouter()
-	rootRouter.PathPrefix("/v2").Handler(ociRouter)
-
+func AddImageHandler(ociRouter *mux.Router, handler *registry.ImageHandler) {
 	ociRouter.Path("/v2").Methods(http.MethodGet).HandlerFunc(handler.ServeAPIVersion)
 	ociRouter.Path("/v2/").Methods(http.MethodGet).HandlerFunc(handler.ServeAPIVersion)
 	ociRouter.Path("/v2/{name:[a-z0-9/\\.\\-_]+}/manifests/{tag}").Methods(http.MethodGet).HandlerFunc(handler.ServeManifest)

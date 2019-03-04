@@ -6,9 +6,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"testing"
 
+	. "github.com/cloudfoundry-incubator/bits-service/acceptance_test"
 	acceptance "github.com/cloudfoundry-incubator/bits-service/acceptance_test"
 	"github.com/cloudfoundry-incubator/bits-service/httputil"
 	. "github.com/cloudfoundry-incubator/bits-service/testutil"
@@ -16,36 +16,15 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gexec"
 )
 
-var (
-	session *gexec.Session
-	client  *http.Client
-)
+var client *http.Client = acceptance.CreateTLSClient("ca_cert")
 
 func TestEndToEnd(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
-	BeforeSuite(func() {
-		err := os.MkdirAll("/tmp/eirinifs/assets", 0755)
-		Ω(err).ShouldNot(HaveOccurred())
-		file, err := os.Create("/tmp/eirinifs/assets/eirinifs.tar")
-		Ω(err).ShouldNot(HaveOccurred())
-		file.Close()
-
-		session = acceptance.StartServer("config.yml")
-		client = acceptance.CreateTLSClient("ca_cert")
-	})
-
-	AfterSuite(func() {
-		if session != nil {
-			session.Kill()
-		}
-		gexec.CleanupBuildArtifacts()
-		os.Remove("/tmp/eirinifs/assets/eirinifs.tar")
-	})
-
+	CreateFakeEiriniFS()
+	SetUpAndTearDownServer()
 	ginkgo.RunSpecs(t, "EndToEnd HTTPS")
 }
 
@@ -137,5 +116,3 @@ func newGetRequest(url string, username string, password string) *http.Request {
 	request.SetBasicAuth(username, password)
 	return request
 }
-
-func GetStatusCode(response *http.Response) int { return response.StatusCode }
