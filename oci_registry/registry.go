@@ -17,7 +17,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/cloudfoundry-incubator/bits-service"
+	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 
 	"github.com/cloudfoundry-incubator/bits-service/oci_registry/models/docker"
 	"github.com/cloudfoundry-incubator/bits-service/oci_registry/models/docker/mediatype"
@@ -35,22 +35,28 @@ func (m *ImageHandler) ServeAPIVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *ImageHandler) ServeManifest(w http.ResponseWriter, r *http.Request) {
-	manifest, digest, size := m.ImageManager.GetManifest(strings.TrimPrefix(mux.Vars(r)["name"], "cloudfoundry/"), mux.Vars(r)["tag"])
+	manifestList := m.ImageManager.GetManifestList(strings.TrimPrefix(mux.Vars(r)["name"], "cloudfoundry/"), mux.Vars(r)["tag"])
 
-	if manifest == nil {
+	if manifestList == nil {
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Add("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
-	w.Header().Add("Docker-Content-Digest", digest)
-	w.Header().Add("Content-Length", fmt.Sprintf("%d", size))
 
-	w.Write(manifest)
+	manifestListJson, e := json.Marshal(manifestList)
+	util.PanicOnError(errors.WithStack(e))
+
+	manifestListDigest, manifestListSize := shaAndSize(bytes.NewReader(manifestListJson))
+
+	w.Header().Add("Content-Type", mediatype.DistributionManifestListV2Json)
+	w.Header().Add("Docker-Content-Digest", manifestListDigest)
+	w.Header().Add("Content-Length", fmt.Sprintf("%d", manifestListSize))
+
+	w.Write(manifestListJson)
 }
 
-func (m *ImageHandler) ServeLayer(w http.ResponseWriter, r *http.Request) {
+func (m *ImageHandler) ServeBlob(w http.ResponseWriter, r *http.Request) {
 	digest := mux.Vars(r)["digest"]
-	layer := m.ImageManager.GetLayer(mux.Vars(r)["name"], digest)
+	layer := m.ImageManager.GetBlob(mux.Vars(r)["name"], digest)
 
 	if layer == nil {
 		http.NotFound(w, r)
@@ -93,11 +99,45 @@ func NewBitsImageManager(
 	}
 }
 
-func (b *BitsImageManager) GetManifest(dropletGUID string, dropletHash string) ([]byte, string, int64) {
+func (b *BitsImageManager) GetManifestList(dropletGUID string, dropletHash string) *docker.ManifestList {
+	manifest := b.GetManifest(dropletGUID, dropletHash)
+	if manifest == nil {
+		return nil
+	}
+	manifestJson, e := json.Marshal(manifest)
+	util.PanicOnError(errors.WithStack(e))
+
+	manifestDigest, manifestSize := shaAndSize(bytes.NewReader(manifestJson))
+
+	e = b.digestLookupStore.Put(manifestDigest, bytes.NewReader(manifestJson))
+	util.PanicOnError(errors.WithStack(e))
+
+	return &docker.ManifestList{
+		Versioned: docker.Versioned{
+			MediaType:     mediatype.DistributionManifestListV2Json,
+			SchemaVersion: 2,
+		},
+		Manifests: []docker.ManifestDescriptor{
+			docker.ManifestDescriptor{
+				Content: docker.Content{
+					MediaType: mediatype.ImageManifestV2Json,
+					Size:      manifestSize,
+					Digest:    manifestDigest,
+				},
+				Platform: docker.PlatformSpec{
+					Architecture: "amd64",
+					OS:           "linux",
+				},
+			},
+		},
+	}
+}
+
+func (b *BitsImageManager) GetManifest(dropletGUID string, dropletHash string) *docker.Manifest {
 	dropletReader, e := b.dropletBlobstore.Get(dropletGUID + "/" + dropletHash)
 
 	if bitsgo.IsNotFoundError(e) {
-		return nil, "", -1
+		return nil
 	}
 	util.PanicOnError(errors.WithStack(e))
 	defer dropletReader.Close()
@@ -124,11 +164,16 @@ func (b *BitsImageManager) GetManifest(dropletGUID string, dropletHash string) (
 	configJSON := b.configMetadata(b.rootfsDigest, dropletDigest)
 	configDigest, configSize := shaAndSize(bytes.NewReader(configJSON))
 
-	manifestJson, e := json.Marshal(docker.Manifest{
-		MediaType:     mediatype.DistributionManifestJson,
-		SchemaVersion: 2,
+	e = b.digestLookupStore.Put(configDigest, bytes.NewReader(configJSON))
+	util.PanicOnError(errors.WithStack(e))
+
+	return &docker.Manifest{
+		Versioned: docker.Versioned{
+			MediaType:     mediatype.DistributionManifestV2Json,
+			SchemaVersion: 2,
+		},
 		Config: docker.Content{
-			MediaType: mediatype.ContainerImageJson,
+			MediaType: mediatype.ContainerImageV1Json,
 			Digest:    configDigest,
 			Size:      configSize,
 		},
@@ -144,18 +189,7 @@ func (b *BitsImageManager) GetManifest(dropletGUID string, dropletHash string) (
 				Size:      dropletSize,
 			},
 		},
-	})
-	util.PanicOnError(errors.WithStack(e))
-
-	e = b.digestLookupStore.Put(configDigest, bytes.NewReader(configJSON))
-	util.PanicOnError(errors.WithStack(e))
-
-	manifestDigest, manifestSize := shaAndSize(bytes.NewReader(manifestJson))
-
-	e = b.digestLookupStore.Put(manifestDigest, bytes.NewReader(manifestJson))
-	util.PanicOnError(errors.WithStack(e))
-
-	return manifestJson, manifestDigest, manifestSize
+	}
 }
 
 func preFixDroplet(cfDroplet io.Reader, ociDroplet io.Writer) {
@@ -188,7 +222,7 @@ func shaAndSize(reader io.Reader) (sha string, size int64) {
 }
 
 // NOTE: name is currently not used.
-func (b *BitsImageManager) GetLayer(name string, digest string) io.ReadCloser {
+func (b *BitsImageManager) GetBlob(name string, digest string) io.ReadCloser {
 	if digest == b.rootfsDigest {
 		r, e := b.rootFSBlobstore.Get("assets/eirinifs.tar")
 		util.PanicOnError(errors.WithStack(e))
@@ -205,8 +239,6 @@ func (b *BitsImageManager) GetLayer(name string, digest string) io.ReadCloser {
 }
 
 func (b *BitsImageManager) configMetadata(rootfsDigest string, dropletDigest string) []byte {
-	// TODO: ns, tzip why is this necessary?
-	// TDOO: ns, tzip how to handle this?
 	config, e := json.Marshal(map[string]interface{}{
 		"config": map[string]interface{}{
 			"user": "vcap",

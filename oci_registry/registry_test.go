@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
+	inmemory_blobstore "github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
 	"github.com/cloudfoundry-incubator/bits-service/oci_registry"
 
 	"github.com/gorilla/mux"
@@ -16,7 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/urfave/negroni"
 
-	"github.com/cloudfoundry-incubator/bits-service"
+	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/middlewares"
 	"github.com/cloudfoundry-incubator/bits-service/routes"
 )
@@ -63,7 +63,24 @@ var _ = Describe("Registry", func() {
 	Describe("pull image", func() {
 		It("should serve the GET image manifest endpoint", func() {
 			res, e := http.Get(serverURL + "/v2/cloudfoundry/the-droplet-guid/manifests/the-droplet-hash")
+			Expect(res.StatusCode, e).To(Equal(http.StatusOK))
+			Expect(ioutil.ReadAll(res.Body)).To(MatchJSON(`{
+				"schemaVersion": 2,
+				"mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+				"manifests": [
+				  {
+					"mediaType": "application/vnd.docker.image.manifest.v2+json",
+					"digest": "sha256:42706af61c60ec7eb377b9d79e56ebbbef8ccb5637ef12df070363ea0103e570",
+					"size": 582,
+					"platform": {
+					  "architecture": "amd64",
+					  "os": "linux"
+					}
+				  }
+				]
+			  }`))
 
+			res, e = http.Get(serverURL + "/v2/irrelevant-image-name/blobs/sha256:42706af61c60ec7eb377b9d79e56ebbbef8ccb5637ef12df070363ea0103e570")
 			Expect(res.StatusCode, e).To(Equal(http.StatusOK))
 			Expect(ioutil.ReadAll(res.Body)).To(MatchJSON(`{
 				"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
