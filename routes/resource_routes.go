@@ -3,7 +3,7 @@ package routes
 import (
 	"net/http"
 
-	"github.com/cloudfoundry-incubator/bits-service"
+	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/middlewares"
 	registry "github.com/cloudfoundry-incubator/bits-service/oci_registry"
 	"github.com/cloudfoundry-incubator/bits-service/util"
@@ -19,7 +19,9 @@ func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlew
 	signBuildpackCacheURLHandler,
 	signAppStashURLHandler *bitsgo.SignResourceHandler,
 	appstashHandler *bitsgo.AppStashHandler,
-	packageHandler, buildpackHandler, dropletHandler, buildpackCacheHandler *bitsgo.ResourceHandler) *mux.Router {
+	packageHandler, buildpackHandler, dropletHandler, buildpackCacheHandler *bitsgo.ResourceHandler,
+	ociImageHandler *registry.ImageHandler,
+) *mux.Router {
 
 	rootRouter := mux.NewRouter()
 
@@ -50,6 +52,10 @@ func SetUpAllRoutes(privateHost, publicHost string, basicAuthMiddleware *middlew
 		w.WriteHeader(http.StatusBadRequest)
 		util.FprintDescriptionAsJSON(w, "Invalid host '%v'. External clients should use hostname '%v.'", r.Host, publicHost)
 	})
+
+	if ociImageHandler != nil {
+		AddImageHandler(internalRouter, ociImageHandler)
+	}
 
 	return rootRouter
 }

@@ -64,6 +64,21 @@ func main() {
 
 	go regularlyEmitGoRoutines(metricsService)
 
+	var ociImageHandler *oci_registry.ImageHandler
+	if config.EnableRegistry {
+		ociImageHandler = &oci_registry.ImageHandler{
+			ImageManager: oci_registry.NewBitsImageManager(
+				createRootFSBlobstore(config.RootFS),
+				dropletBlobstore,
+				// TODO: We should use a differently decorated blobstore for digestLookupStore:
+				// We want one with a non-partitioned prefix, so real droplets and
+				// oci-droplet layers (i.e. droplets with adjusted path prefixes)
+				// are easily distinguishable from their paths in the blobstore.
+				dropletBlobstore,
+			),
+		}
+	}
+
 	handler := routes.SetUpAllRoutes(
 		config.PrivateEndpointUrl().Host,
 		config.PublicEndpointUrl().Host,
@@ -93,21 +108,9 @@ func main() {
 		),
 		bitsgo.NewResourceHandler(buildpackBlobstore, appStashBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes(), config.ShouldProxyGetRequests),
 		bitsgo.NewResourceHandler(dropletBlobstore, appStashBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes(), config.ShouldProxyGetRequests),
-		bitsgo.NewResourceHandler(buildpackCacheBlobstore, appStashBlobstore, "buildpack_cache", metricsService, config.BuildpackCache.MaxBodySizeBytes(), config.ShouldProxyGetRequests))
-
-	if config.EnableRegistry {
-		routes.AddImageHandler(handler, &oci_registry.ImageHandler{
-			ImageManager: oci_registry.NewBitsImageManager(
-				createRootFSBlobstore(config.RootFS),
-				dropletBlobstore,
-				// TODO: We should use a differently decorated blobstore for digestLookupStore:
-				// We want one with a non-partitioned prefix, so real droplets and
-				// oci-droplet layers (i.e. droplets with adjusted path prefixes)
-				// are easily distinguishable from their paths in the blobstore.
-				dropletBlobstore,
-			),
-		})
-	}
+		bitsgo.NewResourceHandler(buildpackCacheBlobstore, appStashBlobstore, "buildpack_cache", metricsService, config.BuildpackCache.MaxBodySizeBytes(), config.ShouldProxyGetRequests),
+		ociImageHandler,
+	)
 
 	address := os.Getenv("BITS_LISTEN_ADDR")
 	if address == "" {
