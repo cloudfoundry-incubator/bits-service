@@ -145,7 +145,7 @@ func delegateWithQueryParamsExtractedTo(delegate func(http.ResponseWriter, *http
 func AddImageHandler(ociRouter *mux.Router, handler *registry.ImageHandler) {
 	ociRouter.Path("/v2").Methods(http.MethodGet).HandlerFunc(handler.ServeAPIVersion)
 	ociRouter.Path("/v2/").Methods(http.MethodGet).HandlerFunc(handler.ServeAPIVersion)
-	ociRouter.Path("/v2/{name:[a-z0-9/\\.\\-_]+}/manifests/{tag}").Methods(http.MethodGet).HandlerFunc(handler.ServeManifest)
-	ociRouter.Path("/v2/{space}/{name}/manifests/{tag}").Methods(http.MethodGet).HandlerFunc(handler.ServeManifest)
+	ociRouter.Path("/v2/{name:[a-z0-9/\\.\\-_]+}/manifests/{tag}").Methods(http.MethodGet, http.MethodHead).HandlerFunc(handler.ServeManifest)
+	ociRouter.Path("/v2/{space}/{name}/manifests/{tag}").Methods(http.MethodGet, http.MethodHead).HandlerFunc(handler.ServeManifest)
 	ociRouter.Path("/v2/{name:[a-z0-9/\\.\\-_]+}/blobs/{digest}").Methods(http.MethodGet).HandlerFunc(handler.ServeLayer)
 }

@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -34,24 +35,29 @@ func (m *ImageHandler) ServeAPIVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *ImageHandler) ServeManifest(w http.ResponseWriter, r *http.Request) {
-	manifest := m.ImageManager.GetManifest(strings.TrimPrefix(mux.Vars(r)["name"], "cloudfoundry/"), mux.Vars(r)["tag"])
+	manifest, digest, size := m.ImageManager.GetManifest(strings.TrimPrefix(mux.Vars(r)["name"], "cloudfoundry/"), mux.Vars(r)["tag"])
 
 	if manifest == nil {
 		http.NotFound(w, r)
 		return
 	}
 	w.Header().Add("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
+	w.Header().Add("Docker-Content-Digest", digest)
+	w.Header().Add("Content-Length", fmt.Sprintf("%d", size))
+
 	w.Write(manifest)
 }
 
 func (m *ImageHandler) ServeLayer(w http.ResponseWriter, r *http.Request) {
-	layer := m.ImageManager.GetLayer(mux.Vars(r)["name"], mux.Vars(r)["digest"])
+	digest := mux.Vars(r)["digest"]
+	layer := m.ImageManager.GetLayer(mux.Vars(r)["name"], digest)
 
 	if layer == nil {
 		http.NotFound(w, r)
 		return
 	}
 
+	w.Header().Add("Docker-Content-Digest", digest)
 	_, e := io.Copy(w, layer)
 
 	util.PanicOnError(errors.WithStack(e))
@@ -87,11 +93,11 @@ func NewBitsImageManager(
 	}
 }
 
-func (b *BitsImageManager) GetManifest(dropletGUID string, dropletHash string) []byte {
+func (b *BitsImageManager) GetManifest(dropletGUID string, dropletHash string) ([]byte, string, int64) {
 	dropletReader, e := b.dropletBlobstore.Get(dropletGUID + "/" + dropletHash)
 
 	if bitsgo.IsNotFoundError(e) {
-		return nil
+		return nil, "", -1
 	}
 	util.PanicOnError(errors.WithStack(e))
 	defer dropletReader.Close()
@@ -144,7 +150,12 @@ func (b *BitsImageManager) GetManifest(dropletGUID string, dropletHash string) [
 	e = b.digestLookupStore.Put(configDigest, bytes.NewReader(configJSON))
 	util.PanicOnError(errors.WithStack(e))
 
-	return manifestJson
+	manifestDigest, manifestSize := shaAndSize(bytes.NewReader(manifestJson))
+
+	e = b.digestLookupStore.Put(manifestDigest, bytes.NewReader(manifestJson))
+	util.PanicOnError(errors.WithStack(e))
+
+	return manifestJson, manifestDigest, manifestSize
 }
 
 func preFixDroplet(cfDroplet io.Reader, ociDroplet io.Writer) {
