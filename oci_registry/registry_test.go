@@ -80,7 +80,7 @@ var _ = Describe("Registry", func() {
 				]
 			  }`))
 
-			res, e = http.Get(serverURL + "/v2/irrelevant-image-name/blobs/sha256:42706af61c60ec7eb377b9d79e56ebbbef8ccb5637ef12df070363ea0103e570")
+			res, e = http.Get(serverURL + "/v2/irrelevant-image-name/manifests/sha256:42706af61c60ec7eb377b9d79e56ebbbef8ccb5637ef12df070363ea0103e570")
 			Expect(res.StatusCode, e).To(Equal(http.StatusOK))
 			Expect(ioutil.ReadAll(res.Body)).To(MatchJSON(`{
 				"mediaType": "application/vnd.docker.distribution.manifest.v2+json",

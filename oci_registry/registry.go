@@ -35,6 +35,13 @@ func (m *ImageHandler) ServeAPIVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *ImageHandler) ServeManifest(w http.ResponseWriter, r *http.Request) {
+	// TODO (pego): this is a hack to address to quickly find out if this should serve a manifest or manifest list. Should be improved.
+	if m.ImageManager.GetBlob("not used", mux.Vars(r)["tag"]) != nil {
+		mux.Vars(r)["digest"] = mux.Vars(r)["tag"]
+		m.ServeBlob(w, r)
+		return
+	}
+
 	manifestList := m.ImageManager.GetManifestList(strings.TrimPrefix(mux.Vars(r)["name"], "cloudfoundry/"), mux.Vars(r)["tag"])
 
 	if manifestList == nil {
@@ -61,6 +68,13 @@ func (m *ImageHandler) ServeBlob(w http.ResponseWriter, r *http.Request) {
 	if layer == nil {
 		http.NotFound(w, r)
 		return
+	}
+
+	// TODO (pego): this is a hack to find out if we should serve a layer or a manifest blob. Should be improved.
+	if mux.Vars(r)["digest"] == mux.Vars(r)["tag"] {
+		w.Header().Add("Content-Type", mediatype.DistributionManifestV2Json)
+	} else {
+		w.Header().Add("Content-Type", mediatype.ImageRootfsTarGzip)
 	}
 
 	w.Header().Add("Docker-Content-Digest", digest)
