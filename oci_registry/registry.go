@@ -53,6 +53,8 @@ func (m *ImageHandler) ServeManifest(w http.ResponseWriter, r *http.Request) {
 	util.PanicOnError(errors.WithStack(e))
 
 	manifestListDigest, manifestListSize := shaAndSize(bytes.NewReader(manifestListJson))
+	e = m.ImageManager.digestLookupStore.Put(manifestListDigest, bytes.NewReader(manifestListJson))
+	util.PanicOnError(errors.WithStack(e))
 
 	w.Header().Add("Content-Type", mediatype.DistributionManifestListV2Json)
 	w.Header().Add("Docker-Content-Digest", manifestListDigest)
@@ -134,7 +136,7 @@ func (b *BitsImageManager) GetManifestList(dropletGUID string, dropletHash strin
 		Manifests: []docker.ManifestDescriptor{
 			docker.ManifestDescriptor{
 				Content: docker.Content{
-					MediaType: mediatype.ImageManifestV2Json,
+					MediaType: mediatype.DistributionManifestV2Json,
 					Size:      manifestSize,
 					Digest:    manifestDigest,
 				},
