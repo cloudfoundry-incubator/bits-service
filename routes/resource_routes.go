@@ -51,7 +51,7 @@ func SetUpAllRoutes(privateHost, publicHost, registryHost string, basicAuthMiddl
 
 	rootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		util.FprintDescriptionAsJSON(w, "Invalid host '%v'. External clients should use hostname '%v.'", r.Host, publicHost)
+		util.FprintDescriptionAsJSON(w, "Invalid host '%v'. External clients should use hostname '%v'.", r.Host, publicHost)
 	})
 
 	return rootRouter
