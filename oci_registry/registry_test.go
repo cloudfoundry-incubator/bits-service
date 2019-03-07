@@ -69,7 +69,7 @@ var _ = Describe("Registry", func() {
 				"mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
 				"manifests": [
 				  {
-					"mediaType": "application/vnd.docker.image.manifest.v2+json",
+					"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
 					"digest": "sha256:42706af61c60ec7eb377b9d79e56ebbbef8ccb5637ef12df070363ea0103e570",
 					"size": 582,
 					"platform": {
