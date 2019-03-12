@@ -68,9 +68,9 @@ func SetUpPackageRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHand
 }
 
 func SetUpBuildpackRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHandler) {
-	router.Path("/buildpacks").Methods("POST").HandlerFunc(delegateTo(resourceHandler.Add))
+	router.Path("/buildpacks").Methods("POST").HandlerFunc(delegateTo(resourceHandler.AddBuildpack))
 	// TODO: why do we need a version with a / in the end
-	router.Path("/buildpacks/").Methods("POST").HandlerFunc(delegateTo(resourceHandler.Add))
+	router.Path("/buildpacks/").Methods("POST").HandlerFunc(delegateTo(resourceHandler.AddBuildpack))
 	router.Path("/buildpacks/{identifier}/metadata").Methods("GET").HandlerFunc(delegateTo(resourceHandler.BuildpackMetadata))
 	setUpDefaultMethodRoutes(router.Path("/buildpacks/{identifier}").Subrouter(), resourceHandler)
 }

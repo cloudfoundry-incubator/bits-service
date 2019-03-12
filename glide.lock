@@ -1,5 +1,5 @@
-hash: 28e0da673280ab363c1564b684cd3b4267bdac069d97ed384ad8d47af85dd99f
-updated: 2019-03-12T16:32:53.183713+01:00
+hash: 579daf3243fa5a0d1922469b19505cbabb2250a888c44236c992b12eb14c8490
+updated: 2019-03-12T23:10:52.395518+01:00
 imports:
 - name: cloud.google.com/go
   version: 2de6e15cf9252ba6c2179d155dd6c991dc013956
@@ -163,7 +163,7 @@ imports:
 - name: github.com/pkg/errors
   version: 059132a15dd08d6704c67711dae0cf35ab991756
 - name: github.com/satori/go.uuid
-  version: b2ce2384e17bbe0c6d34077efa39dbab3e09123b
+  version: f58768cc1a7a7e77a3bd49e98cdd21419399b6a3
 - name: github.com/tecnickcom/statsd
   version: b5fbf096b31b1cb3cc0bcf887fbb0f1a5d3ee7e5
 - name: github.com/urfave/negroni

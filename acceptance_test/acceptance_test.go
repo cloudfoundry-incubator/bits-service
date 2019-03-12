@@ -85,7 +85,7 @@ var _ = Describe("Accessing the bits-service", func() {
 				VerifyZipFileEntry(zipReader, "somefile", "lalala\n\n")
 			})
 
-			FIt("can POST a buildpack to a signed URL", func() {
+			It("can POST a buildpack to a signed URL", func() {
 				response, e := client.Do(
 					newGetRequest("https://internal.127.0.0.1.nip.io:4443/sign/buildpacks?verb=post", "the-username", "the-password"))
 				Expect(e).NotTo(HaveOccurred())
@@ -98,7 +98,20 @@ var _ = Describe("Accessing the bits-service", func() {
 					"bits": map[string]io.Reader{"somefilename": CreateZip(map[string]string{"somefile": "lalala\n\n"})},
 				})
 				Expect(e).NotTo(HaveOccurred())
+				response, e = client.Do(r)
+				Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
 
+				r, e = httputil.NewPostRequest(string(signedUrl), map[string]map[string]io.Reader{
+					"bits": map[string]io.Reader{"somefilename": CreateZip(map[string]string{"manifest.yml": "lalala\n\n"})},
+				})
+				Expect(e).NotTo(HaveOccurred())
+				response, e = client.Do(r)
+				Expect(response.StatusCode).To(Equal(http.StatusBadRequest))
+
+				r, e = httputil.NewPostRequest(string(signedUrl), map[string]map[string]io.Reader{
+					"bits": map[string]io.Reader{"somefilename": CreateZip(map[string]string{"manifest.yml": "stack: the-stack\n\n"})},
+				})
+				Expect(e).NotTo(HaveOccurred())
 				response, e = client.Do(r)
 				Expect(response.StatusCode).To(Equal(http.StatusCreated))
 
@@ -109,7 +122,7 @@ var _ = Describe("Accessing the bits-service", func() {
 				e = json.Unmarshal(responseBody, &jsonBody)
 				Expect(e).NotTo(HaveOccurred())
 
-				Expect(jsonBody.Sha256).To(Equal("876d81de722459981fe7de8909b49196ad5c8753d48ce10e8994c7aa742291f0"))
+				Expect(jsonBody.Sha256).To(Equal("dc7e0bb2e12e1e566a00286ec2af5a82447f9522fa74a28a86d22a2ab09c9bb9"))
 
 				response, e = client.Do(
 					newGetRequest(fmt.Sprintf("https://internal.127.0.0.1.nip.io:4443/sign/buildpacks/%v/metadata", jsonBody.Guid), "the-username", "the-password"))
@@ -128,6 +141,7 @@ var _ = Describe("Accessing the bits-service", func() {
 				Expect(bpMetdata.Key).To(Equal(jsonBody.Guid))
 				Expect(bpMetdata.Sha1).To(Equal(jsonBody.Sha1))
 				Expect(bpMetdata.Sha256).To(Equal(jsonBody.Sha256))
+				Expect(bpMetdata.Stack).To(Equal("the-stack"))
 			})
 		})
 	})

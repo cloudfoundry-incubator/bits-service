@@ -17,13 +17,15 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/yaml.v2"
+
 	"go.uber.org/zap"
 
 	"github.com/cenkalti/backoff"
 	"github.com/cloudfoundry-incubator/bits-service/logger"
 	"github.com/cloudfoundry-incubator/bits-service/util"
-	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 )
 
 type StateForbiddenError struct {
@@ -231,14 +233,14 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 }
 
 type BuildpackMetadata struct {
-	Filename string
-	Sha1     string
-	Sha256   string
-	Stack    string
-	Key      string
+	Filename string `json:"filename"`
+	Sha1     string `json:"sha1"`
+	Sha256   string `json:"sha256"`
+	Stack    string `json:"stack"`
+	Key      string `json:"key"`
 }
 
-func (handler *ResourceHandler) Add(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+func (handler *ResourceHandler) AddBuildpack(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
 		return
 	}
@@ -259,12 +261,15 @@ func (handler *ResourceHandler) Add(responseWriter http.ResponseWriter, request 
 	sha1, sha256, e := ShaSums(tempFilename)
 	util.PanicOnError(e)
 
+	stack, e := extractStackFromZipFile(tempFilename)
+	if e != nil {
+		badRequest(responseWriter, request, "Invalid buildpack zip file: %v", e.Error())
+		return
+	}
+
 	// TODO (pego, eli): do we want to re-introduce async upload here?
 
-	u, e := uuid.NewV4()
-	util.PanicOnError(e)
-
-	identifier := u.String()
+	identifier := uuid.NewV4().String()
 
 	e = handler.uploadResource(tempFilename, request, identifier, false, sha1, sha256)
 
@@ -272,7 +277,7 @@ func (handler *ResourceHandler) Add(responseWriter http.ResponseWriter, request 
 		Filename: fileInfo.Filename,
 		Sha1:     hex.EncodeToString(sha1),
 		Sha256:   hex.EncodeToString(sha256),
-		Stack:    "stack",
+		Stack:    stack,
 		Key:      identifier,
 	}
 
@@ -288,6 +293,40 @@ func (handler *ResourceHandler) Add(responseWriter http.ResponseWriter, request 
 		Sha1:      buildpackMetadata.Sha1,
 		Sha256:    buildpackMetadata.Sha256,
 	}, "")
+}
+
+func extractStackFromZipFile(tempFilename string) (string, error) {
+	buildpackFile, e := zip.OpenReader(tempFilename)
+	switch e {
+	case zip.ErrFormat, zip.ErrAlgorithm, zip.ErrChecksum:
+		return "", e
+	default:
+		util.PanicOnError(e)
+	}
+	for _, zipEntry := range buildpackFile.File {
+		if zipEntry.FileInfo().IsDir() || zipEntry.Name != "manifest.yml" {
+			continue
+		}
+		manifestReader, e := zipEntry.Open()
+		util.PanicOnError(e)
+
+		manifestCOntent, e := ioutil.ReadAll(manifestReader)
+		util.PanicOnError(e)
+
+		var buildpackManifest struct {
+			Stack string `yaml:"stack"`
+		}
+		e = yaml.Unmarshal(manifestCOntent, &buildpackManifest)
+		if e != nil {
+			return "", errors.New("manifest.yml is an invalid YAML file")
+		}
+		if buildpackManifest.Stack == "" {
+			return "", errors.New("missing key \"stack\" in manifest.yml")
+		}
+		return buildpackManifest.Stack, nil
+	}
+
+	return "", errors.New("no manifest.yml found in zip")
 }
 
 type inputError struct {
