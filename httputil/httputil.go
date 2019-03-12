@@ -51,6 +51,20 @@ func NewPutRequest(url string, formFiles map[string]map[string]io.Reader) (*http
 	return request, nil
 }
 
+func NewPostRequest(url string, formFiles map[string]map[string]io.Reader) (*http.Request, error) {
+	bodyBuf := &bytes.Buffer{}
+	contentType, e := AddFormFileTo(bodyBuf, formFiles)
+	if e != nil {
+		return nil, errors.Wrapf(e, "url=%v", url)
+	}
+	request, e := http.NewRequest("POST", url, bodyBuf)
+	if e != nil {
+		return nil, errors.Wrapf(e, "url=%v", url)
+	}
+	request.Header.Add("Content-Type", contentType)
+	return request, nil
+}
+
 func AddFormFileTo(body io.Writer, formFiles map[string]map[string]io.Reader) (contentType string, err error) {
 	multipartWriter := multipart.NewWriter(body)
 	for name, filenameAndReader := range formFiles {

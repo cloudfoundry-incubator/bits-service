@@ -33,6 +33,7 @@ import:
 - package: golang.org/x/sync
   subpackages:
   - semaphore
+- package: github.com/nu7hatch/gouuid
 testImport:
 - package: github.com/onsi/ginkgo
 - package: github.com/petergtz/pegomock

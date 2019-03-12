@@ -22,6 +22,7 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/cloudfoundry-incubator/bits-service/logger"
 	"github.com/cloudfoundry-incubator/bits-service/util"
+	uuid "github.com/nu7hatch/gouuid"
 	"github.com/pkg/errors"
 )
 
@@ -57,7 +58,7 @@ type ResourceHandler struct {
 	shouldProxyGetRequests bool
 }
 
-type responseBody struct {
+type ResponseBody struct {
 	Guid      string    `json:"guid"`
 	State     string    `json:"state"`
 	Type      string    `json:"type"`
@@ -152,7 +153,7 @@ func (handler *ResourceHandler) AddOrReplaceWithDigestInHeader(responseWriter ht
 	})
 
 	// TODO use Clock instead:
-	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &ResponseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
 
 // TODO: instead of params, we could use `identifier string` to make the interface more type-safe.
@@ -204,7 +205,7 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 
 	if request.URL.Query().Get("async") == "true" {
 		go handler.uploadResource(tempFilename, request, params["identifier"], true, sha1, sha256)
-		writeResponseBasedOn("", nil, responseWriter, request, http.StatusAccepted, nil, &responseBody{
+		writeResponseBasedOn("", nil, responseWriter, request, http.StatusAccepted, nil, &ResponseBody{
 			Guid:      params["identifier"],
 			State:     "PROCESSING_UPLOAD",
 			Type:      "bits",
@@ -218,7 +219,7 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 			writeResponseBasedOn("", nil, responseWriter, request, http.StatusConflict, nil, nil, "")
 			return
 		}
-		writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{
+		writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &ResponseBody{
 			Guid:      params["identifier"],
 			State:     "READY",
 			Type:      "bits",
@@ -227,6 +228,66 @@ func (handler *ResourceHandler) AddOrReplace(responseWriter http.ResponseWriter,
 			Sha256:    hex.EncodeToString(sha256),
 		}, "")
 	}
+}
+
+type BuildpackMetadata struct {
+	Filename string
+	Sha1     string
+	Sha256   string
+	Stack    string
+	Key      string
+}
+
+func (handler *ResourceHandler) Add(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	if !HandleBodySizeLimits(responseWriter, request, handler.maxBodySizeLimit) {
+		return
+	}
+	file, fileInfo, e := request.FormFile(handler.resourceType)
+	if e == http.ErrMissingFile {
+		file, fileInfo, e = request.FormFile("bits")
+	}
+	if e == http.ErrMissingFile {
+		badRequest(responseWriter, request, "Could not retrieve form parameter '%s' or 'bits", handler.resourceType)
+		return
+	}
+	util.PanicOnError(e)
+	defer file.Close()
+
+	tempFilename, e := CreateTempFileWithContent(file)
+	util.PanicOnError(e)
+
+	sha1, sha256, e := ShaSums(tempFilename)
+	util.PanicOnError(e)
+
+	// TODO (pego, eli): do we want to re-introduce async upload here?
+
+	u, e := uuid.NewV4()
+	util.PanicOnError(e)
+
+	identifier := u.String()
+
+	e = handler.uploadResource(tempFilename, request, identifier, false, sha1, sha256)
+
+	buildpackMetadata := BuildpackMetadata{
+		Filename: fileInfo.Filename,
+		Sha1:     hex.EncodeToString(sha1),
+		Sha256:   hex.EncodeToString(sha256),
+		Stack:    "stack",
+		Key:      identifier,
+	}
+
+	bpMetadataJson, e := json.Marshal(buildpackMetadata)
+	util.PanicOnError(e)
+	e = handler.blobstore.Put(identifier+"-metadata", bytes.NewReader(bpMetadataJson))
+	util.PanicOnError(e)
+	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &ResponseBody{
+		Guid:      buildpackMetadata.Key,
+		State:     "READY",
+		Type:      "bits",
+		CreatedAt: time.Now(),
+		Sha1:      buildpackMetadata.Sha1,
+		Sha256:    buildpackMetadata.Sha256,
+	}, "")
 }
 
 type inputError struct {
@@ -378,7 +439,7 @@ func (handler *ResourceHandler) CopySourceGuid(responseWriter http.ResponseWrite
 	}
 	e := handler.blobstore.Copy(sourceGuid, params["identifier"])
 	// TODO use Clock instead:
-	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &responseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
+	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &ResponseBody{Guid: params["identifier"], State: "READY", Type: "bits", CreatedAt: time.Now()}, "")
 }
 
 func sourceGuidFrom(request *http.Request, responseWriter http.ResponseWriter) string {
@@ -419,6 +480,11 @@ func (handler *ResourceHandler) Get(responseWriter http.ResponseWriter, request 
 	writeResponseBasedOn(redirectLocation, e, responseWriter, request, http.StatusOK, body, nil, request.Header.Get("If-None-Modify"))
 }
 
+func (handler *ResourceHandler) BuildpackMetadata(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
+	body, e := handler.blobstore.Get(params["identifier"] + "-metadata")
+	writeResponseBasedOn("", e, responseWriter, request, http.StatusOK, body, nil, request.Header.Get("If-None-Modify"))
+}
+
 func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, request *http.Request, params map[string]string) {
 	// TODO nothing should be S3 specific here
 	// this check is needed, because S3 does not return a NotFound on a Delete request:
@@ -447,7 +513,7 @@ func (handler *ResourceHandler) DeleteDir(responseWriter http.ResponseWriter, re
 var emptyReader = ioutil.NopCloser(bytes.NewReader(nil))
 
 // TODO: this function probably does too many things and should be refactored
-func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.ResponseWriter, request *http.Request, statusCode int, body io.ReadCloser, jsonBody *responseBody, ifNoneModify string) {
+func writeResponseBasedOn(redirectLocation string, e error, responseWriter http.ResponseWriter, request *http.Request, statusCode int, body io.ReadCloser, jsonBody *ResponseBody, ifNoneModify string) {
 	switch e.(type) {
 	case *NotFoundError:
 		responseWriter.WriteHeader(http.StatusNotFound)

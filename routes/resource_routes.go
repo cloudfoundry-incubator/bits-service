@@ -68,6 +68,10 @@ func SetUpPackageRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHand
 }
 
 func SetUpBuildpackRoutes(router *mux.Router, resourceHandler *bitsgo.ResourceHandler) {
+	router.Path("/buildpacks").Methods("POST").HandlerFunc(delegateTo(resourceHandler.Add))
+	// TODO: why do we need a version with a / in the end
+	router.Path("/buildpacks/").Methods("POST").HandlerFunc(delegateTo(resourceHandler.Add))
+	router.Path("/buildpacks/{identifier}/metadata").Methods("GET").HandlerFunc(delegateTo(resourceHandler.BuildpackMetadata))
 	setUpDefaultMethodRoutes(router.Path("/buildpacks/{identifier}").Subrouter(), resourceHandler)
 }
 
@@ -106,6 +110,7 @@ func SetUpSignRoute(router *mux.Router,
 
 	signRouter.Path("/packages/{resource:[a-z0-9\\-]+}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signPackageURLHandler))
 	signRouter.Path("/droplets/{resource:.+}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signDropletURLHandler))
+	signRouter.Path("/buildpacks").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackURLHandler))
 	signRouter.Path("/buildpacks/{resource:.+}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackURLHandler))
 	signRouter.Path("/buildpack_cache/entries/{resource:.*}").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signBuildpackCacheURLHandler))
 	signRouter.Path("/app_stash/matches").Methods("GET").Handler(wrapWith(basicAuthMiddleware, signAppStashURLHandler))
