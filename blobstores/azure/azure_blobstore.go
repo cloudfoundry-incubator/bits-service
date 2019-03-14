@@ -202,7 +202,7 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 		blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(src).GetURL(), nil)
 
 	if e != nil {
-		blobstore.handleError(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.containerName)
+		return blobstore.handleError(e, "Error while trying to copy src %v to dest %v in bucket %v", src, dest, blobstore.containerName)
 	}
 	return nil
 }
