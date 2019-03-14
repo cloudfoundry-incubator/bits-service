@@ -286,6 +286,8 @@ func (handler *ResourceHandler) AddBuildpack(responseWriter http.ResponseWriter,
 	util.PanicOnError(e)
 	e = handler.blobstore.Put(identifier+"-metadata", bytes.NewReader(bpMetadataJson))
 	util.PanicOnError(e)
+	e = handler.blobstore.Put("uncommitted/"+identifier, strings.NewReader(time.Now().String()))
+	util.PanicOnError(e)
 	writeResponseBasedOn("", e, responseWriter, request, http.StatusCreated, nil, &ResponseBody{
 		Guid:      buildpackMetadata.Key,
 		State:     "READY",
