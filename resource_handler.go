@@ -272,6 +272,7 @@ func (handler *ResourceHandler) AddBuildpack(responseWriter http.ResponseWriter,
 	identifier := uuid.NewV4().String()
 
 	e = handler.uploadResource(tempFilename, request, identifier, false, sha1, sha256)
+	util.PanicOnError(e)
 
 	buildpackMetadata := BuildpackMetadata{
 		Filename: fileInfo.Filename,
