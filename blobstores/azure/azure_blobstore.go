@@ -139,11 +139,12 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	l := logger.Log.With("put-request-id", putRequestID)
 	l.Debugw("Put", "bucket", blobstore.containerName, "path", path)
 
-	blob := blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(path)
+	pathWithRequestIDSuffix := fmt.Sprintf("%v_%v", path, putRequestID)
+	blob := blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(pathWithRequestIDSuffix)
 
 	e := blob.CreateBlockBlob(nil)
 	if e != nil {
-		return errors.Wrapf(e, "create block blob failed. container: %v, path: %v, put-request-id: %v", blobstore.containerName, path, putRequestID)
+		return errors.Wrapf(e, "create block blob failed. container: %v, path: %v, put-request-id: %v", blobstore.containerName, pathWithRequestIDSuffix, putRequestID)
 	}
 
 	uncommittedBlocksList := make([]storage.Block, 0)
@@ -151,7 +152,7 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 	for i := 0; !eof; i++ {
 		// using information from https://docs.microsoft.com/en-us/rest/api/storageservices/understanding-block-blobs--append-blobs--and-page-blobs
 		if i >= 50000 {
-			return errors.Errorf("block blob cannot have more than 50,000 blocks. path: %v, put-request-id: %v", path, putRequestID)
+			return errors.Errorf("block blob cannot have more than 50,000 blocks. path: %v, put-request-id: %v", pathWithRequestIDSuffix, putRequestID)
 		}
 		block := storage.Block{
 			ID:     base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%05d", i))),
@@ -163,7 +164,7 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 			if e.Error() == "EOF" {
 				eof = true
 			} else {
-				return errors.Wrapf(e, "put block failed. path: %v, put-request-id: %v", path, putRequestID)
+				return errors.Wrapf(e, "put block failed. path: %v, put-request-id: %v", pathWithRequestIDSuffix, putRequestID)
 			}
 		}
 		if numBytesRead == 0 {
@@ -178,7 +179,7 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 			blobstore.metricsService.SendCounterMetric("put-block-retry", 1)
 		})
 		if e != nil {
-			return errors.Wrapf(e, "put block failed. path: %v, put-request-id: %v", path, putRequestID)
+			return errors.Wrapf(e, "put block failed. path: %v, put-request-id: %v", pathWithRequestIDSuffix, putRequestID)
 		}
 		uncommittedBlocksList = append(uncommittedBlocksList, block)
 	}
@@ -190,7 +191,29 @@ func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
 		blobstore.metricsService.SendCounterMetric("put-block-list-retry", 1)
 	})
 	if e != nil {
-		return errors.Wrapf(e, "put block list failed. path: %v, put-request-id: %v", path, putRequestID)
+		return errors.Wrapf(e, "put block list failed. path: %v, put-request-id: %v", pathWithRequestIDSuffix, putRequestID)
+	}
+
+	e = backoff.RetryNotify(func() error {
+		return blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(path).Copy(
+			blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(pathWithRequestIDSuffix).GetURL(), nil)
+	}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 100), func(error, time.Duration) {
+		l.Infow("Retry Copy", "src", pathWithRequestIDSuffix, "dest", path)
+		blobstore.metricsService.SendCounterMetric("copy-retry", 1)
+	})
+	if e != nil {
+		return blobstore.handleError(e, "Error while trying to copy src %v to dest %v in bucket %v", pathWithRequestIDSuffix, path, blobstore.containerName)
+	}
+
+	e = backoff.RetryNotify(func() error {
+		_, e := blobstore.client.GetContainerReference(blobstore.containerName).GetBlobReference(pathWithRequestIDSuffix).DeleteIfExists(nil)
+		return e
+	}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 2), func(error, time.Duration) {
+		l.Infow("Retry DeleteIfExists", "path", pathWithRequestIDSuffix)
+		blobstore.metricsService.SendCounterMetric("delete-retry", 1)
+	})
+	if e != nil {
+		return blobstore.handleError(e, "Error while trying to delete path %v in bucket %v", pathWithRequestIDSuffix, blobstore.containerName)
 	}
 
 	return nil
