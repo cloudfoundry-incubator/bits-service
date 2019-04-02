@@ -65,3 +65,10 @@ To run tests:
 	 ```bash
 	 scripts/run-unit-tests
 	 ```
+
+## Contributing to Bits-Service
+The Bits-Service team is happy to receive  feedback, suggestions, improvements and Pull Requests.<p>
+
+**If you want to create a Pull Request against Bits-Service please make sure that the Unit Tests are passing successfully** (as described in the [Getting Started section](#Getting-started))
+
+If you would like to discuss about possible changes or improvements feel free to reach out to us via [Bits-Service Cloud Foundry Slack](https://cloudfoundry.slack.com/messages/C0BNGJY0G)
