@@ -11,7 +11,7 @@ import (
 
 	"time"
 
-	"github.com/cloudfoundry-incubator/bits-service"
+	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/config"
 	"github.com/cloudfoundry-incubator/bits-service/httputil"
 	"github.com/cloudfoundry-incubator/bits-service/logger"
@@ -136,9 +136,7 @@ func (blobstore *Blobstore) Delete(path string) error {
 }
 
 func (blobstore *Blobstore) DeleteDir(prefix string) error {
-	if prefix != "" {
-		prefix += "/"
-	}
+	prefix = AppendsSuffixIfNeeded(prefix)
 	response, e := blobstore.httpClient.Do(
 		blobstore.newRequestWithBasicAuth("DELETE", blobstore.webdavPrivateEndpoint+"/admin/"+prefix, nil))
 	if e != nil {
@@ -153,6 +151,13 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 		return errors.Errorf("Expected HTTP status code 200-204, but got status code: " + response.Status)
 	}
 	return nil
+}
+
+func AppendsSuffixIfNeeded(prefix string) string {
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+	return prefix
 }
 
 func (signer *Blobstore) Sign(resource string, method string, expirationTime time.Time) string {
