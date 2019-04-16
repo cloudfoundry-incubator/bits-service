@@ -19,27 +19,27 @@ import (
 )
 
 type Blobstore struct {
-	httpClient            *http.Client
-	webdavPrivateEndpoint string
-	webdavPublicEndpoint  string
-	webdavUsername        string
-	webdavPassword        string
+	HttpClient            *http.Client
+	WebdavPrivateEndpoint string
+	WebdavPublicEndpoint  string
+	WebdavUsername        string
+	WebdavPassword        string
 }
 
 func NewBlobstore(c config.WebdavBlobstoreConfig) *Blobstore {
 	return &Blobstore{
-		webdavPrivateEndpoint: c.PrivateEndpoint,
-		webdavPublicEndpoint:  c.PublicEndpoint,
-		httpClient:            NewHttpClient(c.CACert(), c.SkipCertVerify),
-		webdavUsername:        c.Username,
-		webdavPassword:        c.Password,
+		WebdavPrivateEndpoint: c.PrivateEndpoint,
+		WebdavPublicEndpoint:  c.PublicEndpoint,
+		HttpClient:            NewHttpClient(c.CACert(), c.SkipCertVerify),
+		WebdavUsername:        c.Username,
+		WebdavPassword:        c.Password,
 	}
 }
 
 func (blobstore *Blobstore) Exists(path string) (bool, error) {
-	url := blobstore.webdavPrivateEndpoint + "/" + path
+	url := blobstore.WebdavPrivateEndpoint + "/" + path
 	logger.Log.Debugw("Exists", "path", path, "url", url)
-	response, e := blobstore.httpClient.Do(blobstore.newRequestWithBasicAuth("HEAD", url, nil))
+	response, e := blobstore.HttpClient.Do(blobstore.newRequestWithBasicAuth("HEAD", url, nil))
 	if e != nil {
 		return false, errors.Wrapf(e, "Error in Exists, path=%v", path)
 	}
@@ -60,7 +60,7 @@ func (blobstore *Blobstore) Get(path string) (body io.ReadCloser, err error) {
 		return nil, bitsgo.NewNotFoundError()
 	}
 
-	response, e := blobstore.httpClient.Get(blobstore.webdavPrivateEndpoint + "/" + path)
+	response, e := blobstore.HttpClient.Get(blobstore.WebdavPrivateEndpoint + "/" + path)
 
 	if e != nil {
 		return nil, errors.Wrapf(e, "path=%v", path)
@@ -86,8 +86,8 @@ func (blobstore *Blobstore) GetOrRedirect(path string) (body io.ReadCloser, redi
 }
 
 func (blobstore *Blobstore) Put(path string, src io.ReadSeeker) error {
-	response, e := blobstore.httpClient.Do(
-		blobstore.newRequestWithBasicAuth("PUT", blobstore.webdavPrivateEndpoint+"/admin/"+path, src))
+	response, e := blobstore.HttpClient.Do(
+		blobstore.newRequestWithBasicAuth("PUT", blobstore.WebdavPrivateEndpoint+"/admin/"+path, src))
 	if e != nil {
 		return errors.Wrapf(e, "Request failed. path=%v", path)
 	}
@@ -106,10 +106,10 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 	if e != nil {
 		return e
 	}
-	response, e := blobstore.httpClient.Do(
-		httputil.NewRequest("COPY", blobstore.webdavPrivateEndpoint+"/admin/"+src, nil).
-			WithHeader("Destination", blobstore.webdavPrivateEndpoint+"/admin/"+dest).
-			WithBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword).
+	response, e := blobstore.HttpClient.Do(
+		httputil.NewRequest("COPY", blobstore.WebdavPrivateEndpoint+"/admin/"+src, nil).
+			WithHeader("Destination", blobstore.WebdavPrivateEndpoint+"/admin/"+dest).
+			WithBasicAuth(blobstore.WebdavUsername, blobstore.WebdavPassword).
 			Build())
 	if e != nil {
 		return errors.Wrapf(e, "Request failed. src=%v, dest=%v", src, dest)
@@ -124,8 +124,8 @@ func (blobstore *Blobstore) Copy(src, dest string) error {
 }
 
 func (blobstore *Blobstore) Delete(path string) error {
-	response, e := blobstore.httpClient.Do(
-		blobstore.newRequestWithBasicAuth("DELETE", blobstore.webdavPrivateEndpoint+"/admin/"+path, nil))
+	response, e := blobstore.HttpClient.Do(
+		blobstore.newRequestWithBasicAuth("DELETE", blobstore.WebdavPrivateEndpoint+"/admin/"+path, nil))
 	if e != nil {
 		return errors.Wrapf(e, "Request failed. path=%v", path)
 	}
@@ -137,8 +137,8 @@ func (blobstore *Blobstore) Delete(path string) error {
 
 func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	prefix = AppendsSuffixIfNeeded(prefix)
-	response, e := blobstore.httpClient.Do(
-		blobstore.newRequestWithBasicAuth("DELETE", blobstore.webdavPrivateEndpoint+"/admin/"+prefix, nil))
+	response, e := blobstore.HttpClient.Do(
+		blobstore.newRequestWithBasicAuth("DELETE", blobstore.WebdavPrivateEndpoint+"/admin/"+prefix, nil))
 	if e != nil {
 		return errors.Wrapf(e, "Request failed. prefix=%v", prefix)
 	}
@@ -165,13 +165,13 @@ func (signer *Blobstore) Sign(resource string, method string, expirationTime tim
 	switch strings.ToLower(method) {
 	case "put":
 		// TODO why do we need a "/" before the resource?
-		url = fmt.Sprintf(signer.webdavPrivateEndpoint+"/sign_for_put?path=/%v&expires=%v", resource, expirationTime.Unix())
+		url = fmt.Sprintf(signer.WebdavPrivateEndpoint+"/sign_for_put?path=/%v&expires=%v", resource, expirationTime.Unix())
 	case "get":
-		url = fmt.Sprintf(signer.webdavPrivateEndpoint+"/sign?path=/%v&expires=%v", resource, expirationTime.Unix())
+		url = fmt.Sprintf(signer.WebdavPrivateEndpoint+"/sign?path=/%v&expires=%v", resource, expirationTime.Unix())
 	}
-	response, e := signer.httpClient.Do(
+	response, e := signer.HttpClient.Do(
 		httputil.NewRequest("GET", url, nil).
-			WithBasicAuth(signer.webdavUsername, signer.webdavPassword).
+			WithBasicAuth(signer.WebdavUsername, signer.WebdavPassword).
 			Build())
 	if e != nil {
 		return "Error during signing. Error: " + e.Error()
@@ -188,10 +188,10 @@ func (signer *Blobstore) Sign(resource string, method string, expirationTime tim
 	signedUrl := httputil.MustParse(string(content))
 
 	// TODO Is this really what we want to do?
-	signedUrl.Host = httputil.MustParse(signer.webdavPublicEndpoint).Host
+	signedUrl.Host = httputil.MustParse(signer.WebdavPublicEndpoint).Host
 
 	// TODO: in the legacy bits-service, this is hard-coded to http, although it should probably be:
-	//       httputil.MustParse(signer.webdavPublicEndpoint).Scheme
+	//       httputil.MustParse(signer.WebdavPublicEndpoint).Scheme
 	//       However, certificates currently do not work out yet, when Stager (Rep) tries to access the URL.
 	//       It will then error, because it cannot verify the certificate. Hence, keeping the hard-coded value
 	//       for now to be functinally equivalent.
@@ -201,8 +201,8 @@ func (signer *Blobstore) Sign(resource string, method string, expirationTime tim
 }
 
 func (blobstore *Blobstore) newRequestWithBasicAuth(method string, urlStr string, body io.Reader) *http.Request {
-	logger.Log.Debugw("Building HTTP request", "method", method, "url", urlStr, "has-body", body != nil, "user", blobstore.webdavUsername)
+	logger.Log.Debugw("Building HTTP request", "method", method, "url", urlStr, "has-body", body != nil, "user", blobstore.WebdavUsername)
 	return httputil.NewRequest(method, urlStr, body).
-		WithBasicAuth(blobstore.webdavUsername, blobstore.webdavPassword).
+		WithBasicAuth(blobstore.WebdavUsername, blobstore.WebdavPassword).
 		Build()
 }
