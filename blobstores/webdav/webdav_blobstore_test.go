@@ -43,8 +43,8 @@ var _ = Describe("webdav DeleteDirectory", func() {
 		It("appends slash to url if needed", func() {
 			webdavBlobstore.DeleteDir("/path/without/slash/suffix")
 		})
-		It("does not append a slach when there is already a slas at the end", func() {
-			webdavBlobstore.DeleteDir("path/with/single/slash/suffix/")
+		It("does not append a slash when there is already a slas at the end", func() {
+			webdavBlobstore.DeleteDir("/path/with/single/slash/suffix/")
 		})
 	})
 })
