@@ -136,7 +136,7 @@ func (blobstore *Blobstore) Delete(path string) error {
 }
 
 func (blobstore *Blobstore) DeleteDir(prefix string) error {
-	prefix = AppendsSuffixIfNeeded(prefix)
+	prefix = appendsSuffixIfNeeded(prefix)
 	response, e := blobstore.HttpClient.Do(
 		blobstore.newRequestWithBasicAuth("DELETE", blobstore.WebdavPrivateEndpoint+"/admin/"+prefix, nil))
 	if e != nil {
@@ -153,7 +153,7 @@ func (blobstore *Blobstore) DeleteDir(prefix string) error {
 	return nil
 }
 
-func AppendsSuffixIfNeeded(prefix string) string {
+func appendsSuffixIfNeeded(prefix string) string {
 	if !strings.HasSuffix(prefix, "/") {
 		prefix += "/"
 	}
