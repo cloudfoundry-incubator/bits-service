@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	. "github.com/cloudfoundry-incubator/bits-service/blobstores/webdav"
+	"github.com/cloudfoundry-incubator/bits-service/config"
 )
 
 var _ = Describe("WebdavBlobstore", func() {
@@ -22,17 +23,13 @@ var _ = Describe("WebdavBlobstore", func() {
 				Expect(req.URL).ToNot(HaveSuffix("//"))
 				Expect(req.URL).To(HaveSuffix("/"))
 			}))
-
-			webdavBlobstore = &Blobstore{
-				WebdavPrivateEndpoint: testServer.URL,
-				WebdavPublicEndpoint:  testServer.URL,
-				HttpClient:            &http.Client{},
-			}
+			webdavBlobstore = NewBlobstoreWithHttpClient(config.WebdavBlobstoreConfig{
+				PrivateEndpoint: testServer.URL,
+				PublicEndpoint:  testServer.URL,
+			}, &http.Client{})
 		})
 
-		AfterEach(func() {
-			defer func() { testServer.Close() }()
-		})
+		AfterEach(func() { testServer.Close() })
 
 		It("appends slash to url if needed", func() {
 			webdavBlobstore.DeleteDir("path/without/slash/suffix")
