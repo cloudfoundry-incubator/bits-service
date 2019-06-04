@@ -48,6 +48,10 @@ func (u *NullUpdater) NotifyProcessingUpload(guid string) error                 
 func (u *NullUpdater) NotifyUploadSucceeded(guid string, sha1 string, sha2 string) error { return nil }
 func (u *NullUpdater) NotifyUploadFailed(guid string, e error) error                     { return nil }
 
+type DropletArtifactDeleter interface {
+	DeleteArtifacts(dropletGUID, dropletHash string) error
+}
+
 type ResourceHandler struct {
 	blobstore              Blobstore
 	appStashBlobstore      Blobstore
@@ -58,6 +62,7 @@ type ResourceHandler struct {
 	minimumSize            uint64
 	maximumSize            uint64
 	shouldProxyGetRequests bool
+	dropletArtifactDeleter DropletArtifactDeleter
 }
 
 type ResponseBody struct {
@@ -69,6 +74,19 @@ type ResponseBody struct {
 	Sha256    string    `json:"sha256"`
 }
 
+func NewResourceHandlerWithArtifactDeleter(blobstore Blobstore, appStashBlobstore Blobstore, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64, shouldProxyGetRequests bool, dropletArtifactDeleter DropletArtifactDeleter) *ResourceHandler {
+	return NewResourceHandlerWithUpdater(
+		blobstore,
+		appStashBlobstore,
+		&NullUpdater{},
+		resourceType,
+		metricsService,
+		maxBodySizeLimit,
+		shouldProxyGetRequests,
+		dropletArtifactDeleter,
+	)
+}
+
 func NewResourceHandler(blobstore Blobstore, appStashBlobstore Blobstore, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64, shouldProxyGetRequests bool) *ResourceHandler {
 	return NewResourceHandlerWithUpdater(
 		blobstore,
@@ -78,10 +96,11 @@ func NewResourceHandler(blobstore Blobstore, appStashBlobstore Blobstore, resour
 		metricsService,
 		maxBodySizeLimit,
 		shouldProxyGetRequests,
+		nil,
 	)
 }
 
-func NewResourceHandlerWithUpdater(blobstore Blobstore, appStashBlobstore Blobstore, updater Updater, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64, shouldProxyGetRequests bool) *ResourceHandler {
+func NewResourceHandlerWithUpdater(blobstore Blobstore, appStashBlobstore Blobstore, updater Updater, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64, shouldProxyGetRequests bool, dropletArtifactDeleter DropletArtifactDeleter) *ResourceHandler {
 	return NewResourceHandlerWithUpdaterAndSizeThresholds(
 		blobstore,
 		appStashBlobstore,
@@ -91,10 +110,11 @@ func NewResourceHandlerWithUpdater(blobstore Blobstore, appStashBlobstore Blobst
 		maxBodySizeLimit,
 		0, math.MaxUint64,
 		shouldProxyGetRequests,
+		dropletArtifactDeleter,
 	)
 }
 
-func NewResourceHandlerWithUpdaterAndSizeThresholds(blobstore Blobstore, appStashBlobstore Blobstore, updater Updater, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64, minimumSize, maximumSize uint64, shouldProxyGetRequests bool) *ResourceHandler {
+func NewResourceHandlerWithUpdaterAndSizeThresholds(blobstore Blobstore, appStashBlobstore Blobstore, updater Updater, resourceType string, metricsService MetricsService, maxBodySizeLimit uint64, minimumSize, maximumSize uint64, shouldProxyGetRequests bool, dropletArtifactDeleter DropletArtifactDeleter) *ResourceHandler {
 	return &ResourceHandler{
 		blobstore:              blobstore,
 		appStashBlobstore:      appStashBlobstore,
@@ -105,6 +125,7 @@ func NewResourceHandlerWithUpdaterAndSizeThresholds(blobstore Blobstore, appStas
 		maximumSize:            maximumSize,
 		minimumSize:            minimumSize,
 		shouldProxyGetRequests: shouldProxyGetRequests,
+		dropletArtifactDeleter: dropletArtifactDeleter,
 	}
 }
 
@@ -536,6 +557,15 @@ func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, reque
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	if handler.resourceType == "droplet" && handler.dropletArtifactDeleter != nil {
+		parts := strings.Split(params["identifier"], "/")
+		e := handler.dropletArtifactDeleter.DeleteArtifacts(parts[0], parts[1])
+		if e != nil {
+			logger.From(request).Errorw("Could not delete OCI artifacts", "droplet-identifier", params["identifier"], "error", e)
+		}
+	}
+
 	e = handler.blobstore.Delete(params["identifier"])
 
 	writeResponseBasedOn("", e, responseWriter, request, http.StatusNoContent, nil, nil, "")

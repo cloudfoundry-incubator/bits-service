@@ -14,9 +14,9 @@ import (
 	"github.com/gorilla/mux"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/format"
 	"github.com/urfave/negroni"
 
-	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/middlewares"
 	"github.com/cloudfoundry-incubator/bits-service/routes"
 )
@@ -25,9 +25,10 @@ var _ = Describe("Registry", func() {
 	var (
 		fakeServer        *httptest.Server
 		serverURL         string
-		rootFSBlobstore   bitsgo.Blobstore
-		dropletBlobstore  bitsgo.Blobstore
-		digestLookupStore bitsgo.Blobstore
+		rootFSBlobstore   *inmemory_blobstore.Blobstore
+		dropletBlobstore  *inmemory_blobstore.Blobstore
+		digestLookupStore *inmemory_blobstore.Blobstore
+		imageManager      *oci_registry.BitsImageManager
 		droplet           []byte
 	)
 	BeforeSuite(func() {
@@ -35,9 +36,9 @@ var _ = Describe("Registry", func() {
 		droplet, e = ioutil.ReadFile("assets/example_droplet")
 		Expect(e).NotTo(HaveOccurred())
 		rootFSBlobstore = inmemory_blobstore.NewBlobstoreWithEntries(map[string][]byte{"assets/eirinifs.tar": []byte("the-rootfs-blob")})
-		dropletBlobstore = inmemory_blobstore.NewBlobstoreWithEntries(map[string][]byte{"the-droplet-guid/the-droplet-hash": droplet})
+		dropletBlobstore = inmemory_blobstore.NewBlobstore()
 		digestLookupStore = inmemory_blobstore.NewBlobstore()
-		imageManager := oci_registry.NewBitsImageManager(rootFSBlobstore, dropletBlobstore, digestLookupStore)
+		imageManager = oci_registry.NewBitsImageManager(rootFSBlobstore, dropletBlobstore, digestLookupStore)
 		router := mux.NewRouter()
 
 		routes.AddImageHandler(router, &oci_registry.ImageHandler{
@@ -52,6 +53,15 @@ var _ = Describe("Registry", func() {
 
 	AfterSuite(func() {
 		fakeServer.Close()
+	})
+
+	BeforeEach(func() {
+		dropletBlobstore.Entries["the-droplet-guid/the-droplet-hash"] = droplet
+	})
+
+	AfterEach(func() {
+		dropletBlobstore.Entries = make(map[string][]byte)
+		digestLookupStore.Entries = make(map[string][]byte)
 	})
 
 	It("Serves the /v2 endpoint so that the client skips authentication", func() {
@@ -164,6 +174,35 @@ var _ = Describe("Registry", func() {
 				res, e := http.Get(serverURL + "/v2/image/tag@/v/!22/name/manifests/the-droplet-guid")
 
 				Expect(res.StatusCode, e).To(Equal(http.StatusNotFound))
+			})
+		})
+	})
+
+	Describe("ImageManager", func() {
+		Describe("DeleteArtifacts", func() {
+			var origMaxDepth uint
+
+			BeforeEach(func() {
+				origMaxDepth = format.MaxDepth
+				format.MaxDepth = 0 // setting it to 0 to avoid huge output by the expectations in this spec
+			})
+
+			AfterEach(func() {
+				format.MaxDepth = origMaxDepth
+			})
+
+			It("deletes all OCI artifacts that were created during an image pull", func() {
+				Expect(digestLookupStore.Entries).To(BeEmpty()) // Explicitly stating pre-condition
+
+				_, e := http.Get(serverURL + "/v2/cloudfoundry/the-droplet-guid/manifests/the-droplet-hash")
+				Expect(e).NotTo(HaveOccurred())
+
+				Expect(digestLookupStore.Entries).To(HaveLen(4)) // manifest index + manifest + config + droplet blob = 4 (rootfs blob is in rootfs blobstore)
+
+				e = imageManager.DeleteArtifacts("the-droplet-guid", "the-droplet-hash")
+				Expect(e).NotTo(HaveOccurred(), "%+v", e)
+
+				Expect(digestLookupStore.Entries).To(BeEmpty())
 			})
 		})
 	})

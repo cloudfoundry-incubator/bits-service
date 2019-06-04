@@ -1,13 +1,17 @@
 package acceptance_test
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
 	bitsgo "github.com/cloudfoundry-incubator/bits-service"
@@ -170,6 +174,47 @@ var _ = Describe("Accessing the bits-service", func() {
 			})
 		})
 	})
+
+	Describe("/droplets", func() {
+		Describe("DELETE /droplets/:guid/:hash", func() {
+			It("deletes OCI image artifacts too", func() {
+				r, e := httputil.NewPutRequest("https://internal.127.0.0.1.nip.io:4443/droplets/the-droplet-guid/droplet-hash", map[string]map[string]io.Reader{
+					"bits": map[string]io.Reader{"somefilename": CreateGZip(map[string]string{"somefile": "lalala\n\n"})},
+				})
+				r.SetBasicAuth("the-username", "the-password")
+				response, e := client.Do(r)
+				Expect(e).NotTo(HaveOccurred())
+				Expect(response.StatusCode).To(Equal(http.StatusCreated))
+
+				response, e = client.Do(
+					newGetRequest("https://internal.127.0.0.1.nip.io:4443/droplets/the-droplet-guid/droplet-hash", "the-username", "the-password"))
+				Expect(e).ToNot(HaveOccurred())
+				Expect(response.StatusCode).To(Equal(http.StatusOK))
+
+				responseBody, e := ioutil.ReadAll(response.Body)
+				Expect(e).NotTo(HaveOccurred())
+				ExpectTarGzipFileWithOneFileInIt(responseBody, "somefile", "lalala\n\n")
+
+				response, e = client.Do(
+					newGetRequest("https://registry.127.0.0.1.nip.io:4443/v2/cloudfoundry/the-droplet-guid/manifests/droplet-hash", "the-username", "the-password"))
+				Expect(e).NotTo(HaveOccurred())
+				Expect(response.StatusCode).To(Equal(http.StatusOK))
+
+				Expect(filesInDropletFolder()).To(HaveLen(5)) // droplet itself + OCI manifest index + OCI manifest + OCI config + OCI droplet layer blob
+
+				response, e = client.Do(httputil.NewRequest("DELETE", "https://internal.127.0.0.1.nip.io:4443/droplets/the-droplet-guid/droplet-hash", nil).Build())
+				Expect(e).NotTo(HaveOccurred())
+				Expect(response.StatusCode).To(Equal(http.StatusNoContent))
+
+				response, e = client.Do(
+					newGetRequest("https://registry.127.0.0.1.nip.io:4443/v2/cloudfoundry/the-droplet-guid/manifests/droplet-hash", "the-username", "the-password"))
+				Expect(e).NotTo(HaveOccurred())
+				Expect(response.StatusCode).To(Equal(http.StatusNotFound))
+
+				Expect(filesInDropletFolder()).To(BeEmpty())
+			})
+		})
+	})
 })
 
 func newGetRequest(url string, username string, password string) *http.Request {
@@ -177,4 +222,31 @@ func newGetRequest(url string, username string, password string) *http.Request {
 	Expect(e).NotTo(HaveOccurred())
 	request.SetBasicAuth(username, password)
 	return request
+}
+
+func filesInDropletFolder() []string {
+	var result []string
+	filepath.Walk("/tmp/droplets", func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			result = append(result, info.Name())
+		}
+		return nil
+	})
+	return result
+}
+
+func ExpectTarGzipFileWithOneFileInIt(body []byte, expectedFilename string, expectedFileContent string) {
+	gzipReader, e := gzip.NewReader(bytes.NewReader(body))
+	Expect(e).NotTo(HaveOccurred())
+	defer gzipReader.Close()
+	tarGzipReader := tar.NewReader(gzipReader)
+
+	hdr, e := tarGzipReader.Next()
+	Expect(e).NotTo(HaveOccurred())
+
+	Expect(hdr.Name).To(Equal(expectedFilename))
+	var fileContent bytes.Buffer
+	_, e = io.Copy(&fileContent, tarGzipReader)
+	Expect(e).NotTo(HaveOccurred())
+	Expect(fileContent.String()).To(Equal(expectedFileContent))
 }

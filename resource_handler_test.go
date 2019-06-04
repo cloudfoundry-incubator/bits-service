@@ -7,7 +7,7 @@ import (
 
 	"github.com/petergtz/pegomock"
 
-	"github.com/cloudfoundry-incubator/bits-service"
+	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 
 	. "github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/httputil"
@@ -36,7 +36,7 @@ var _ = Describe("ResourceHandler", func() {
 		blobstore = NewMockBlobstore()
 		appStashBlobstore = NewMockBlobstore()
 		updater = NewMockUpdater()
-		handler = NewResourceHandlerWithUpdater(blobstore, appStashBlobstore, updater, "test-resource", NewMockMetricsService(), 0, false)
+		handler = NewResourceHandlerWithUpdater(blobstore, appStashBlobstore, updater, "test-resource", NewMockMetricsService(), 0, false, nil)
 		responseWriter = httptest.NewRecorder()
 	})
 
@@ -55,7 +55,7 @@ var _ = Describe("ResourceHandler", func() {
 
 		Context("resource is a package", func() {
 			BeforeEach(func() {
-				handler = NewResourceHandlerWithUpdater(blobstore, appStashBlobstore, updater, "package", NewMockMetricsService(), 0, false)
+				handler = NewResourceHandlerWithUpdater(blobstore, appStashBlobstore, updater, "package", NewMockMetricsService(), 0, false, nil)
 			})
 
 			Context("no space left in app-stash blobstore", func() {

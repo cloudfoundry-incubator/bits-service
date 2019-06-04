@@ -270,3 +270,61 @@ func (b *BitsImageManager) configMetadata(rootfsDigest string, dropletDigest str
 	util.PanicOnError(errors.WithStack(e))
 	return config
 }
+
+func (b *BitsImageManager) DeleteArtifacts(dropletGUID, dropletHash string) error {
+	var errs []string
+	manifestList := b.GetManifestList(dropletGUID, dropletHash)
+	if manifestList == nil {
+		return nil
+	}
+
+	if len(manifestList.Manifests) != 1 {
+		errs = append(errs, "Unexpected number of manifests specified in manifest index. Expected: 1, Actual: "+fmt.Sprintf("%v", len(manifestList.Manifests)))
+	}
+
+	manifestListJSON, e := json.Marshal(manifestList)
+	if e != nil {
+		errs = append(errs, "Could not marshal manifest index struct into JSON: "+e.Error())
+	} else {
+		manifestListDigest, _ := shaAndSize(bytes.NewReader(manifestListJSON))
+		e = b.digestLookupStore.Delete(manifestListDigest)
+		if e != nil {
+			errs = append(errs, "Could not delete manifest index JSON file from digest lookup store: "+e.Error())
+		}
+	}
+
+	manifest := b.GetManifest(dropletGUID, dropletHash)
+	if manifest == nil {
+		errs = append(errs, "Could not find OCI manifest with droplet GUID "+dropletGUID+" and droplet hash "+dropletHash)
+	} else {
+		manifestJSON, e := json.Marshal(manifest)
+		if e != nil {
+			errs = append(errs, "Could not marshal manifest struct into JSON: "+e.Error())
+		} else {
+			manifestDigest, _ := shaAndSize(bytes.NewReader(manifestJSON))
+
+			e = b.digestLookupStore.Delete(manifestDigest)
+			if e != nil {
+				errs = append(errs, "Could not delete OCI manifest JSON file from digest lookup store: "+e.Error())
+			}
+
+			e = b.digestLookupStore.Delete(manifest.Config.Digest)
+			if e != nil {
+				errs = append(errs, "Could not delete OCI manifest config JSON file from digest lookup store: "+e.Error())
+			}
+			if len(manifest.Layers) != 2 {
+				errs = append(errs, "Unexpected number of layers specified in OCI manifest. Expected: 2, Actual: "+fmt.Sprintf("%v", len(manifest.Layers)))
+			} else {
+				e = b.digestLookupStore.Delete(manifest.Layers[1].Digest)
+				if e != nil {
+					errs = append(errs, "Could not delete OCI droplet layer file from digest lookup store: "+e.Error())
+				}
+			}
+		}
+	}
+
+	if len(errs) != 0 {
+		return errors.New("Unexpected errors while trying to delete OCI image artifacts: " + strings.Join(errs, ", "))
+	}
+	return nil
+}
