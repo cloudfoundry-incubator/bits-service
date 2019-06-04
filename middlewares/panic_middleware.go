@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/cloudfoundry-incubator/bits-service/logger"
+	"github.com/pkg/errors"
 )
 
 type PanicMiddleware struct{}
@@ -21,7 +23,13 @@ type internalServerErrorResponseBody struct {
 func (middleware *PanicMiddleware) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request, next http.HandlerFunc) {
 	defer func() {
 		if e := recover(); e != nil {
-			logger.From(request).Errorw("Internal Server Error.", "error", fmt.Sprintf("%+v", e))
+			if _, ok := e.(interface {
+				StackTrace() errors.StackTrace
+			}); ok {
+				logger.From(request).Errorw("Internal Server Error.", "error", fmt.Sprintf("%+v", e))
+			} else {
+				logger.From(request).Errorw("Internal Server Error.", "error", fmt.Sprintf("%v\n%s", e, debug.Stack()))
+			}
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			body, e := json.Marshal(internalServerErrorResponseBody{
 				Service:       "Bits-Service",
