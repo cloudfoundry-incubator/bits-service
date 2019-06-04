@@ -55,23 +55,23 @@ func main() {
 	go regularlyEmitGoRoutines(metricsService)
 
 	var (
-		ociImageHandler      *oci_registry.ImageHandler
-		bitsImageManager     *oci_registry.BitsImageManager
-		registryEndpointHost = ""
+		ociImageHandler        *oci_registry.ImageHandler
+		dropletArtifactDeleter bitsgo.DropletArtifactDeleter
+		registryEndpointHost   = ""
 	)
 	if config.EnableRegistry {
-		bitsImageManager = oci_registry.NewBitsImageManager(
-			createRootFSBlobstore(config.RootFS),
-			dropletBlobstore,
-			// TODO: We should use a differently decorated blobstore for digestLookupStore:
-			// We want one with a non-partitioned prefix, so real droplets and
-			// oci-droplet layers (i.e. droplets with adjusted path prefixes)
-			// are easily distinguishable from their paths in the blobstore.
-			dropletBlobstore,
-		)
 		ociImageHandler = &oci_registry.ImageHandler{
-			ImageManager: bitsImageManager,
+			ImageManager: oci_registry.NewBitsImageManager(
+				createRootFSBlobstore(config.RootFS),
+				dropletBlobstore,
+				// TODO: We should use a differently decorated blobstore for digestLookupStore:
+				// We want one with a non-partitioned prefix, so real droplets and
+				// oci-droplet layers (i.e. droplets with adjusted path prefixes)
+				// are easily distinguishable from their paths in the blobstore.
+				dropletBlobstore,
+			),
 		}
+		dropletArtifactDeleter = ociImageHandler.ImageManager
 		registryEndpointHost = config.RegistryEndpointUrl().Host
 		log.Log.Infow("Starting with OCI image registry",
 			"registry-host", registryEndpointHost,
@@ -111,7 +111,14 @@ func main() {
 			nil,
 		),
 		bitsgo.NewResourceHandler(buildpackBlobstore, appStashBlobstore, "buildpack", metricsService, config.Buildpacks.MaxBodySizeBytes(), config.ShouldProxyGetRequests),
-		bitsgo.NewResourceHandlerWithArtifactDeleter(dropletBlobstore, appStashBlobstore, "droplet", metricsService, config.Droplets.MaxBodySizeBytes(), config.ShouldProxyGetRequests, bitsImageManager),
+		bitsgo.NewResourceHandlerWithArtifactDeleter(
+			dropletBlobstore,
+			appStashBlobstore,
+			"droplet",
+			metricsService,
+			config.Droplets.MaxBodySizeBytes(),
+			config.ShouldProxyGetRequests,
+			dropletArtifactDeleter),
 		bitsgo.NewResourceHandler(buildpackCacheBlobstore, appStashBlobstore, "buildpack_cache", metricsService, config.BuildpackCache.MaxBodySizeBytes(), config.ShouldProxyGetRequests),
 		ociImageHandler,
 	)

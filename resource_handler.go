@@ -560,9 +560,13 @@ func (handler *ResourceHandler) Delete(responseWriter http.ResponseWriter, reque
 
 	if handler.resourceType == "droplet" && handler.dropletArtifactDeleter != nil {
 		parts := strings.Split(params["identifier"], "/")
-		e := handler.dropletArtifactDeleter.DeleteArtifacts(parts[0], parts[1])
-		if e != nil {
-			logger.From(request).Errorw("Could not delete OCI artifacts", "droplet-identifier", params["identifier"], "error", e)
+		if len(parts) != 2 {
+			logger.From(request).Debugw("Not deleting OCI artifacts, because no droplet hash provided in DELETE request", "droplet-identifier", params["identifier"])
+		} else {
+			e := handler.dropletArtifactDeleter.DeleteArtifacts(parts[0], parts[1])
+			if e != nil {
+				logger.From(request).Errorw("Could not delete OCI artifacts", "droplet-identifier", params["identifier"], "error", e)
+			}
 		}
 	}
 
