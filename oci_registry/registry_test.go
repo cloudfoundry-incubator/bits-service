@@ -80,7 +80,7 @@ var _ = Describe("Registry", func() {
 				"manifests": [
 				  {
 					"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-					"digest": "sha256:42706af61c60ec7eb377b9d79e56ebbbef8ccb5637ef12df070363ea0103e570",
+					"digest": "sha256:47a9ce51d74ebb495e919c1efd156685f7d6f16bfaccd99fb42078c037503c7b",
 					"size": 582,
 					"platform": {
 					  "architecture": "amd64",
@@ -90,14 +90,14 @@ var _ = Describe("Registry", func() {
 				]
 			  }`))
 
-			res, e = http.Get(serverURL + "/v2/irrelevant-image-name/manifests/sha256:42706af61c60ec7eb377b9d79e56ebbbef8ccb5637ef12df070363ea0103e570")
+			res, e = http.Get(serverURL + "/v2/irrelevant-image-name/manifests/sha256:47a9ce51d74ebb495e919c1efd156685f7d6f16bfaccd99fb42078c037503c7b")
 			Expect(res.StatusCode, e).To(Equal(http.StatusOK))
 			Expect(ioutil.ReadAll(res.Body)).To(MatchJSON(`{
 				"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
 				"schemaVersion": 2,
 				"config": {
 					"mediaType": "application/vnd.docker.container.image.v1+json",
-					"digest": "sha256:e45cc3b91fb3e12c17e8a9a3a9d476f516f480756795a2b446f0a129f6bcae3d",
+					"digest": "sha256:17b61ff749fc15f044f0657485654c36b322844320d93535d19a9080f82ff821",
 					"size": 214
 				},
 				"layers": [
@@ -108,13 +108,13 @@ var _ = Describe("Registry", func() {
 					},
 					{
 						"mediaType": "application/vnd.docker.image.rootfs.diff.tar",
-						"digest": "sha256:ccba5ce536c29da80ff2da1c81fc7b9e4d07ab679b6bfb03964432f116d61dd7",
+						"digest": "sha256:207cb7b868154dcc33cead383ada32531a856d4c79c307f118893619a6dfe60b",
 						"size": 86134392
 					}
 				]
 			}`))
 
-			res, e = http.Get(serverURL + "/v2/irrelevant-image-name/blobs/sha256:e45cc3b91fb3e12c17e8a9a3a9d476f516f480756795a2b446f0a129f6bcae3d")
+			res, e = http.Get(serverURL + "/v2/irrelevant-image-name/blobs/sha256:17b61ff749fc15f044f0657485654c36b322844320d93535d19a9080f82ff821")
 			Expect(e).NotTo(HaveOccurred())
 			Expect(ioutil.ReadAll(res.Body)).To(MatchJSON(`{
 				"config": {
@@ -123,7 +123,7 @@ var _ = Describe("Registry", func() {
 				"rootfs": {
 				  "diff_ids": [
 					"sha256:56ca430559f451494a0e97ff4989ebe28b5d61041f1d7cf8f244acc76974df20",
-					"sha256:ccba5ce536c29da80ff2da1c81fc7b9e4d07ab679b6bfb03964432f116d61dd7"
+					"sha256:207cb7b868154dcc33cead383ada32531a856d4c79c307f118893619a6dfe60b"
 				  ],
 				  "type": "layers"
 				}
@@ -133,7 +133,7 @@ var _ = Describe("Registry", func() {
 			Expect(e).NotTo(HaveOccurred())
 			Expect(ioutil.ReadAll(res.Body)).To(Equal([]byte("the-rootfs-blob")))
 
-			res, e = http.Get(serverURL + "/v2/irrelevant-image-name/blobs/sha256:ccba5ce536c29da80ff2da1c81fc7b9e4d07ab679b6bfb03964432f116d61dd7")
+			res, e = http.Get(serverURL + "/v2/irrelevant-image-name/blobs/sha256:207cb7b868154dcc33cead383ada32531a856d4c79c307f118893619a6dfe60b")
 			Expect(e).NotTo(HaveOccurred())
 			Expect(res.StatusCode).To(Equal(http.StatusOK))
 
@@ -148,6 +148,9 @@ var _ = Describe("Registry", func() {
 				}
 				Expect(e).NotTo(HaveOccurred())
 				Expect(header.Name).To(HavePrefix("/home/vcap"))
+				Expect(header.Mode).To(Equal(int64(0777)))
+				Expect(header.Uname).To(Equal("vcap"))
+				Expect(header.Gname).To(Equal("vcap"))
 			}
 		})
 

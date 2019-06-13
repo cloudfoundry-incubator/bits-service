@@ -223,6 +223,9 @@ func preFixDroplet(cfDroplet io.Reader, ociDroplet io.Writer) {
 		util.PanicOnError(errors.WithStack(e))
 
 		hdr.Name = filepath.Join("/home/vcap", hdr.Name)
+		hdr.Mode = 0777
+		hdr.Uname = "vcap"
+		hdr.Gname = "vcap"
 		e = layer.WriteHeader(hdr)
 		util.PanicOnError(errors.WithStack(e))
 		_, e = io.Copy(layer, t)
