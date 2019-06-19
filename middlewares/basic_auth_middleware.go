@@ -33,6 +33,7 @@ func (middleware *BasicAuthMiddleware) ServeHTTP(responseWriter http.ResponseWri
 	username, password, ok := request.BasicAuth()
 	if !ok {
 		if middleware.basicAuthHeaderMissingHandler == nil {
+			responseWriter.Header().Set("WWW-Authenticate", `Basic realm="bits-service"`)
 			responseWriter.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -42,6 +43,7 @@ func (middleware *BasicAuthMiddleware) ServeHTTP(responseWriter http.ResponseWri
 
 	if !middleware.authorized(username, password) {
 		if middleware.unauthorizedHandler == nil {
+			responseWriter.Header().Set("WWW-Authenticate", `Basic realm="bits-service"`)
 			responseWriter.WriteHeader(http.StatusUnauthorized)
 			return
 		}
