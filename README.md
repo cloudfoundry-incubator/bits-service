@@ -1,4 +1,7 @@
 # Bits Service
+**Please note: the Bits-Service is not actively maintained anymore. [More information](https://lists.cloudfoundry.org/g/cf-dev/message/8660).**
+
+
  <img src="docs/bits_logo_horizontal.svg" width="500" align="middle">
 
 
