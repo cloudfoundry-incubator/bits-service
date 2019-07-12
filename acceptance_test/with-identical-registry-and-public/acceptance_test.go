@@ -33,8 +33,11 @@ var _ = Describe("Accessing the bits-service", func() {
 
 		Context("accessing OCI /v2 endpoint through registry host", func() {
 			It("gets an HTTP Status OK", func() {
-				Expect(client.Get("http://public-and-registry.127.0.0.1.nip.io:8888/v2/")).
-					To(WithTransform(GetStatusCode, Equal(http.StatusOK)))
+				req, err := http.NewRequest("GET", "http://public-and-registry.127.0.0.1.nip.io:8888/v2/", nil)
+				Expect(err).ToNot(HaveOccurred())
+
+				req.SetBasicAuth("the-username", "the-password")
+				Expect(client.Do(req)).To(WithTransform(GetStatusCode, Equal(http.StatusOK)))
 			})
 		})
 	})
