@@ -16,9 +16,9 @@ import (
 
 	"io/ioutil"
 
-	"github.com/cloudfoundry-incubator/bits-service"
+	bitsgo "github.com/cloudfoundry-incubator/bits-service"
 	"github.com/cloudfoundry-incubator/bits-service/blobstores/decorator"
-	"github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
+	inmemory_blobstore "github.com/cloudfoundry-incubator/bits-service/blobstores/inmemory"
 	"github.com/cloudfoundry-incubator/bits-service/httputil"
 	. "github.com/cloudfoundry-incubator/bits-service/routes"
 	"github.com/cloudfoundry-incubator/bits-service/statsd"

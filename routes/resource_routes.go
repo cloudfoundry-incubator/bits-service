@@ -46,7 +46,7 @@ func SetUpAllRoutes(privateHost, publicHost, registryHost string, basicAuthMiddl
 	SetUpBuildpackCacheRoutes(publicRouter, buildpackCacheHandler)
 
 	if ociImageHandler != nil {
-		AddImageHandler(rootRouter.Host(registryHost).Subrouter(), ociImageHandler)
+		AddImageHandler(rootRouter.Host(registryHost).Subrouter(), ociImageHandler, basicAuthMiddleware)
 	}
 
 	rootRouter.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -127,6 +127,13 @@ func wrapWith(basicAuthMiddleware *middlewares.BasicAuthMiddleware, handler *bit
 	)
 }
 
+func wrapWithImageHandler(basicAuthMiddleware *middlewares.BasicAuthMiddleware, handler func(http.ResponseWriter, *http.Request)) http.Handler {
+	return negroni.New(
+		basicAuthMiddleware,
+		negroni.Wrap(http.HandlerFunc(handler)),
+	)
+}
+
 func setRouteNotFoundStatusCode(router *mux.Router, statusCode int) {
 	router.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(statusCode)
@@ -147,10 +154,10 @@ func delegateWithQueryParamsExtractedTo(delegate func(http.ResponseWriter, *http
 	}
 }
 
-func AddImageHandler(ociRouter *mux.Router, handler *registry.ImageHandler) {
-	ociRouter.Path("/v2").Methods(http.MethodGet).HandlerFunc(handler.ServeAPIVersion)
-	ociRouter.Path("/v2/").Methods(http.MethodGet).HandlerFunc(handler.ServeAPIVersion)
-	ociRouter.Path("/v2/{name:[a-z0-9/\\.\\-_]+}/manifests/{tag}").Methods(http.MethodGet, http.MethodHead).HandlerFunc(handler.ServeManifest)
-	ociRouter.Path("/v2/{space}/{name}/manifests/{tag}").Methods(http.MethodGet, http.MethodHead).HandlerFunc(handler.ServeManifest)
-	ociRouter.Path("/v2/{name:[a-z0-9/\\.\\-_]+}/blobs/{digest}").Methods(http.MethodGet).HandlerFunc(handler.ServeBlob)
+func AddImageHandler(ociRouter *mux.Router, handler *registry.ImageHandler, basicAuthMiddleware *middlewares.BasicAuthMiddleware) {
+	ociRouter.Path("/v2").Methods(http.MethodGet).Handler(wrapWithImageHandler(basicAuthMiddleware, handler.ServeAPIVersion))
+	ociRouter.Path("/v2/").Methods(http.MethodGet).Handler(wrapWithImageHandler(basicAuthMiddleware, handler.ServeAPIVersion))
+	ociRouter.Path("/v2/{name:[a-z0-9/\\.\\-_]+}/manifests/{tag}").Methods(http.MethodGet, http.MethodHead).Handler(wrapWithImageHandler(basicAuthMiddleware, handler.ServeManifest))
+	ociRouter.Path("/v2/{space}/{name}/manifests/{tag}").Methods(http.MethodGet, http.MethodHead).Handler(wrapWithImageHandler(basicAuthMiddleware, handler.ServeManifest))
+	ociRouter.Path("/v2/{name:[a-z0-9/\\.\\-_]+}/blobs/{digest}").Methods(http.MethodGet).Handler(wrapWithImageHandler(basicAuthMiddleware, handler.ServeBlob))
 }

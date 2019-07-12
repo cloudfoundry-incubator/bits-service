@@ -69,6 +69,7 @@ var _ = Describe("BasicAuthMiddle", func() {
 		Expect(*response).To(HaveStatusCodeAndBody(
 			Equal(http.StatusOK),
 			MatchRegexp("Hello")))
+		Expect(response.Header.Get("WWW-Authenticate")).To(BeEmpty())
 	})
 
 	It("returns status unauthorized when basic auth is invalid", func() {
@@ -81,6 +82,8 @@ var _ = Describe("BasicAuthMiddle", func() {
 		Expect(*response).To(HaveStatusCodeAndBody(
 			Equal(http.StatusUnauthorized),
 			BeEmpty()))
+		Expect(response.Header.Get("WWW-Authenticate")).To(ContainSubstring("Basic realm"))
+
 	})
 
 	Context("unauthorizedHandler is set", func() {
@@ -107,6 +110,7 @@ var _ = Describe("BasicAuthMiddle", func() {
 		Expect(*response).To(HaveStatusCodeAndBody(
 			Equal(http.StatusUnauthorized),
 			BeEmpty()))
+		Expect(response.Header.Get("WWW-Authenticate")).To(ContainSubstring("Basic realm"))
 	})
 })
 
