@@ -24,9 +24,9 @@ func SetUpAllRoutes(privateHost, publicHost, registryHost string, basicAuthMiddl
 ) *mux.Router {
 
 	rootRouter := mux.NewRouter()
+	rootRouter.Path("/healthz").Methods(http.MethodGet).HandlerFunc(ociImageHandler.ServeAPIVersion)
 
 	internalRouter := rootRouter.Host(privateHost).Subrouter()
-
 	SetUpSignRoute(internalRouter, basicAuthMiddleware,
 		signPackageURLHandler, signDropletURLHandler, signBuildpackURLHandler, signBuildpackCacheURLHandler, signAppStashURLHandler)
 
