@@ -155,7 +155,8 @@ func delegateWithQueryParamsExtractedTo(delegate func(http.ResponseWriter, *http
 }
 
 func AddImageHandler(ociRouter *mux.Router, handler *registry.ImageHandler, basicAuthMiddleware *middlewares.BasicAuthMiddleware) {
-	ociRouter.Path("/v2").Methods(http.MethodGet).Handler(wrapWithImageHandler(basicAuthMiddleware, handler.ServeAPIVersion))
+	ociRouter.Path("/").Methods(http.MethodGet).HandlerFunc(handler.ServeAPIVersion)
+	ociRouter.Path("/v2").Methods(http.MethodGet).HandlerFunc(handler.ServeAPIVersion)
 	ociRouter.Path("/v2/").Methods(http.MethodGet).Handler(wrapWithImageHandler(basicAuthMiddleware, handler.ServeAPIVersion))
 	ociRouter.Path("/v2/{name:[a-z0-9/\\.\\-_]+}/manifests/{tag}").Methods(http.MethodGet, http.MethodHead).Handler(wrapWithImageHandler(basicAuthMiddleware, handler.ServeManifest))
 	ociRouter.Path("/v2/{space}/{name}/manifests/{tag}").Methods(http.MethodGet, http.MethodHead).Handler(wrapWithImageHandler(basicAuthMiddleware, handler.ServeManifest))
