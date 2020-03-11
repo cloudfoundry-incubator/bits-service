@@ -32,6 +32,18 @@ func main() {
 	kingpin.Parse()
 
 	config, e := config.LoadConfig(*configPath)
+	if os.Getenv("BITS_BLOBSTORE_PASSWORD") != "" {
+		envValue := os.Getenv("BITS_BLOBSTORE_PASSWORD")
+		if envValue == "" {
+			log.Log.Fatal("blobstore password for bits service is not provided")
+		}
+		config.Buildpacks.WebdavConfig.Password = envValue
+		config.Droplets.WebdavConfig.Password = envValue
+		config.Packages.WebdavConfig.Password = envValue
+		config.AppStash.WebdavConfig.Password = envValue
+		config.RootFS.WebdavConfig.Password = envValue
+		config.BuildpackCache.WebdavConfig.Password = envValue
+	}
 
 	if e != nil {
 		log.Log.Fatalw("Could not load config.", "error", e)
