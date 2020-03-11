@@ -41,8 +41,6 @@ func main() {
 		config.Droplets.WebdavConfig.Password = envValue
 		config.Packages.WebdavConfig.Password = envValue
 		config.AppStash.WebdavConfig.Password = envValue
-		config.RootFS.WebdavConfig.Password = envValue
-		config.BuildpackCache.WebdavConfig.Password = envValue
 	}
 
 	if e != nil {
