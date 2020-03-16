@@ -61,21 +61,16 @@ imports:
   - private/protocol/xml/xmlutil
   - service/s3
   - service/sts
-- name: github.com/Azure/azure-sdk-for-go
-  version: 580a14a5a4b8830727fda07d73bd6f69e64b14f8
+- name: github.com/Azure/azure-pipeline-go
+  version: 76b57228f36adfbb7e6990ba1347a7fbbf3043da
   subpackages:
-  - storage
-  - version
-- name: github.com/Azure/go-autorest
-  version: 4e5fffdf007df29ed0862f9e01fafabf4396e851
+  - pipeline
+- name: github.com/Azure/azure-storage-blob-go
+  version: 457680cc0804810f6d02958481e0ffdda51d5c60
   subpackages:
-  - autorest
-  - autorest/adal
-  - autorest/azure
-  - autorest/date
-  - logger
-  - tracing
-  - version
+  - azblob
+- name: github.com/mattetti/filebuffer
+  version: 3a1e8e5a6548ea21cce597660d0c0dcc8c77a520
 - name: github.com/benbjohnson/clock
   version: 7dc76406b6d3c05b5f71a86293cbcf3c4ea03b19
 - name: github.com/cenkalti/backoff

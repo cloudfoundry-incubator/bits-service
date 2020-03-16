@@ -24,7 +24,10 @@ import:
 - package: cloud.google.com/go
   subpackages:
   - storage
-- package: github.com/Azure/azure-sdk-for-go
+- package: github.com/Azure/azure-storage-blob-go
+  subpackages:
+  - azblob
+- package: github.com/mattetti/filebuffer
 - package: github.com/ncw/swift
 - package: github.com/cenkalti/backoff
 - package: github.com/aliyun/aliyun-oss-go-sdk
