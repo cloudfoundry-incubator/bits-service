@@ -94,7 +94,7 @@ var _ = Describe("Registry", func() {
 				"manifests": [
 				  {
 					"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-					"digest": "sha256:47a9ce51d74ebb495e919c1efd156685f7d6f16bfaccd99fb42078c037503c7b",
+					"digest": "sha256:a633dfab15a2f56b3e5d05971fb5e17e91cbec5fbdc192c6873e059da75c387b",
 					"size": 582,
 					"platform": {
 					  "architecture": "amd64",
@@ -104,15 +104,15 @@ var _ = Describe("Registry", func() {
 				]
 			  }`))
 
-			res, e = doGetRequest("/v2/irrelevant-image-name/manifests/sha256:47a9ce51d74ebb495e919c1efd156685f7d6f16bfaccd99fb42078c037503c7b")
+			res, e = doGetRequest("/v2/irrelevant-image-name/manifests/sha256:a633dfab15a2f56b3e5d05971fb5e17e91cbec5fbdc192c6873e059da75c387b")
 			Expect(res.StatusCode, e).To(Equal(http.StatusOK))
 			Expect(ioutil.ReadAll(res.Body)).To(MatchJSON(`{
 				"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
 				"schemaVersion": 2,
 				"config": {
 					"mediaType": "application/vnd.docker.container.image.v1+json",
-					"digest": "sha256:17b61ff749fc15f044f0657485654c36b322844320d93535d19a9080f82ff821",
-					"size": 214
+					"digest": "sha256:63460d0ba1dd1ec2ad8889a8dc46382209c0929c8f6421e51de715648fd337c3",
+					"size": 219
 				},
 				"layers": [
 					{
@@ -128,11 +128,11 @@ var _ = Describe("Registry", func() {
 				]
 			}`))
 
-			res, e = doGetRequest("/v2/irrelevant-image-name/blobs/sha256:17b61ff749fc15f044f0657485654c36b322844320d93535d19a9080f82ff821")
+			res, e = doGetRequest("/v2/irrelevant-image-name/blobs/sha256:63460d0ba1dd1ec2ad8889a8dc46382209c0929c8f6421e51de715648fd337c3")
 			Expect(e).NotTo(HaveOccurred())
 			Expect(ioutil.ReadAll(res.Body)).To(MatchJSON(`{
 				"config": {
-				  "user": "vcap"
+				  "user": "2000:2000"
 				},
 				"rootfs": {
 				  "diff_ids": [
@@ -163,8 +163,8 @@ var _ = Describe("Registry", func() {
 				Expect(e).NotTo(HaveOccurred())
 				Expect(header.Name).To(HavePrefix("/home/vcap"))
 				Expect(header.Mode).To(Equal(int64(0777)))
-				Expect(header.Uname).To(Equal("vcap"))
-				Expect(header.Gname).To(Equal("vcap"))
+				Expect(header.Uid).To(Equal(2000))
+				Expect(header.Gid).To(Equal(2000))
 			}
 		})
 

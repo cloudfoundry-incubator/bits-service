@@ -26,6 +26,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	vcapUid int = 2000
+	vcapGid int = 2000
+)
+
 type ImageHandler struct {
 	ImageManager *BitsImageManager
 }
@@ -224,8 +229,8 @@ func preFixDroplet(cfDroplet io.Reader, ociDroplet io.Writer) {
 
 		hdr.Name = filepath.Join("/home/vcap", hdr.Name)
 		hdr.Mode = 0777
-		hdr.Uname = "vcap"
-		hdr.Gname = "vcap"
+		hdr.Uid = vcapUid
+		hdr.Gid = vcapGid
 		e = layer.WriteHeader(hdr)
 		util.PanicOnError(errors.WithStack(e))
 		_, e = io.Copy(layer, t)
@@ -260,7 +265,7 @@ func (b *BitsImageManager) GetBlob(name string, digest string) io.ReadCloser {
 func (b *BitsImageManager) configMetadata(rootfsDigest string, dropletDigest string) []byte {
 	config, e := json.Marshal(map[string]interface{}{
 		"config": map[string]interface{}{
-			"user": "vcap",
+			"user": fmt.Sprintf("%d:%d", vcapUid, vcapGid),
 		},
 		"rootfs": map[string]interface{}{
 			"type": "layers",
